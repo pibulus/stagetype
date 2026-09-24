@@ -1,0 +1,15 @@
+{
+  "name": "@pibulus/stagetype",
+  "version": "1.0.0",
+  "description": "Live presentation captions ticker + phone lapel mic + instant audience QR reader",
+  "exports": "./server.ts",
+  "tasks": {
+    "dev": "deno run -A --watch server.ts",
+    "start": "deno run -A server.ts",
+    "test": "deno test -A server_test.ts",
+    "check": "deno check server.ts server_test.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  }
+}

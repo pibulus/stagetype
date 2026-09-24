@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StageType · Presenter Console</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+  :root {
+    --paper: #fbf1e4; --ground: #fffef7; --ink: #1e1714; --line: #3a2e28;
+    --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
+    --muted: rgba(30, 23, 20, 0.58);
+    --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--ground); color: var(--ink);
+    font-family: var(--swiss); -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 980px; margin: 0 auto; padding: 36px 20px 220px;
+    display: grid; gap: 24px;
+  }
+  
+  /* Header & Mascot */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .ghost-icon {
+    width: 44px; height: 44px; color: var(--ink);
+    animation: ghostFloat 3.4s ease-in-out infinite;
+  }
+  @keyframes ghostFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  h1 { margin: 0; font-size: 2.1rem; letter-spacing: -0.03em; font-weight: 800; }
+  .sub { margin: 2px 0 0; color: var(--muted); font-size: 0.96rem; }
+
+  /* Quickstart Checklist Bar */
+  .quickstart-strip {
+    background: var(--paper); border: 2.5px solid var(--line); border-radius: 16px;
+    padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; font-size: 13px; font-weight: 700; flex-wrap: wrap;
+  }
+  .step-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fffef7;
+    font-size: 11px; font-weight: 800;
+  }
+
+  /* Stage Console Card (Split Layout) */
+  .stage-deck {
+    background: var(--paper); border: 3px solid var(--line); border-radius: 24px;
+    padding: 28px; box-shadow: 6px 6px 0 var(--line);
+    display: grid; grid-template-columns: 1.18fr 1fr; gap: 28px;
+  }
+  @media (max-width: 820px) {
+    .stage-deck { grid-template-columns: 1fr; }
+  }
+
+  .deck-col { display: flex; flex-direction: column; gap: 20px; }
+  .panel-section { display: flex; flex-direction: column; gap: 10px; }
+  .section-label {
+    font-size: 12px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--muted);
+  }
+
+  /* Buttons & Controls */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button, select {
+    font: 800 0.95rem var(--swiss); color: var(--ink); background: var(--pink);
+    border: 2.5px solid var(--line); border-radius: 999px; padding: 12px 20px; cursor: pointer;
+    box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s, background .15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  select { background: var(--ground); padding: 10px 16px; cursor: pointer; }
+  button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--line); }
+  button.mint { background: var(--mint); }
+  button.lilac { background: var(--lilac); }
+  button.butter { background: var(--butter); }
+  button.ground { background: var(--ground); }
+  button.ghost { background: transparent; }
+
+  /* Audio Meter */
+  .meter-box {
+    background: var(--ground); border: 2.5px solid var(--line); border-radius: 16px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 14px;
+  }
+  .meter-label { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--muted); }
+  .meter-bar-track {
+    flex: 1; height: 14px; background: rgba(30, 23, 20, 0.08);
+    border: 2px solid var(--line); border-radius: 999px; overflow: hidden; position: relative;
+  }
+  .meter-bar-fill {
+    width: 0%; height: 100%; background: var(--mint);
+    transition: width 0.06s ease, background 0.1s ease;
+  }
+
+  /* Status Badges */
+  .status-pills { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 800 13px var(--swiss); padding: 6px 14px;
+    background: var(--ground); border: 2px solid var(--line); border-radius: 999px;
+  }
+  .pulse-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--muted); border: 1.5px solid var(--line);
+  }
+  .pulse-dot.active { background: #51cf66; animation: breatheDot 1.6s ease-in-out infinite; }
+  @keyframes breatheDot {
+    50% { transform: scale(1.25); background: var(--pink); }
+  }
+
+  /* Segmented Ticker Sizer */
+  .segmented-control {
+    display: flex; border: 2px solid var(--line); border-radius: 999px;
+    background: var(--ground); padding: 2px; gap: 2px;
+  }
+  .seg-btn {
+    border: none; box-shadow: none; border-radius: 999px;
+    padding: 6px 14px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
+  }
+  .seg-btn.active {
+    background: var(--ink); color: #fffef7;
+  }
+  .seg-btn:active { transform: none; }
+
+  /* QR Box & Tabs */
+  .qr-card {
+    background: var(--ground); border: 2.5px solid var(--line); border-radius: 20px;
+    padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    text-align: center;
+  }
+  .tab-bar {
+    display: flex; width: 100%; border: 2px solid var(--line); border-radius: 999px;
+    overflow: hidden; background: var(--paper); padding: 3px; gap: 3px;
+  }
+  .tab-btn {
+    flex: 1; border: none; box-shadow: none; border-radius: 999px;
+    padding: 8px 12px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
+  }
+  .tab-btn.active {
+    background: var(--ink); color: #fffef7;
+  }
+  .tab-btn:active { transform: none; }
+  #qrGraphic {
+    padding: 8px; background: #fff; border: 2px solid var(--line);
+    border-radius: 16px; line-height: 0;
+  }
+  #qrGraphic svg { width: 175px; height: 175px; }
+  .qr-info-title { font-weight: 800; font-size: 1.05rem; margin: 0; }
+  .qr-info-sub { font-size: 0.85rem; color: var(--muted); margin: 0; }
+  .url-pill {
+    font: 700 0.82rem ui-monospace, Menlo, monospace; word-break: break-all;
+    background: var(--paper); border: 2px solid var(--line); border-radius: 8px;
+    padding: 6px 10px; max-width: 100%;
+  }
+
+  /* Fullscreen QR Modal */
+  #fsModal {
+    position: fixed; inset: 0; z-index: 100; background: rgba(30, 23, 20, 0.88);
+    backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #fsModal.open { display: flex; }
+  .fs-card {
+    background: var(--paper); border: 4px solid var(--line); border-radius: 32px;
+    padding: 36px 32px; box-shadow: 10px 10px 0 var(--line);
+    max-width: 600px; width: 90vw; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px;
+  }
+  #fsQr svg { width: min(65vw, 360px); height: min(65vw, 360px); }
+
+  /* Shortcuts footer */
+  .shortcuts-hint {
+    display: flex; gap: 16px; justify-content: center; font-size: 12px; color: var(--muted);
+    font-weight: 700; flex-wrap: wrap;
+  }
+  kbd {
+    background: var(--ground); border: 1.5px solid var(--line); border-radius: 6px;
+    padding: 2px 6px; font-family: ui-monospace, monospace; box-shadow: 1px 1px 0 var(--line);
+  }
+
+  /* Pinned / Floating Ticker Bar */
+  #ticker {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    width: min(92vw, 1340px); min-height: 1.2em; padding: 20px 34px;
+    background: rgba(30, 23, 20, 0.94); color: #fffef7; border-radius: 24px;
+    font: 700 var(--ticker-size, 38px)/1.25 var(--swiss); letter-spacing: -0.01em;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    max-height: calc(2.6em + 42px); overflow: hidden;
+    box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4);
+    z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
+  }
+  #ticker .prev { opacity: 0.65; font-weight: 500; }
+  #ticker .fresh-lead { color: #fff; font-weight: 700; }
+  #ticker .interim { color: var(--pink); opacity: 0.9; }
+  #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">
+      <svg class="ghost-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
+        <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+        <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
+      </svg>
+      <div>
+        <h1>StageType</h1>
+        <p class="sub">Speak. The room reads along.</p>
+      </div>
+    </div>
+    <div class="status-pills">
+      <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
+      <span class="pill-badge" id="countBadge">0 reading</span>
+    </div>
+  </header>
+
+  <!-- Quickstart Checklist Strip -->
+  <div class="quickstart-strip">
+    <div class="step-pill"><span class="step-num">1</span> Float ticker over slides</div>
+    <div class="step-pill"><span class="step-num">2</span> Project audience QR code</div>
+    <div class="step-pill"><span class="step-num">3</span> Speak via Mac or phone lapel mic</div>
+  </div>
+
+  <!-- The Unified Stage Console -->
+  <section class="stage-deck">
+    <!-- Left Column: Presenter Controls -->
+    <div class="deck-col">
+      <div class="panel-section">
+        <span class="section-label">Broadcast Voice</span>
+        <div class="btn-row">
+          <button id="startBtn" class="mint">Start captions</button>
+          <button id="floatBtn" class="lilac" hidden>Float ticker</button>
+          <button id="stopBtn" class="butter" hidden>End talk</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Audio Input & Level</span>
+        <div class="meter-box">
+          <span class="meter-label">Mic</span>
+          <div class="meter-bar-track">
+            <div id="meterFill" class="meter-bar-fill"></div>
+          </div>
+          <span id="micSource" style="font-size:12px;font-weight:700;color:var(--muted)">Local tab</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Ticker Font Size</span>
+        <div class="segmented-control">
+          <button class="seg-btn" data-sz="28px">Compact</button>
+          <button class="seg-btn active" data-sz="38px">Standard</button>
+          <button class="seg-btn" data-sz="50px">Jumbotron</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Language</span>
+        <div class="btn-row">
+          <select id="lang" aria-label="Language selection">
+            <option value="en-AU">English (AU)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="es-MX">Español (MX)</option>
+          </select>
+          <button id="testAudioBtn" class="ghost" style="padding:10px 16px;font-size:0.85rem">Test mic level</button>
+        </div>
+      </div>
+
+      <div class="panel-section" style="margin-top:auto">
+        <span class="section-label">Screen Overlay</span>
+        <p style="margin:0;font-size:0.85rem;color:var(--muted);line-height:1.4">
+          Click <strong>Float ticker</strong> to open an always-on-top caption pill pinned over Keynote, PowerPoint, VS Code, or browser tabs.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right Column: QR Anchor & Multi-Channel Links -->
+    <div class="deck-col">
+      <div class="qr-card">
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tabAudience">Audience reader</button>
+          <button class="tab-btn" id="tabMic">Phone lapel mic</button>
+        </div>
+
+        <div id="qrGraphic"></div>
+
+        <div>
+          <p class="qr-info-title" id="qrTitle">Audience reader</p>
+          <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
+        </div>
+
+        <div class="url-pill" id="urlDisplay">Opening room…</div>
+
+        <div class="btn-row">
+          <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem">Copy link</button>
+          <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem">Fullscreen QR</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Keyboard Shortcuts Bar -->
+  <div class="shortcuts-hint">
+    <span><kbd>Space</kbd> Start/Pause</span>
+    <span><kbd>⌥ + F</kbd> Float ticker</span>
+    <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
+    <span><kbd>Esc</kbd> Close modal</span>
+  </div>
+</main>
+
+<!-- Floating Live Presentation Ticker -->
+<div id="ticker" aria-live="polite"></div>
+
+<!-- Pre-Talk Fullscreen QR Projector Modal -->
+<div id="fsModal">
+  <div class="fs-card">
+    <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+      <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+      <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
+    </div>
+    <div id="fsQr" style="background:#fff;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+    <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
+    <p style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
+  </div>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let room = null;
+let rec = null;
+let localLive = false;
+let sseSource = null;
+let finals = [];
+let interim = "";
+let lastInterimSent = 0;
+let interimTimer = null;
+let tickerEls = [$("#ticker")];
+let activeTab = "audience"; // 'audience' | 'mic'
+let lanBase = "";
+let lastWordTime = Date.now();
+let silenceInterval = null;
+
+// Web Audio Meter State
+let audioCtx = null;
+let analyser = null;
+let meterStream = null;
+let animMeterId = null;
+
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+function renderTicker() {
+  const tail = finals.slice(-2);
+  let html = "";
+  if (tail.length > 1) {
+    html += `<span class="prev">${esc(tail[0])}</span> `;
+  }
+  if (tail.length > 0) {
+    html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
+  }
+  if (interim) {
+    html += ` <span class="interim">${esc(interim)}</span>`;
+  }
+  for (const el of tickerEls) {
+    el.innerHTML = html ? `<div>${html}</div>` : "";
+  }
+}
+
+// Ticker Font Size Selection
+$$(".seg-btn").forEach((btn) => {
+  btn.onclick = () => {
+    $$(".seg-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const sz = btn.dataset.sz;
+    document.documentElement.style.setProperty("--ticker-size", sz);
+    for (const el of tickerEls) {
+      el.style.fontSize = sz;
+    }
+  };
+});
+
+// Update QR Code
+function updateQR() {
+  if (!room) return;
+  const isMic = activeTab === "mic";
+  const targetUrl = isMic
+    ? `${lanBase}/mic/${room.id}#${room.token}`
+    : `${lanBase}/live/${room.id}`;
+
+  const qr = qrcode(0, "M");
+  qr.addData(targetUrl);
+  qr.make();
+
+  const svg = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
+  $("#qrGraphic").innerHTML = svg;
+  $("#urlDisplay").textContent = targetUrl;
+
+  if (isMic) {
+    $("#qrTitle").textContent = "Phone lapel mic";
+    $("#qrSub").textContent = "Scan with your phone to speak untethered on stage";
+    $("#fsTitle").textContent = "Pair wireless lapel mic";
+  } else {
+    $("#qrTitle").textContent = "Audience reader";
+    $("#qrSub").textContent = "Scan with phone camera to follow captions live";
+    $("#fsTitle").textContent = "Scan to read along";
+  }
+
+  const fsQrSvg = qr.createSvgTag({ cellSize: 9, margin: 0, scalable: true });
+  $("#fsQr").innerHTML = fsQrSvg;
+  $("#fsUrl").textContent = targetUrl;
+}
+
+// Audio Level Meter
+async function initAudioMeter() {
+  if (audioCtx) return;
+  try {
+    meterStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(meterStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
+    analyser.smoothingTimeConstant = 0.5;
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    function drawMeter() {
+      animMeterId = requestAnimationFrame(drawMeter);
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+      const avg = sum / dataArray.length;
+      const pct = Math.min(100, Math.round((avg / 90) * 100));
+      $("#meterFill").style.width = pct + "%";
+      if (pct > 65) {
+        $("#meterFill").style.background = "var(--pink)";
+      } else {
+        $("#meterFill").style.background = "var(--mint)";
+      }
+    }
+    drawMeter();
+  } catch (err) {
+    console.warn("Audio meter inactive:", err);
+  }
+}
+
+function stopAudioMeter() {
+  if (animMeterId) cancelAnimationFrame(animMeterId);
+  meterStream?.getTracks().forEach((t) => t.stop());
+  meterStream = null;
+  audioCtx?.close();
+  audioCtx = null;
+  $("#meterFill").style.width = "0%";
+}
+
+$("#testAudioBtn").onclick = async () => {
+  if (audioCtx) {
+    stopAudioMeter();
+    $("#testAudioBtn").textContent = "Test mic level";
+  } else {
+    await initAudioMeter();
+    $("#testAudioBtn").textContent = "Stop mic test";
+  }
+};
+
+// SSE Stream Connection
+function listenToRoomStream(roomId) {
+  if (sseSource) sseSource.close();
+  sseSource = new EventSource(`/api/room/${roomId}/stream`);
+
+  sseSource.addEventListener("backlog", (e) => {
+    const { lines } = JSON.parse(e.data);
+    if (lines && lines.length > 0) {
+      finals = [...lines];
+      renderTicker();
+    }
+  });
+
+  sseSource.addEventListener("final", (e) => {
+    const { text } = JSON.parse(e.data);
+    if (text) {
+      lastWordTime = Date.now();
+      if (finals.length === 0 || finals[finals.length - 1] !== text) {
+        finals.push(text);
+        if (finals.length > 50) finals.shift();
+      }
+    }
+    interim = "";
+    renderTicker();
+  });
+
+  sseSource.addEventListener("interim", (e) => {
+    const data = JSON.parse(e.data);
+    interim = data.text || "";
+    if (interim) lastWordTime = Date.now();
+    renderTicker();
+  });
+
+  sseSource.addEventListener("end", () => {
+    handleTalkEnded(false);
+  });
+}
+
+// Push transcript chunk to room
+async function push(text, final) {
+  if (!room) return;
+  try {
+    const r = await fetch(`/api/room/${room.id}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${room.token}`,
+      },
+      body: JSON.stringify({ text, final }),
+    });
+    const j = await r.json();
+    if (typeof j.listeners === "number") {
+      $("#countBadge").textContent = `${j.listeners} reading`;
+    }
+  } catch {
+    console.warn("Relay unreachable; captions still local");
+  }
+}
+
+function pushInterim() {
+  const wait = 250 - (Date.now() - lastInterimSent);
+  clearTimeout(interimTimer);
+  if (wait <= 0) {
+    lastInterimSent = Date.now();
+    push(interim, false);
+  } else {
+    interimTimer = setTimeout(pushInterim, wait);
+  }
+}
+
+// Local Speech Recognition
+function startLocalRec() {
+  if (!Rec) return;
+  rec = new Rec();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = $("#lang").value;
+
+  rec.onresult = (e) => {
+    lastWordTime = Date.now();
+    let freshInterim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.trim();
+      if (e.results[i].isFinal) {
+        if (t) {
+          finals.push(t);
+          push(t, true);
+        }
+      } else {
+        freshInterim += t + " ";
+      }
+    }
+    interim = freshInterim.trim();
+    renderTicker();
+    if (interim) pushInterim();
+  };
+
+  rec.onerror = (e) => {
+    if (e.error !== "no-speech" && e.error !== "aborted") {
+      console.warn("Speech recognition error:", e.error);
+    }
+  };
+
+  rec.onend = () => {
+    if (localLive) setTimeout(() => localLive && startLocalRec(), 150);
+  };
+
+  rec.start();
+  initAudioMeter();
+}
+
+// Room Lifecycle
+async function openRoom() {
+  const infoRes = await fetch("/api/info").then((r) => r.json()).catch(() => ({ lan: location.origin }));
+  lanBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? infoRes.lan
+    : location.origin;
+
+  const roomRes = await fetch("/api/room", { method: "POST" });
+  room = await roomRes.json();
+
+  updateQR();
+  listenToRoomStream(room.id);
+
+  $("#startBtn").hidden = true;
+  $("#stopBtn").hidden = false;
+  $("#floatBtn").hidden = !("documentPictureInPicture" in window);
+  $("#lang").disabled = true;
+
+  $("#liveDot").classList.add("active");
+  $("#liveText").textContent = "Live";
+
+  localLive = true;
+  lastWordTime = Date.now();
+  startLocalRec();
+
+  // Silence monitor
+  clearInterval(silenceInterval);
+  silenceInterval = setInterval(() => {
+    if (!localLive) return;
+    const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
+    if (quietSeconds > 25) {
+      $("#liveText").textContent = "Live · Mic quiet";
+    } else {
+      $("#liveText").textContent = "Live";
+    }
+  }, 4000);
+}
+
+function handleTalkEnded(callServer = true) {
+  localLive = false;
+  rec?.stop();
+  stopAudioMeter();
+  clearInterval(silenceInterval);
+  if (sseSource) {
+    sseSource.close();
+    sseSource = null;
+  }
+  if (callServer && room) {
+    fetch(`/api/room/${room.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${room.token}` },
+    }).catch(() => {});
+  }
+  room = null;
+
+  $("#liveDot").classList.remove("active");
+  $("#liveText").textContent = "Talk ended";
+  $("#startBtn").hidden = false;
+  $("#stopBtn").hidden = true;
+  $("#floatBtn").hidden = true;
+  $("#lang").disabled = false;
+  $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
+  $("#qrGraphic").innerHTML = "";
+}
+
+$("#startBtn").onclick = () => openRoom();
+$("#stopBtn").onclick = () => handleTalkEnded(true);
+
+// Tabs for QR switching
+$("#tabAudience").onclick = () => {
+  activeTab = "audience";
+  $("#tabAudience").classList.add("active");
+  $("#tabMic").classList.remove("active");
+  updateQR();
+};
+
+$("#tabMic").onclick = () => {
+  activeTab = "mic";
+  $("#tabMic").classList.add("active");
+  $("#tabAudience").classList.remove("active");
+  updateQR();
+};
+
+// Copy link button
+$("#copyUrlBtn").onclick = async () => {
+  const text = $("#urlDisplay").textContent;
+  if (!text || text.startsWith("Standby")) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    const orig = $("#copyUrlBtn").textContent;
+    $("#copyUrlBtn").textContent = "Copied!";
+    setTimeout(() => { $("#copyUrlBtn").textContent = orig; }, 1500);
+  } catch {}
+};
+
+// Fullscreen Modal
+const openFullscreenQR = () => {
+  if (!room) return;
+  $("#fsModal").classList.add("open");
+};
+const closeFullscreenQR = () => {
+  $("#fsModal").classList.remove("open");
+};
+
+$("#fsQrBtn").onclick = openFullscreenQR;
+$("#closeFsBtn").onclick = closeFullscreenQR;
+$("#fsModal").onclick = (e) => {
+  if (e.target === $("#fsModal")) closeFullscreenQR();
+};
+
+// Float Ticker via Document Picture-in-Picture
+const floatTickerWindow = async () => {
+  if (!("documentPictureInPicture" in window)) return;
+  try {
+    const pip = await documentPictureInPicture.requestWindow({ width: 1100, height: 160 });
+    const style = document.querySelector("style").cloneNode(true);
+    pip.document.head.append(style);
+    pip.document.body.style.cssText = "margin:0;background:#1e1714;display:flex;align-items:center;justify-content:center;overflow:hidden;";
+
+    const t = pip.document.createElement("div");
+    t.id = "ticker";
+    t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;font-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
+    pip.document.body.append(t);
+    tickerEls.push(t);
+    renderTicker();
+
+    pip.addEventListener("pagehide", () => {
+      tickerEls = tickerEls.filter((el) => el !== t);
+    });
+  } catch (err) {
+    console.warn("Picture-in-Picture error:", err);
+  }
+};
+$("#floatBtn").onclick = floatTickerWindow;
+
+// Keyboard Shortcuts
+window.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "Escape") {
+    closeFullscreenQR();
+  } else if (e.altKey && (e.key === "f" || e.key === "F")) {
+    e.preventDefault();
+    floatTickerWindow();
+  } else if (e.altKey && (e.key === "q" || e.key === "Q")) {
+    e.preventDefault();
+    openFullscreenQR();
+  } else if (e.code === "Space" && e.target === document.body) {
+    e.preventDefault();
+    if (room) handleTalkEnded(true);
+    else openRoom();
+  }
+});
+</script>
+</body>
+</html>

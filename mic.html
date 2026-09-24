@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1714">
+<title>StageType · Lapel Mic</title>
+<style>
+  :root {
+    --ground: #1e1714; --ink: #fbf1e4; --muted: rgba(251,241,228,.55); --line: #fbf1e4;
+    --pink: #ffb3d1; --mint: #b8f0d8; --butter: #fff0a8;
+    --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--ground); color: var(--ink);
+    font-family: var(--swiss); -webkit-font-smoothing: antialiased;
+  }
+  body {
+    display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
+    padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
+    max-width: 520px; margin: 0 auto;
+  }
+  
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 2px solid rgba(251,241,228,0.15); padding-bottom: 12px;
+  }
+  .brand-title { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .brand-sub { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
+  
+  select {
+    font: 700 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
+    border: 2px solid var(--line); border-radius: 999px; height: 38px; padding: 0 14px;
+    cursor: pointer;
+  }
+
+  /* Status Bar */
+  .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  #state {
+    font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); display: inline-flex; align-items: center; gap: 8px;
+  }
+  #state.on { color: var(--mint); }
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--muted); border: 1.5px solid var(--ink);
+  }
+  #state.on .dot { background: var(--mint); animation: breatheDot 1.4s infinite ease-in-out; }
+  @keyframes breatheDot { 50% { transform: scale(1.3); background: var(--pink); } }
+  #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
+
+  /* Live Transcription Echo */
+  .echo-container {
+    display: flex; flex-direction: column; justify-content: flex-end;
+    background: rgba(251,241,228,0.04); border: 2px solid rgba(251,241,228,0.15);
+    border-radius: 24px; padding: 20px; min-height: 140px; margin-bottom: 16px;
+  }
+  #echo {
+    font: 700 clamp(20px, 6vw, 30px)/1.35 var(--swiss);
+    overflow: hidden; max-height: 4.8em; letter-spacing: -0.01em;
+  }
+  #echo .interim { color: var(--pink); }
+  #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
+
+  /* Big Stage Button & Glow Aura */
+  .mic-button-wrap {
+    position: relative; width: 100%; display: flex; align-items: center; justify-content: center;
+  }
+  .pulse-aura {
+    position: absolute; inset: -8px; border-radius: 44px;
+    background: var(--mint); opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .pulse-aura.active {
+    opacity: 0.25; animation: auraWave 1.6s ease-out infinite;
+  }
+  @keyframes auraWave {
+    0% { transform: scale(0.96); opacity: 0.35; }
+    100% { transform: scale(1.08); opacity: 0; }
+  }
+
+  #go {
+    position: relative; width: 100%; height: 32vh; min-height: 180px; max-height: 280px;
+    border-radius: 36px; cursor: pointer;
+    font: 800 clamp(28px, 8.5vw, 42px) var(--swiss); color: #1e1714;
+    background: var(--pink); border: 4px solid var(--line); box-shadow: 0 8px 0 #3a2e28;
+    transition: transform .08s, box-shadow .08s, background .2s;
+    -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  }
+  #go:active { transform: translateY(6px); box-shadow: 0 2px 0 #3a2e28; }
+  #go.live { background: var(--mint); }
+  .btn-subtext { font-size: 13px; font-weight: 700; opacity: 0.7; letter-spacing: 0.04em; }
+
+  /* End Talk Button */
+  #end {
+    margin-top: 14px; width: 100%; height: 50px; border-radius: 999px;
+    background: transparent; color: var(--ink); border: 2.5px solid var(--line);
+    font: 800 16px var(--swiss); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+  }
+  #end:active { transform: scale(0.98); }
+  #end.armed { background: var(--butter); color: #1e1714; }
+
+  #err {
+    color: var(--butter); font-weight: 700; min-height: 1.2em; text-align: center;
+    margin: 8px 0 0; font-size: 14px;
+  }
+
+  .screen-notice {
+    font-size: 12px; color: var(--muted); text-align: center; margin: 10px 0 0;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <span class="brand-title">StageType</span>
+    <span class="brand-sub">lapel mic</span>
+  </div>
+  <select id="lang" aria-label="Speech language">
+    <option value="en-AU">EN · AU</option>
+    <option value="en-US">EN · US</option>
+    <option value="en-GB">EN · UK</option>
+    <option value="es-MX">ES · MX</option>
+  </select>
+</header>
+
+<div>
+  <div class="status-row">
+    <span id="state"><span class="dot"></span><span id="stateText">Paired · Standby</span></span>
+    <span id="room">0 in room</span>
+  </div>
+  <div class="echo-container">
+    <div id="echo" aria-live="polite"></div>
+  </div>
+</div>
+
+<div>
+  <p id="err"></p>
+  <div class="mic-button-wrap">
+    <div id="pulseAura" class="pulse-aura"></div>
+    <button id="go">
+      <span id="goLabel">Go live</span>
+      <span class="btn-subtext" id="goSub">Tap to broadcast</span>
+    </button>
+  </div>
+  <button id="end">End talk</button>
+  <p class="screen-notice">Screen stay-awake enabled while live.</p>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const roomId = location.pathname.split("/").pop();
+const token = location.hash.slice(1);
+const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null;
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
+if (!Rec) $("#err").textContent = "Speech recognition missing in this browser. Safari or Chrome recommended.";
+
+async function push(text, final) {
+  try {
+    const r = await fetch(`/api/room/${roomId}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text, final }),
+    });
+    if (r.status === 404) {
+      stop();
+      $("#err").textContent = "Talk ended on stage.";
+    } else if (r.status === 403) {
+      stop();
+      $("#err").textContent = "Pairing expired. Rescan the mic QR code.";
+    } else {
+      $("#err").textContent = "";
+      const j = await r.json();
+      if (typeof j.listeners === "number") {
+        $("#room").textContent = `${j.listeners} in room`;
+      }
+    }
+  } catch {
+    $("#err").textContent = "Relay unreachable; retrying on next sentence";
+  }
+}
+
+function render(interim) {
+  $("#echo").innerHTML = finals.slice(-2).map(esc).join(" ") + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
+}
+
+function startRec() {
+  rec = new Rec();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = $("#lang").value;
+
+  rec.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript.trim();
+      if (e.results[i].isFinal) {
+        if (t) {
+          finals.push(t);
+          push(t, true);
+        }
+      } else {
+        interim += t + " ";
+      }
+    }
+    interim = interim.trim();
+    render(interim);
+
+    if (interim) {
+      clearTimeout(interimTimer);
+      const wait = 250 - (Date.now() - lastInterim);
+      const send = () => {
+        lastInterim = Date.now();
+        push(interim, false);
+      };
+      wait <= 0 ? send() : (interimTimer = setTimeout(send, wait));
+    }
+  };
+
+  rec.onerror = (e) => {
+    if (e.error !== "no-speech" && e.error !== "aborted") {
+      $("#err").textContent = `Mic issue: ${e.error}`;
+    }
+  };
+
+  rec.onend = () => {
+    if (live) setTimeout(() => live && startRec(), 150);
+  };
+
+  rec.start();
+}
+
+async function go() {
+  live = true;
+  startRec();
+  try {
+    wake = await navigator.wakeLock?.request("screen");
+  } catch {}
+  
+  if (navigator.vibrate) navigator.vibrate([40]);
+  $("#goLabel").textContent = "Pause";
+  $("#goSub").textContent = "Broadcasting to room";
+  $("#go").classList.add("live");
+  $("#pulseAura").classList.add("active");
+  $("#stateText").textContent = "Live on stage";
+  $("#state").classList.add("on");
+  $("#lang").disabled = true;
+}
+
+function stop() {
+  live = false;
+  rec?.stop();
+  wake?.release?.();
+  wake = null;
+
+  if (navigator.vibrate) navigator.vibrate([25, 40]);
+  $("#goLabel").textContent = "Go live";
+  $("#goSub").textContent = "Tap to broadcast";
+  $("#go").classList.remove("live");
+  $("#pulseAura").classList.remove("active");
+  $("#stateText").textContent = "Paused";
+  $("#state").classList.remove("on");
+  $("#lang").disabled = false;
+}
+
+// Two-tap safety to prevent accidental ends inside a pocket
+let endArmed = null;
+$("#end").onclick = async () => {
+  if (!endArmed) {
+    $("#end").textContent = "Tap again to confirm end";
+    $("#end").classList.add("armed");
+    if (navigator.vibrate) navigator.vibrate([40]);
+    endArmed = setTimeout(() => {
+      endArmed = null;
+      $("#end").textContent = "End talk";
+      $("#end").classList.remove("armed");
+    }, 3000);
+    return;
+  }
+  clearTimeout(endArmed);
+  endArmed = null;
+  stop();
+  if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
+  await fetch(`/api/room/${roomId}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${token}` }
+  }).catch(() => {});
+
+  $("#stateText").textContent = "Talk ended";
+  $("#go").disabled = true;
+  $("#end").hidden = true;
+  $("#err").textContent = "Full transcript saved on every attendee's phone.";
+};
+
+$("#go").onclick = () => {
+  if (!Rec || !token) return;
+  live ? stop() : go();
+};
+
+document.addEventListener("visibilitychange", async () => {
+  if (live && document.visibilityState === "visible") {
+    try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+  }
+});
+</script>
+</body>
+</html>
