@@ -36,8 +36,11 @@
   select {
     font: 700 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
     border: 2px solid var(--line); border-radius: 999px; height: 38px; padding: 0 14px;
-    cursor: pointer;
+    cursor: pointer; max-width: 46vw; text-overflow: ellipsis;
   }
+  select option { color: #1e1714; }
+  #talk { font-size: 13px; font-weight: 800; color: var(--butter); margin: 0 0 8px; }
+  #talk[hidden] { display: none; }
 
   /* Status Bar */
   .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -134,14 +137,35 @@
     <span class="brand-sub">lapel mic</span>
   </div>
   <select id="lang" aria-label="Speech language">
-    <option value="en-AU">EN · AU</option>
-    <option value="en-US">EN · US</option>
-    <option value="en-GB">EN · UK</option>
-    <option value="es-MX">ES · MX</option>
+    <option value="en-AU">English (Australia)</option>
+    <option value="en-GB">English (UK)</option>
+    <option value="en-US">English (US)</option>
+    <option value="en-IN">English (India)</option>
+    <option value="es-ES">Español (España)</option>
+    <option value="es-MX">Español (México)</option>
+    <option value="fr-FR">Français</option>
+    <option value="de-DE">Deutsch</option>
+    <option value="it-IT">Italiano</option>
+    <option value="pt-BR">Português (Brasil)</option>
+    <option value="nl-NL">Nederlands</option>
+    <option value="pl-PL">Polski</option>
+    <option value="tr-TR">Türkçe</option>
+    <option value="ru-RU">Русский</option>
+    <option value="ar-SA">العربية</option>
+    <option value="hi-IN">हिन्दी</option>
+    <option value="id-ID">Bahasa Indonesia</option>
+    <option value="vi-VN">Tiếng Việt</option>
+    <option value="th-TH">ไทย</option>
+    <option value="zh-CN">中文 (普通话)</option>
+    <option value="zh-TW">中文 (台灣)</option>
+    <option value="yue-Hant-HK">粵語 (香港)</option>
+    <option value="ja-JP">日本語</option>
+    <option value="ko-KR">한국어</option>
   </select>
 </header>
 
 <div>
+  <p id="talk" hidden></p>
   <div class="status-row">
     <span id="state"><span class="dot"></span><span id="stateText">Paired · Standby</span></span>
     <span id="room">0 in room</span>
@@ -180,12 +204,12 @@ if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"]
   $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
 }
 
-async function push(text, final) {
+async function push(body) {
   try {
     const r = await fetch(`/api/room/${roomId}`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ text, final }),
+      body: JSON.stringify(body),
     });
     if (r.status === 404) {
       stop();
@@ -197,13 +221,18 @@ async function push(text, final) {
       $("#err").textContent = "";
       const j = await r.json();
       if (typeof j.listeners === "number") { listeners = j.listeners; stats(); }
+      applyRoom(j);
     }
   } catch {
     $("#err").textContent = "Relay unreachable; retrying on next sentence";
   }
 }
 
-let words = 0, listeners = 0;
+let words = 0, listeners = 0, playful = true;
+function applyRoom(j) {
+  if (typeof j.playful === "boolean") playful = j.playful;
+  if (typeof j.title === "string") { $("#talk").textContent = j.title; $("#talk").hidden = !j.title; if (j.title) document.title = `${j.title} · Lapel mic`; }
+}
 function stats() {
   $("#room").innerHTML = `<b>${words}</b> word${words === 1 ? "" : "s"} · ${listeners} in room`;
 }
@@ -228,7 +257,7 @@ function startRec() {
           finals.push(t);
           words += t.split(/\s+/).filter(Boolean).length;
           stats();
-          push(t, true);
+          push({ text: t, final: true });
         }
       } else {
         interim += t + " ";
@@ -242,7 +271,7 @@ function startRec() {
       const wait = 250 - (Date.now() - lastInterim);
       const send = () => {
         lastInterim = Date.now();
-        push(interim, false);
+        push({ text: interim, final: false });
       };
       wait <= 0 ? send() : (interimTimer = setTimeout(send, wait));
     }
@@ -326,11 +355,15 @@ $("#end").onclick = async () => {
     headers: { authorization: `Bearer ${token}` }
   }).catch(() => {});
 
-  $("#stateText").textContent = "That's a wrap";
+  $("#stateText").textContent = playful ? "That's a wrap" : "Talk ended";
   $("#go").disabled = true;
   $("#end").hidden = true;
-  $("#err").textContent = `${words} words landed on every phone in the room. Nice one.`;
+  $("#err").textContent = playful
+    ? `${words} words landed on every phone in the room. Nice one.`
+    : `${words} words captioned. The transcript is on every phone in the room.`;
 };
+
+if (token) push({ ping: true });
 
 $("#go").onclick = () => {
   if (!Rec || !token) return;

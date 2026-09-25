@@ -6,6 +6,8 @@ type Chunk = { text?: unknown; final?: unknown; ping?: unknown };
 type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
 type Room = {
   token: string;
+  title: string; // shown on every phone and in the export; "" when the presenter left it blank
+  playful: boolean; // false = front-of-house pages drop confetti, jokes and coloured rings
   lines: string[]; // finalized sentences, the backlog late joiners get
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
   listeners: Set<Listener>;
@@ -18,6 +20,7 @@ const MAX_ROOMS = 1_000;
 const MAX_LISTENERS = 500;
 const MAX_BACKLOG = 400;
 const MAX_CHUNK = 2_000; // chars kept per final line
+const MAX_TITLE = 80;
 const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
 
@@ -100,14 +103,20 @@ export async function handler(req: Request): Promise<Response> {
     return isLoopbackHost(req) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
   }
 
-  // Presenter opens a room
+  // Presenter opens a room, optionally with a title and the playful switch
   if (req.method === "POST" && path === "/api/room") {
     if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
+    const raw = await readBody(req);
+    if (raw === null) return json({ error: "too big" }, 413);
+    let opts: { title?: unknown; playful?: unknown } = {};
+    if (raw.trim()) { try { opts = JSON.parse(raw) ?? {}; } catch { return json({ error: "bad json" }, 400); } }
+    const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
+    const playful = opts.playful !== false;
     const roomId = id(8);
     const token = id(32);
     const now = Date.now();
-    rooms.set(roomId, { token, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
-    return json({ id: roomId, token });
+    rooms.set(roomId, { token, title, playful, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
+    return json({ id: roomId, token, title, playful });
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
@@ -135,7 +144,7 @@ export async function handler(req: Request): Promise<Response> {
     } else {
       send(room, "interim", { text });
     }
-    return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length });
+    return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title, playful: room.playful });
   }
 
   // Presenter ends the talk
@@ -151,7 +160,7 @@ export async function handler(req: Request): Promise<Response> {
     let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
-        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt });
+        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title, playful: room.playful });
         c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
         const ping = setInterval(() => {
           try { c.enqueue(enc.encode(": ping\n\n")); } catch { drop(room, me); }

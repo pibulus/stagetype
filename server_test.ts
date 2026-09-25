@@ -45,6 +45,24 @@ Deno.test("room lifecycle: create, auth, backlog, stream, end, ttl", async () =>
   assertEquals((await handler(new Request(`${base}/api/room/${id}/stream`))).status, 404);
 });
 
+Deno.test("room carries a trimmed title and the playful switch", async () => {
+  const r = await (await post("/api/room", { title: "  COMP1010   Week 3 " + "x".repeat(200), playful: false })).json();
+  assertEquals(r.playful, false);
+  assert(r.title.startsWith("COMP1010 Week 3 x") && r.title.length === 80);
+  const s = await openStream(r.id);
+  const hello = await s.read();
+  assert(hello.includes('"playful":false') && hello.includes('"title":"COMP1010 Week 3'));
+  await s.reader.cancel();
+  const echo = await (await post(`/api/room/${r.id}`, { text: "hi", final: true }, r.token)).json();
+  assertEquals(echo.playful, false);
+  await del(`/api/room/${r.id}`, r.token);
+  // defaults: no body at all still works, playful on, empty title
+  const d = await mkRoom() as { id: string; token: string; title: string; playful: boolean };
+  assertEquals(d.title, "");
+  assertEquals(d.playful, true);
+  await del(`/api/room/${d.id}`, d.token);
+});
+
 Deno.test("ending a talk closes every listener and clears its keepalive timer", async () => {
   const { id, token } = await mkRoom();
   const a = await openStream(id);

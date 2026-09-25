@@ -126,13 +126,31 @@ Verifies the room lifecycle, token authorization, backlog delivery for late join
 
 ---
 
+## ♿ Accessibility
+
+StageType exists so the people at the back, the people who can't hear the speaker, and the people who process text better than speech all get the talk. Some numbers a disability services office can check:
+
+| Reader theme | Live line | Earlier lines | Small UI text |
+| :--- | :--- | :--- | :--- |
+| Cream (`#1e1714` on `#fbf1e4`) | 15.8:1 | 8.1:1 | 4.7:1 |
+| Espresso (`#fbf1e4` on `#1e1714`) | 15.8:1 | 10.0:1 | 6.6:1 |
+| Contrast (`#1e1714` on `#fff0a8`) | 15.4:1 | 8.0:1 | 4.6:1 |
+| Night (`#fff0a8` on `#1e1714`) | 15.4:1 | 9.7:1 | 6.4:1 |
+| Stage ticker (`#fffef7` on `#1e1714`) | 17.5:1 | 6.0:1 | |
+
+Every caption line clears WCAG AAA (7:1); secondary UI text clears AA (4.5:1). Beyond colour: the reader has a 14 to 56 px type scale, a loose-spacing mode for dyslexic readers, `aria-live` regions that announce finished sentences but not the in-progress fragment, full keyboard focus rings, and every animation honours `prefers-reduced-motion`. The transcript is downloadable as plain text or Markdown so it can go into a screen reader, a notes app, or an LMS.
+
+## 🎛️ Plain or playful
+
+The presenter console has a **Playful details** switch, on by default. Turn it off for a lecture, a clinical setting, or a board room: the audience pages drop the confetti, the wink in the copy, and the coloured ring on the stage ticker, and the talk ends with "Talk ended" instead of "That's a wrap". The console itself keeps its personality either way, because only you see it. A **talk title** ("COMP1010 Week 3") shows on every phone, in the projector QR card, and in the exported file name and Markdown header.
+
 ## 🔌 Relay API
 
 | Method | Path | Auth | What |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/room` | none | Open a room → `{ id, token }` |
+| `POST` | `/api/room` | none | Open a room; optional body `{ title, playful }` → `{ id, token, title, playful }` |
 | `POST` | `/api/room/:id` | Bearer token | Push `{ text, final }`; `{ ping: true }` is a keepalive that broadcasts nothing |
-| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt }`, then `interim { text }`, `final { text, seq }`, `end` |
+| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, playful }`, then `interim { text }`, `final { text, seq }`, `end` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 
@@ -156,7 +174,6 @@ The same applies to the audience: a QR that points at `http://192.168.x.x:8787` 
 
 * **On-device speech** for talks that must not leave the room: Chrome's `SpeechRecognition` on-device mode (`processLocally`) where available, or a WebGPU Whisper worker as the fallback.
 * **Live translation** so each phone picks its own language.
-* **More languages** in the presenter and mic selectors.
 * **Hosted edition** at a stable URL so the audience QR works on cellular without a tunnel.
 
 ---

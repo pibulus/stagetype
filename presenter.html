@@ -138,6 +138,34 @@
   }
   .notice[hidden] { display: none; }
 
+  /* Talk setup */
+  .text-input {
+    font: 700 1rem var(--swiss); color: var(--ink); background: var(--ground);
+    border: 2.5px solid var(--line); border-radius: 14px; padding: 12px 14px; width: 100%;
+    box-shadow: 3px 3px 0 var(--line); transition: box-shadow .2s var(--spring), transform .2s var(--spring);
+  }
+  .text-input::placeholder { color: var(--muted); font-weight: 500; }
+  .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
+  .text-input:disabled { opacity: .7; }
+  .switch { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .switch-track {
+    flex: none; width: 46px; height: 26px; border-radius: 999px; background: var(--ground);
+    border: 2.5px solid var(--line); position: relative; transition: background .2s;
+    box-shadow: inset 2px 2px 0 rgba(30, 23, 20, 0.12);
+  }
+  .switch-knob {
+    position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+    background: var(--ink); transition: transform .28s var(--spring);
+  }
+  .switch input:checked + .switch-track { background: var(--mint); }
+  .switch input:checked + .switch-track .switch-knob { transform: translateX(20px); }
+  .switch input:focus-visible + .switch-track { outline: 3px solid var(--pink); outline-offset: 3px; }
+  .switch input:disabled ~ * { opacity: .7; cursor: default; }
+  .switch-text { display: flex; flex-direction: column; line-height: 1.25; }
+  .switch-text b { font-size: 0.95rem; }
+  .switch-text small { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+
   /* Audio Meter */
   .meter-box {
     background: var(--ground); border: 2.5px solid var(--line); border-radius: 16px;
@@ -220,6 +248,8 @@
   @keyframes qrPop { 0% { transform: scale(.85) rotate(4deg); opacity: .4; } 100% { transform: none; opacity: 1; } }
   .qr-card[data-tab="mic"] #qrGraphic { box-shadow: 4px 4px 0 var(--lilac); }
   #qrGraphic svg { width: 175px; height: 175px; }
+  .qr-talk { margin: 0 0 4px; font-weight: 900; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .qr-talk[hidden] { display: none; }
   .qr-info-title { font-weight: 800; font-size: 1.05rem; margin: 0; }
   .qr-info-sub { font-size: 0.85rem; color: var(--muted); margin: 0; }
   .url-pill {
@@ -274,6 +304,11 @@
   @keyframes caret { to { opacity: 0; } }
   #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
   body[data-live="1"] #ticker { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  /* Plain (playful off): the bar the room sees is ink only, no coloured ring, no glow, no caret */
+  #ticker.plain, body[data-live="1"] #ticker.plain { box-shadow: 0 0 0 3px var(--ground), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker.plain .fresh-lead { animation: none; }
+  #ticker.plain .interim { color: var(--butter); }
+  #ticker.plain .interim::after { display: none; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
@@ -311,6 +346,17 @@
     <!-- Left Column: Presenter Controls -->
     <div class="deck-col">
       <div class="panel-section">
+        <span class="section-label">This Talk</span>
+        <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
+               placeholder="Title, e.g. COMP1010 Week 3 or Mesa Cosa live" aria-label="Talk title">
+        <label class="switch" for="playful">
+          <input id="playful" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+          <span class="switch-text"><b>Playful details</b><small>Confetti and a wink on the phones. Off keeps the room plain.</small></span>
+        </label>
+      </div>
+
+      <div class="panel-section">
         <span class="section-label">Broadcast Voice</span>
         <div class="btn-row">
           <button id="startBtn" class="mint">Start captions</button>
@@ -345,10 +391,30 @@
         <span class="section-label">Language</span>
         <div class="btn-row">
           <select id="lang" aria-label="Language selection">
-            <option value="en-AU">English (AU)</option>
-            <option value="en-US">English (US)</option>
+            <option value="en-AU">English (Australia)</option>
             <option value="en-GB">English (UK)</option>
-            <option value="es-MX">Español (MX)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="es-ES">Español (España)</option>
+            <option value="es-MX">Español (México)</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="it-IT">Italiano</option>
+            <option value="pt-BR">Português (Brasil)</option>
+            <option value="nl-NL">Nederlands</option>
+            <option value="pl-PL">Polski</option>
+            <option value="tr-TR">Türkçe</option>
+            <option value="ru-RU">Русский</option>
+            <option value="ar-SA">العربية</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="id-ID">Bahasa Indonesia</option>
+            <option value="vi-VN">Tiếng Việt</option>
+            <option value="th-TH">ไทย</option>
+            <option value="zh-CN">中文 (普通话)</option>
+            <option value="zh-TW">中文 (台灣)</option>
+            <option value="yue-Hant-HK">粵語 (香港)</option>
+            <option value="ja-JP">日本語</option>
+            <option value="ko-KR">한국어</option>
           </select>
           <button id="testAudioBtn" class="ghost" style="padding:10px 16px;font-size:0.85rem">Test mic level</button>
         </div>
@@ -373,6 +439,7 @@
         <div id="qrGraphic"></div>
 
         <div>
+          <p class="qr-talk" id="qrTalk" hidden></p>
           <p class="qr-info-title" id="qrTitle">Audience reader</p>
           <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
         </div>
@@ -403,7 +470,10 @@
 <div id="fsModal">
   <div class="fs-card">
     <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
-      <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+      <div style="text-align:left">
+        <p id="fsTalk" style="margin:0 0 2px;font-weight:900;font-size:1.1rem;color:var(--muted)" hidden></p>
+        <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+      </div>
       <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
     </div>
     <div id="fsQr" style="background:#fffef7;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
@@ -472,6 +542,15 @@ $$(".seg-btn").forEach((btn) => {
     }
   };
 });
+
+// The ticker is front-of-house: it follows the room's playful switch. Applied to the PiP copy too.
+function applyRoomStyle() {
+  for (const el of tickerEls) el.classList.toggle("plain", !!room && !room.playful);
+  const t = room?.title || "";
+  $("#qrTalk").textContent = t; $("#qrTalk").hidden = !t;
+  $("#fsTalk").textContent = t; $("#fsTalk").hidden = !t;
+  document.title = t ? `${t} · StageType` : "StageType · Presenter Console";
+}
 
 // Update QR Code
 function updateQR() {
@@ -723,8 +802,14 @@ async function openRoom() {
     : {};
   lanBase = (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
 
+  const title = $("#title").value.trim();
+  const playful = $("#playful").checked;
   try {
-    const roomRes = await fetch("/api/room", { method: "POST" });
+    const roomRes = await fetch("/api/room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title, playful }),
+    });
     if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
     room = await roomRes.json();
   } catch (err) {
@@ -736,8 +821,11 @@ async function openRoom() {
   finals = [];
   interim = "";
   paused = false;
+  applyRoomStyle();
   renderTicker();
   updateQR();
+  $("#title").disabled = true;
+  $("#playful").disabled = true;
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
@@ -803,6 +891,8 @@ function handleTalkEnded(callServer = true) {
   interim = "";
   renderTicker();
   $("#lang").disabled = false;
+  $("#title").disabled = false;
+  $("#playful").disabled = false;
   $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
   $("#qrGraphic").innerHTML = "";
 }
@@ -867,6 +957,7 @@ const floatTickerWindow = async () => {
     t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;font-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
     pip.document.body.append(t);
     tickerEls.push(t);
+    applyRoomStyle();
     renderTicker();
 
     pip.addEventListener("pagehide", () => {

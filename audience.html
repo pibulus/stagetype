@@ -10,7 +10,7 @@
   :root {
     --ground: #fbf1e4; --ink: #1e1714; --line: #3a2e28;
     --pill: #ffb3d1; --mint: #b8f0d8; --size: 22px;
-    --muted: color-mix(in srgb, var(--ink) 55%, transparent);
+    --muted: color-mix(in srgb, var(--ink) 66%, transparent); /* 4.7:1+ on every theme, WCAG AA for small UI text */
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
@@ -90,6 +90,19 @@
   .swatch[data-t="night"]    { background: linear-gradient(135deg, #1e1714 50%, #fff0a8 50%); }
   .wide { width: 100%; justify-content: flex-start; }
   .wide[aria-pressed="true"] { background: var(--pill); color: #1e1714; }
+
+  #talkTitle {
+    max-width: 46em; margin: 22px auto 0; padding: 0 20px; font-size: 15px; font-weight: 900;
+    letter-spacing: .02em; text-transform: uppercase; color: var(--muted);
+  }
+  #talkTitle[hidden] { display: none; }
+  #talkTitle + #feed { padding-top: 12px; }
+
+  /* Plain rooms: neutral highlighter, no confetti, no wink */
+  :root[data-playful="0"] #feed p.fresh span { background-image: linear-gradient(color-mix(in srgb, var(--ink) 10%, transparent), color-mix(in srgb, var(--ink) 10%, transparent)); }
+  :root[data-playful="0"] #interim { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  :root[data-playful="0"] #endCard h2::after { content: none; }
+  :root[data-playful="0"] #bar[data-state="ended"] .live-badge { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
 
   /* Feed Area */
   #feed { padding: 24px 20px 160px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto; }
@@ -211,6 +224,7 @@
   </details>
 </header>
 
+<h1 id="talkTitle" hidden></h1>
 <main id="feed" aria-live="polite">
   <div id="waiting">
     <svg viewBox="0 0 1024 1024" width="76" height="76" aria-hidden="true" focusable="false">
@@ -286,6 +300,20 @@ const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight
 
 const linesArr = [];
 let totalWords = 0;
+let talkTitle = "";
+let playful = true;
+const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
+
+function applyRoom(info) {
+  talkTitle = info.title || "";
+  playful = info.playful !== false;
+  document.documentElement.dataset.playful = playful ? "1" : "0";
+  $("#talkTitle").textContent = talkTitle;
+  $("#talkTitle").hidden = !talkTitle;
+  document.title = talkTitle ? `${talkTitle} · StageType` : "StageType Live Reader";
+  $("#endCard h2").textContent = playful ? "That's a wrap" : "Talk ended";
+}
 
 function updateStats() {
   const words = linesArr.reduce((acc, line) => acc + line.split(/\s+/).filter(Boolean).length, 0);
@@ -330,15 +358,15 @@ function download(filename, content, type) {
 }
 
 $("#saveTxt").onclick = () => {
-  const dateStr = new Date().toISOString().split("T")[0];
-  download(`stagetype-${roomId}-${dateStr}.txt`, transcript(), "text/plain");
+  const head = talkTitle ? `${talkTitle}\n${new Date().toLocaleDateString()}\n\n` : "";
+  download(`${fileStem()}.txt`, head + transcript(), "text/plain");
 };
 
 $("#saveMd").onclick = () => {
   const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  const frontmatter = `# StageType Live Transcript\n\n- **Date**: ${dateStr}\n- **Room**: \`${roomId}\`\n- **Words**: ${totalWords}\n\n---\n\n`;
-  download(`stagetype-${roomId}-${now.toISOString().split("T")[0]}.md`, frontmatter + transcript() + "\n", "text/markdown");
+  const dateStr = now.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: StageType, room \`${roomId}\`\n\n---\n\n`;
+  download(`${fileStem()}.md`, frontmatter + transcript() + "\n", "text/markdown");
 };
 
 const triggerPrint = () => window.print();
@@ -358,7 +386,8 @@ es.addEventListener("open", () => setState("live", "Live"));
 // `seen` is an absolute sequence number. The server trims old lines from its backlog and tells us
 // how many it dropped (`offset`), so a reconnect after a long talk never double-prints or skips lines.
 es.addEventListener("backlog", (e) => {
-  const { lines, offset = 0 } = JSON.parse(e.data);
+  const { lines, offset = 0, ...info } = JSON.parse(e.data);
+  applyRoom(info);
   lines.slice(Math.max(0, seen - offset)).forEach((t) => addLine(t, false));
   seen = Math.max(seen, offset + lines.length);
   follow();
@@ -403,12 +432,12 @@ function talkOver(label) {
   $("#jump").hidden = true;
   if (linesArr.length) {
     $("#endCard").hidden = false;
-    throwConfetti();
+    if (playful) throwConfetti();
     if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   }
 }
 
-es.addEventListener("end", () => talkOver("That's a wrap"));
+es.addEventListener("end", () => talkOver(playful ? "That's a wrap" : "Talk ended"));
 
 es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {
