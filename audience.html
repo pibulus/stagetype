@@ -12,6 +12,7 @@
     --pill: #ffb3d1; --mint: #b8f0d8; --size: 22px;
     --muted: color-mix(in srgb, var(--ink) 55%, transparent);
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
   :root[data-theme="espresso"] { --ground: #1e1714; --ink: #fbf1e4; --line: #fbf1e4; }
   :root[data-theme="contrast"] { --ground: #fff0a8; --ink: #1e1714; --line: #1e1714; }
@@ -21,6 +22,11 @@
     margin: 0; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
+  body {
+    background-image: radial-gradient(color-mix(in srgb, var(--ink) 9%, transparent) 1.1px, transparent 1.3px);
+    background-size: 22px 22px;
+  }
+  ::selection { background: var(--pill); color: #1e1714; }
   
   header {
     position: sticky; top: 0; z-index: 10; background: var(--ground);
@@ -30,7 +36,10 @@
   .live-badge {
     font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 13px;
     margin-right: auto; display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 8px; border-radius: 999px; transition: background .25s;
   }
+  #bar[data-state="live"] .live-badge { background: var(--mint); color: #1e1714; }
+  #bar[data-state="ended"] .live-badge { background: var(--pill); color: #1e1714; }
   .dot {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--muted); border: 2px solid var(--line);
@@ -49,9 +58,14 @@
     font: 800 15px var(--swiss); color: var(--ink); background: transparent;
     border: 2.5px solid var(--line); border-radius: 999px; min-width: 44px; height: 42px; padding: 0 14px;
     cursor: pointer; display: inline-flex; align-items: center; justify-content: center; list-style: none;
-    box-shadow: 2px 2px 0 var(--line); transition: transform .08s, box-shadow .08s;
+    box-shadow: 2px 2px 0 var(--line); transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
+    -webkit-tap-highlight-color: transparent;
   }
-  button:active, summary:active { transform: translate(2px, 2px); box-shadow: none; }
+  button:active, summary:active { transform: translate(2px, 2px) scale(.96); box-shadow: none; transition-duration: .06s; }
+  button:focus-visible, summary:focus-visible { outline: 3px solid var(--pill); outline-offset: 3px; }
+  .swatch { transition: transform .22s var(--spring); }
+  .swatch:hover { transform: scale(1.12) rotate(-6deg); }
+  .swatch[aria-pressed="true"] { transform: scale(1.08); }
   summary::-webkit-details-marker { display: none; }
   summary::marker { display: none; }
 
@@ -81,8 +95,15 @@
   #feed { padding: 24px 20px 160px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto; }
   #feed p { margin: 0 0 .75em; opacity: .78; transition: opacity .6s ease; }
   #feed p.fresh { opacity: 1; font-weight: 600; }
-  #feed p.line-in { animation: lineIn .28s ease-out; }
-  @keyframes lineIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  #feed p.fresh span {
+    background-image: linear-gradient(color-mix(in srgb, var(--pill) 55%, transparent), color-mix(in srgb, var(--pill) 55%, transparent));
+    background-repeat: no-repeat; background-size: 0% 45%; background-position: 0 85%;
+    animation: sweep 1.1s var(--spring) .1s forwards;
+    box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  }
+  #feed p.line-in { animation: lineIn .42s var(--spring); }
+  @keyframes lineIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes sweep { to { background-size: 100% 45%; } }
   
   :root[data-loose="1"] #feed { line-height: 1.95; }
   :root[data-loose="1"] #feed p { letter-spacing: .025em; word-spacing: .16em; margin-bottom: 1.1em; }
@@ -92,10 +113,19 @@
     background: color-mix(in srgb, var(--pill) 35%, transparent); transition: background .2s ease;
   }
   #interim:empty { background: none; padding: 0; margin: 0; }
+  #interim:not(:empty)::after {
+    content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .15em; vertical-align: -.08em;
+    background: var(--ink); border-radius: 2px; animation: caret 1s steps(2) infinite;
+  }
+  @keyframes caret { to { opacity: 0; } }
 
   #waiting { text-align: center; padding: 48px 16px; }
-  #waiting svg { color: var(--line); opacity: .45; animation: floatGhost 3.4s ease-in-out infinite; }
+  #waiting svg { color: var(--line); opacity: .55; animation: floatGhost 3.4s ease-in-out infinite; filter: drop-shadow(3px 3px 0 var(--pill)); }
+  #waiting .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.2s infinite; }
+  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
   #waiting p { margin-top: 14px; font-size: 16px; font-weight: 700; color: var(--muted); }
+  #waiting p::after { content: "…"; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.6s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+  @keyframes dots { from { width: 0; } to { width: 1.2em; } }
   @keyframes floatGhost { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
   #jump {
@@ -104,6 +134,8 @@
     height: 46px; padding: 0 24px; z-index: 15; font-weight: 800;
   }
   #jump[hidden] { display: none; }
+  #jump { animation: popUp .4s var(--spring); }
+  @keyframes popUp { from { transform: translate(-50%, 30px) scale(.8); opacity: 0; } }
 
   #endCard {
     margin: 12px 18px 32px; max-width: 46em; margin-inline: auto;
@@ -111,7 +143,17 @@
     box-shadow: 6px 6px 0 var(--line); padding: 26px 24px;
   }
   #endCard[hidden] { display: none; }
-  #endCard h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.02em; }
+  #endCard { position: relative; overflow: hidden; animation: cardIn .5s var(--spring); }
+  @keyframes cardIn { from { transform: translateY(20px) rotate(-1deg) scale(.96); opacity: 0; } }
+  #endCard h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.03em; font-weight: 900; }
+  #endCard h2::after { content: "."; color: var(--pill); }
+  .confetti { position: absolute; inset: 0; pointer-events: none; }
+  .confetti i {
+    position: absolute; top: -12px; width: 9px; height: 13px; border: 1.5px solid var(--line); border-radius: 2px;
+    animation: fall var(--d, 2.2s) cubic-bezier(.3, .6, .6, 1) var(--w, 0s) both;
+    left: var(--x); background: var(--c); transform: rotate(var(--r));
+  }
+  @keyframes fall { 0% { transform: translateY(0) rotate(var(--r)); opacity: 1; } 100% { transform: translateY(260px) rotate(calc(var(--r) + 300deg)); opacity: 0; } }
   #endCard p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.4; }
   #endCard .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   #endCard .actions button { flex: 1 1 130px; height: 46px; }
@@ -173,8 +215,8 @@
   <div id="waiting">
     <svg viewBox="0 0 1024 1024" width="76" height="76" aria-hidden="true" focusable="false">
       <path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
-      <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
-      <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
+      <path class="eye" fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+      <path class="eye" fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
     </svg>
     <p>Waiting for the first spoken words</p>
   </div>
@@ -183,7 +225,8 @@
 <button id="jump" hidden>Jump to live</button>
 
 <section id="endCard" role="status" hidden>
-  <h2>Talk ended</h2>
+  <div class="confetti" aria-hidden="true"></div>
+  <h2>That's a wrap</h2>
   <p class="sub">The transcript above stays readable. Take it along with you.</p>
   <div class="actions">
     <button class="copy-btn">Copy transcript</button>
@@ -255,7 +298,9 @@ function addLine(text, animate = true) {
   feed.querySelector("p.fresh")?.classList.remove("fresh");
   const p = document.createElement("p");
   p.className = animate ? "fresh line-in" : "fresh";
-  p.textContent = text;
+  const span = document.createElement("span");
+  span.textContent = text;
+  p.append(span);
   feed.insertBefore(p, interimEl);
   linesArr.push(text);
   updateStats();
@@ -334,6 +379,23 @@ es.addEventListener("interim", (e) => {
   follow();
 });
 
+function throwConfetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colours = ["#ffb3d1", "#b8f0d8", "#d9c8ff", "#fff0a8"];
+  const box = $(".confetti");
+  box.innerHTML = "";
+  for (let i = 0; i < 26; i++) {
+    const bit = document.createElement("i");
+    bit.style.setProperty("--x", `${Math.random() * 100}%`);
+    bit.style.setProperty("--c", colours[i % 4]);
+    bit.style.setProperty("--r", `${Math.random() * 360}deg`);
+    bit.style.setProperty("--d", `${1.8 + Math.random() * 1.4}s`);
+    bit.style.setProperty("--w", `${Math.random() * 0.6}s`);
+    box.append(bit);
+  }
+  setTimeout(() => (box.innerHTML = ""), 3500);
+}
+
 function talkOver(label) {
   es.close();
   interimEl.textContent = "";
@@ -341,11 +403,12 @@ function talkOver(label) {
   $("#jump").hidden = true;
   if (linesArr.length) {
     $("#endCard").hidden = false;
+    throwConfetti();
     if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   }
 }
 
-es.addEventListener("end", () => talkOver("Talk ended"));
+es.addEventListener("end", () => talkOver("That's a wrap"));
 
 es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {

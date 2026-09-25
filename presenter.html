@@ -12,12 +12,19 @@
     --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
     --muted: rgba(30, 23, 20, 0.58);
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);   /* juicy overshoot */
+    --snap: cubic-bezier(.4, 0, .2, 1);
+    --vu: 0;                                    /* 0..1 mic level, drives the ghost */
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; min-height: 100vh; background: var(--ground); color: var(--ink);
+    margin: 0; min-height: 100vh; color: var(--ink);
+    background: var(--ground);
+    background-image: radial-gradient(rgba(30, 23, 20, 0.085) 1.1px, transparent 1.3px);
+    background-size: 22px 22px;
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
+  ::selection { background: var(--pink); color: var(--ink); }
   main {
     max-width: 980px; margin: 0 auto; padding: 36px 20px 220px;
     display: grid; gap: 24px;
@@ -29,15 +36,34 @@
     gap: 16px; flex-wrap: wrap;
   }
   .brand { display: flex; align-items: center; gap: 14px; }
+  .ghost-wrap {
+    display: inline-flex; animation: ghostFloat 3.4s ease-in-out infinite;
+    filter: drop-shadow(3px 3px 0 var(--pink));
+    transition: filter .3s var(--snap);
+  }
+  body[data-live="1"] .ghost-wrap { animation-duration: 1.9s; filter: drop-shadow(3px 3px 0 var(--mint)); }
   .ghost-icon {
-    width: 44px; height: 44px; color: var(--ink);
-    animation: ghostFloat 3.4s ease-in-out infinite;
+    width: 46px; height: 46px; color: var(--ink);
+    transform: scale(calc(1 + var(--vu) * 0.16));
+    transition: transform .09s ease-out;
+    transform-origin: 50% 70%;
+  }
+  .brand:hover .ghost-wrap { animation-duration: 1.2s; }
+  .ghost-icon .eye {
+    transform-box: fill-box; transform-origin: center;
+    animation: blink 4.6s infinite;
+  }
+  .ghost-icon .eye.r { animation-delay: .04s; }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.08); }
   }
   @keyframes ghostFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-5px) rotate(2deg); }
   }
-  h1 { margin: 0; font-size: 2.1rem; letter-spacing: -0.03em; font-weight: 800; }
+  h1 { margin: 0; font-size: 2.2rem; letter-spacing: -0.04em; font-weight: 900; line-height: 1; }
+  h1::after { content: "."; color: var(--pink); }
   .sub { margin: 2px 0 0; color: var(--muted); font-size: 0.96rem; }
 
   /* Quickstart Checklist Bar */
@@ -51,9 +77,14 @@
   }
   .step-num {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fffef7;
-    font-size: 11px; font-weight: 800;
+    width: 22px; height: 22px; border-radius: 7px; background: var(--butter); color: var(--ink);
+    border: 2px solid var(--line); box-shadow: 1.5px 1.5px 0 var(--line);
+    font-size: 11px; font-weight: 900; transform: rotate(-6deg);
+    transition: transform .25s var(--spring);
   }
+  .step-pill:nth-child(2) .step-num { background: var(--mint); transform: rotate(5deg); }
+  .step-pill:nth-child(3) .step-num { background: var(--lilac); transform: rotate(-4deg); }
+  .step-pill:hover .step-num { transform: rotate(0) scale(1.18); }
 
   /* Stage Console Card (Split Layout) */
   .stage-deck {
@@ -77,13 +108,24 @@
   button, select {
     font: 800 0.95rem var(--swiss); color: var(--ink); background: var(--pink);
     border: 2.5px solid var(--line); border-radius: 999px; padding: 12px 20px; cursor: pointer;
-    box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s, background .15s;
+    box-shadow: 3px 3px 0 var(--line);
+    transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    -webkit-tap-highlight-color: transparent;
   }
   select { background: var(--ground); padding: 10px 16px; cursor: pointer; }
   button[hidden] { display: none; } /* the display rule above would otherwise beat the hidden attribute */
-  button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  @media (hover: hover) {
+    button:not(:disabled):hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); }
+  }
+  button:not(:disabled):active { transform: translate(2px, 2px) scale(.97); box-shadow: 0 0 0 var(--line); transition-duration: .06s; }
+  button:focus-visible, select:focus-visible, .seg-btn:focus-visible, .tab-btn:focus-visible {
+    outline: 3px solid var(--pink); outline-offset: 3px;
+  }
   button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--line); }
+  #startBtn { padding: 14px 26px; font-size: 1.05rem; }
+  #startBtn:not(:hover) { animation: nudge 5s ease-in-out infinite; }
+  @keyframes nudge { 0%, 88%, 100% { transform: none; } 92% { transform: translate(-1px, -2px) rotate(-1.5deg); } 96% { transform: translate(1px, 0) rotate(1deg); } }
   button.mint { background: var(--mint); }
   button.lilac { background: var(--lilac); }
   button.butter { background: var(--butter); }
@@ -108,7 +150,8 @@
   }
   .meter-bar-fill {
     width: 0%; height: 100%; background: var(--mint);
-    transition: width 0.06s ease, background 0.1s ease;
+    background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(30, 23, 20, 0.12) 6px 8px);
+    transition: width 0.06s ease, background-color 0.1s ease;
   }
 
   /* Status Badges */
@@ -126,6 +169,10 @@
   @keyframes breatheDot {
     50% { transform: scale(1.25); background: var(--pink); }
   }
+  .pill-badge { transition: background .2s, transform .3s var(--spring); }
+  body[data-live="1"] #liveBadge { background: var(--mint); box-shadow: 0 0 0 4px rgba(184, 240, 216, 0.45); }
+  #countBadge.bump { animation: bump .45s var(--spring); }
+  @keyframes bump { 30% { transform: scale(1.18) rotate(-3deg); } 100% { transform: none; } }
 
   /* Segmented Ticker Sizer */
   .segmented-control {
@@ -136,10 +183,12 @@
     border: none; box-shadow: none; border-radius: 999px;
     padding: 6px 14px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
   }
+  .seg-btn { transition: background .2s var(--snap), color .2s, transform .2s var(--spring); }
   .seg-btn.active {
     background: var(--ink); color: #fffef7;
   }
-  .seg-btn:active { transform: none; }
+  .seg-btn:not(.active):hover { background: var(--butter); transform: none; box-shadow: none; }
+  .seg-btn:active { transform: scale(.94); }
 
   /* QR Box & Tabs */
   .qr-card {
@@ -155,14 +204,21 @@
     flex: 1; border: none; box-shadow: none; border-radius: 999px;
     padding: 8px 12px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
   }
+  .tab-btn { transition: background .2s var(--snap), color .2s, transform .2s var(--spring); }
   .tab-btn.active {
     background: var(--ink); color: #fffef7;
   }
-  .tab-btn:active { transform: none; }
+  .tab-btn:not(.active):hover { background: var(--lilac); transform: none; box-shadow: none; }
+  .tab-btn:active { transform: scale(.96); }
   #qrGraphic {
     padding: 8px; background: #fffef7; border: 2px solid var(--line);
-    border-radius: 16px; line-height: 0;
+    border-radius: 16px; line-height: 0; box-shadow: 4px 4px 0 var(--pink);
+    transition: box-shadow .3s var(--spring), transform .3s var(--spring);
   }
+  #qrGraphic:hover { transform: rotate(-1.5deg) scale(1.02); }
+  #qrGraphic.pop { animation: qrPop .5s var(--spring); }
+  @keyframes qrPop { 0% { transform: scale(.85) rotate(4deg); opacity: .4; } 100% { transform: none; opacity: 1; } }
+  .qr-card[data-tab="mic"] #qrGraphic { box-shadow: 4px 4px 0 var(--lilac); }
   #qrGraphic svg { width: 175px; height: 175px; }
   .qr-info-title { font-weight: 800; font-size: 1.05rem; margin: 0; }
   .qr-info-sub { font-size: 0.85rem; color: var(--muted); margin: 0; }
@@ -179,6 +235,8 @@
     padding: 24px;
   }
   #fsModal.open { display: flex; }
+  #fsModal.open .fs-card { animation: cardIn .38s var(--spring); }
+  @keyframes cardIn { from { transform: translateY(24px) scale(.94) rotate(-1deg); opacity: 0; } }
   .fs-card {
     background: var(--paper); border: 4px solid var(--line); border-radius: 32px;
     padding: 36px 32px; box-shadow: 10px 10px 0 var(--line);
@@ -207,21 +265,29 @@
     box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4);
     z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
   }
-  #ticker .prev { opacity: 0.65; font-weight: 500; }
-  #ticker .fresh-lead { color: #fffef7; font-weight: 700; }
+  #ticker .prev { opacity: 0.55; font-weight: 500; }
+  #ticker .fresh-lead { color: #fffef7; font-weight: 700; animation: land .55s ease-out; }
   #ticker .interim { color: var(--pink); opacity: 0.9; }
+  #ticker .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  /* inline-safe landing: a long sentence still wraps mid-line, it just glows in */
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 18px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes caret { to { opacity: 0; } }
   #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
+  body[data-live="1"] #ticker { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
 </style>
 </head>
 <body>
 <main>
   <header>
     <div class="brand">
-      <svg class="ghost-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
+      <span class="ghost-wrap"><svg class="ghost-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
         <path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
-        <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
-        <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
-      </svg>
+        <path class="eye r" fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+        <path class="eye" fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
+      </svg></span>
       <div>
         <h1>StageType</h1>
         <p class="sub">Speak. The room reads along.</p>
@@ -421,6 +487,8 @@ function updateQR() {
 
   const svg = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
   $("#qrGraphic").innerHTML = svg;
+  $("#qrGraphic").classList.remove("pop"); void $("#qrGraphic").offsetWidth; $("#qrGraphic").classList.add("pop");
+  $(".qr-card").dataset.tab = activeTab;
   $("#urlDisplay").textContent = targetUrl;
 
   if (isMic) {
@@ -461,6 +529,7 @@ async function initAudioMeter() {
       const avg = sum / dataArray.length;
       const pct = Math.min(100, Math.round((avg / 90) * 100));
       $("#meterFill").style.width = pct + "%";
+      document.documentElement.style.setProperty("--vu", (pct / 100).toFixed(2));
       if (pct > 65) {
         $("#meterFill").style.background = "var(--pink)";
       } else {
@@ -480,6 +549,7 @@ function stopAudioMeter() {
   audioCtx?.close();
   audioCtx = null;
   $("#meterFill").style.width = "0%";
+  document.documentElement.style.setProperty("--vu", "0");
 }
 
 $("#testAudioBtn").onclick = async () => {
@@ -547,7 +617,11 @@ async function push(body) {
     if (typeof j.listeners === "number") {
       // This console holds one of the stream connections itself; don't count it as an audience member.
       const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
-      $("#countBadge").textContent = `${others} reading`;
+      const label = `${others} reading`;
+      if ($("#countBadge").textContent !== label) {
+        $("#countBadge").textContent = label;
+        $("#countBadge").classList.remove("bump"); void $("#countBadge").offsetWidth; $("#countBadge").classList.add("bump");
+      }
     }
     return r.ok;
   } catch {
@@ -676,6 +750,7 @@ async function openRoom() {
 
   $("#liveDot").classList.add("active");
   $("#liveText").textContent = "Live";
+  document.body.dataset.live = "1";
 
   localLive = true;
   lastWordTime = Date.now();
@@ -719,7 +794,8 @@ function handleTalkEnded(callServer = true) {
   room = null;
 
   $("#liveDot").classList.remove("active");
-  $("#liveText").textContent = "Talk ended";
+  $("#liveText").textContent = "That's a wrap";
+  delete document.body.dataset.live;
   $("#startBtn").hidden = false;
   $("#stopBtn").hidden = true;
   $("#pauseBtn").hidden = true;

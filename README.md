@@ -163,4 +163,4 @@ The same applies to the audience: a QR that points at `http://192.168.x.x:8787` 
 
 ## 📜 License
 
-MIT License. Handcrafted by [Pablo Alvarado](https://github.com/pibulus). Built with personality, utility, and soul.
+MIT License. Handcrafted by [Pablo Andres](https://github.com/pibulus). Built with personality, utility, and soul.

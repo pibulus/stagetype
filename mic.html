@@ -11,12 +11,14 @@
     --ground: #1e1714; --ink: #fbf1e4; --muted: rgba(251,241,228,.55); --line: #fbf1e4;
     --pink: #ffb3d1; --mint: #b8f0d8; --butter: #fff0a8;
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; height: 100%; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
+  body { background-image: radial-gradient(rgba(251,241,228,.09) 1.1px, transparent 1.3px); background-size: 22px 22px; }
   body {
     display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
     padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
@@ -27,7 +29,8 @@
     display: flex; justify-content: space-between; align-items: center;
     border-bottom: 2px solid rgba(251,241,228,0.15); padding-bottom: 12px;
   }
-  .brand-title { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .brand-title { font-weight: 900; font-size: 1.15rem; letter-spacing: -0.03em; }
+  .brand-title::after { content: "."; color: var(--pink); }
   .brand-sub { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
   
   select {
@@ -50,6 +53,8 @@
   #state.on .dot { background: var(--mint); animation: breatheDot 1.4s infinite ease-in-out; }
   @keyframes breatheDot { 50% { transform: scale(1.3); background: var(--pink); } }
   #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
+  #room b { color: var(--butter); font-weight: 900; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 
   /* Live Transcription Echo */
   .echo-container {
@@ -62,6 +67,12 @@
     overflow: hidden; max-height: 4.8em; letter-spacing: -0.01em;
   }
   #echo .interim { color: var(--pink); }
+  #echo .interim::after { content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .12em; vertical-align: -.08em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  #echo .last { animation: land .55s ease-out; }
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 16px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes caret { to { opacity: 0; } }
+  body.live .echo-container { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(184,240,216,.12); }
+  .echo-container { transition: border-color .3s, box-shadow .3s; }
   #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
 
   /* Big Stage Button & Glow Aura */
@@ -86,11 +97,13 @@
     border-radius: 36px; cursor: pointer;
     font: 800 clamp(28px, 8.5vw, 42px) var(--swiss); color: #1e1714;
     background: var(--pink); border: 4px solid var(--line); box-shadow: 0 8px 0 #3a2e28;
-    transition: transform .08s, box-shadow .08s, background .2s;
+    transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .2s;
     -webkit-tap-highlight-color: transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   }
-  #go:active { transform: translateY(6px); box-shadow: 0 2px 0 #3a2e28; }
+  #go:active { transform: translateY(6px) scale(.98); box-shadow: 0 2px 0 #3a2e28; transition-duration: .06s; }
+  #go:focus-visible, #end:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
+  #go:disabled { opacity: .5; }
   #go.live { background: var(--mint); }
   .btn-subtext { font-size: 13px; font-weight: 700; opacity: 0.7; letter-spacing: 0.04em; }
 
@@ -100,7 +113,8 @@
     background: transparent; color: var(--ink); border: 2.5px solid var(--line);
     font: 800 16px var(--swiss); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
   }
-  #end:active { transform: scale(0.98); }
+  #end { transition: transform .22s var(--spring), background .15s, color .15s; }
+  #end:active { transform: scale(0.96); }
   #end.armed { background: var(--butter); color: #1e1714; }
 
   #err {
@@ -182,17 +196,21 @@ async function push(text, final) {
     } else {
       $("#err").textContent = "";
       const j = await r.json();
-      if (typeof j.listeners === "number") {
-        $("#room").textContent = `${j.listeners} in room`;
-      }
+      if (typeof j.listeners === "number") { listeners = j.listeners; stats(); }
     }
   } catch {
     $("#err").textContent = "Relay unreachable; retrying on next sentence";
   }
 }
 
+let words = 0, listeners = 0;
+function stats() {
+  $("#room").innerHTML = `<b>${words}</b> word${words === 1 ? "" : "s"} · ${listeners} in room`;
+}
 function render(interim) {
-  $("#echo").innerHTML = finals.slice(-2).map(esc).join(" ") + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
+  const tail = finals.slice(-2);
+  const html = tail.map((t, i) => (i === tail.length - 1 ? `<span class="last">${esc(t)}</span>` : esc(t))).join(" ");
+  $("#echo").innerHTML = html + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
 }
 
 function startRec() {
@@ -208,6 +226,8 @@ function startRec() {
       if (e.results[i].isFinal) {
         if (t) {
           finals.push(t);
+          words += t.split(/\s+/).filter(Boolean).length;
+          stats();
           push(t, true);
         }
       } else {
@@ -261,6 +281,7 @@ async function go() {
   $("#pulseAura").classList.add("active");
   $("#stateText").textContent = "Live on stage";
   $("#state").classList.add("on");
+  document.body.classList.add("live");
   $("#lang").disabled = true;
 }
 
@@ -278,6 +299,7 @@ function stop() {
   $("#pulseAura").classList.remove("active");
   $("#stateText").textContent = "Paused";
   $("#state").classList.remove("on");
+  document.body.classList.remove("live");
   $("#lang").disabled = false;
 }
 
@@ -304,10 +326,10 @@ $("#end").onclick = async () => {
     headers: { authorization: `Bearer ${token}` }
   }).catch(() => {});
 
-  $("#stateText").textContent = "Talk ended";
+  $("#stateText").textContent = "That's a wrap";
   $("#go").disabled = true;
   $("#end").hidden = true;
-  $("#err").textContent = "Full transcript saved on every attendee's phone.";
+  $("#err").textContent = `${words} words landed on every phone in the room. Nice one.`;
 };
 
 $("#go").onclick = () => {

@@ -34,7 +34,13 @@ deno task check    # TypeScript type-checking
 - **Zero absolute white (`#fff`) or absolute black (`#000`)** across body and UI surfaces.
 - **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
 - `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
-- **Mascot**: TalkType ghost SVG in header with open eyes and subtle hover animation.
+- **Mascot**: TalkType ghost SVG in header. It is alive: eyes blink (`.eye` paths), it floats faster when live, and it swells with mic level via the `--vu` CSS variable.
+- **Motto: juicy, sticky, fresh.**
+  - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); captions glow in, the audience's fresh line gets a pink highlighter sweep, the interim text carries a blinking caret.
+  - Sticky: small rewards, not chrome. Count badge bumps when it changes, sticker-style step numbers, confetti and "That's a wrap" when a talk ends, the mic page tells you how many words landed.
+  - Fresh: dot-grid ground, one accent colour per state (mint = live, pink = ended/attention, lilac = phone mic), lots of air. No gradients on surfaces, no glassmorphism.
+  - Landing animations on inline caption text must be wrap-safe (opacity/text-shadow only, never `inline-block` + transform).
+  - Everything respects `prefers-reduced-motion`.
 
 ## 📱 Appendage Pattern (Phone as Lapel Mic)
 - Phone connects via `/mic/:id#token`.
