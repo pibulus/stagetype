@@ -63,14 +63,15 @@ Done: captions, phone lapel mic with handoff, audience reader with themes and ty
 
 Next, in order:
 
-1. **Live translation.** Each reader picks a language; each final line is translated once per language on the relay (DeepL or a small model) and fanned out. Deepgram doesn't translate; its multilingual mode only *recognises* many spoken languages.
-2. **The bag (v1).** Presenter drops links live ("I'll put it in the bag"), a speaker card, terms from the glossary. The join page's Saved talks becomes a shelf of bags. A library, not a game: no points, badges or streaks. UI says "the bag"; brand voice can say "showbag".
-3. **Glossary.** A "words to get right" field on the console, passed to Deepgram Nova-3 as key terms.
-4. **Passes.** Stripe payment link, pass code unlocks Deepgram and translation for N hours.
-5. **Hosted relay on a real domain**, with `/demo` as the front page.
-6. **Diarisation and speaker names** for panels: Deepgram's streaming diarizer tags Speaker 0, 1, and the console lets you name them.
-7. **Mac host app** wrapping `/ticker/:id`, with on-device speech.
-8. **Summaries** as a pass feature.
+1. **The Live Knowledge Loop & Showbag ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)).** Connect the fleet loop: StageType thermal weighting → ProMapper topic clusters & action items → Slide-o-Matic auto-generated slide deck via compressed `gz.` URLs. The audience end card becomes the interactive Showbag (transcript, deck link, ProMap, links, ethical trading card).
+2. **Distinct Identity & Mascot.** StageType gets its own character (Spotlight Luminaire / Retro Broadcast capsule) adhering to the `softstack-mascot` eye-tracking contract, and its own "Stage Lights" palette (Electric Lime, Cyber Cyan, Stage Violet, Hot Magenta) breaking away from TalkType peach.
+3. **Ambient Presence & Thermal Map (No Text, No Numbers).** Audience taps create organic bioluminescent glows/auras rather than noisy chat/counters. Invisible thermal map weights the post-talk slide deck synthesis.
+4. **Live translation.** Each reader picks a language; each final line is translated once per language on the relay (DeepL or a small model) and fanned out. Deepgram doesn't translate; its multilingual mode only *recognises* many spoken languages.
+5. **Passes & Palestine Support.** Supporter passes ($19–$29) unlocking hosted engines with ethical donation per sale.
+6. **Glossary.** A "words to get right" field on the console, passed to Deepgram Nova-3 as key terms.
+7. **Hosted relay on a real domain**, with `/demo` as the front page.
+8. **Diarisation and speaker names** for panels: Deepgram's streaming diarizer tags Speaker 0, 1, and the console lets you name them.
+9. **Mac host app** wrapping `/ticker/:id`, with on-device speech.
 
 ## The live demo and signed noise
 
