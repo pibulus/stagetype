@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbf1e4">
 <title>StageType Live Reader</title>
@@ -177,7 +178,7 @@
     </svg>
     <p>Waiting for the first spoken words</p>
   </div>
-  <p id="interim"></p>
+  <p id="interim" aria-live="off"></p>
 </main>
 <button id="jump" hidden>Jump to live</button>
 
@@ -309,10 +310,12 @@ let seen = 0;
 
 es.addEventListener("open", () => setState("live", "Live"));
 
+// `seen` is an absolute sequence number. The server trims old lines from its backlog and tells us
+// how many it dropped (`offset`), so a reconnect after a long talk never double-prints or skips lines.
 es.addEventListener("backlog", (e) => {
-  const { lines } = JSON.parse(e.data);
-  lines.slice(seen).forEach((t) => addLine(t, false));
-  seen = lines.length;
+  const { lines, offset = 0 } = JSON.parse(e.data);
+  lines.slice(Math.max(0, seen - offset)).forEach((t) => addLine(t, false));
+  seen = Math.max(seen, offset + lines.length);
   follow();
 });
 
@@ -331,18 +334,24 @@ es.addEventListener("interim", (e) => {
   follow();
 });
 
-es.addEventListener("end", () => {
+function talkOver(label) {
   es.close();
   interimEl.textContent = "";
-  setState("ended", "Talk ended");
+  setState("ended", label);
   $("#jump").hidden = true;
-  $("#endCard").hidden = false;
-  if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
-});
+  if (linesArr.length) {
+    $("#endCard").hidden = false;
+    if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
+  }
+}
+
+es.addEventListener("end", () => talkOver("Talk ended"));
 
 es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {
-    setState("closed", "Room closed");
+    // The room is gone (ended while this phone was asleep, or the relay restarted). Whatever we
+    // caught is still worth keeping, so offer the export card the same as a clean ending.
+    talkOver("Room closed");
   } else {
     setState("reconnecting", "Reconnecting");
   }

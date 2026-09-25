@@ -35,7 +35,7 @@ The security design where presenter authorization tokens ride strictly inside th
 
 | Shortcut | Action | Scope |
 | :--- | :--- | :--- |
-| `Space` | Toggle Live Captions (Start / End) | Stage Console |
+| `Space` | Start captions, then pause / resume the laptop mic | Stage Console |
 | `⌥ + F` | Float Ticker over slides (Document PiP) | Stage Console |
 | `⌥ + Q` | Open Fullscreen QR Projector Modal | Stage Console |
 | `Esc` | Close Fullscreen Projector Modal | Stage Console |

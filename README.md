@@ -81,7 +81,7 @@ deno task dev
 
 | Shortcut | Action |
 | :--- | :--- |
-| <kbd>Space</kbd> | Toggle live speech capture (Start / End) |
+| <kbd>Space</kbd> | Start captions, then pause / resume the laptop mic (never ends the talk) |
 | <kbd>⌥ + F</kbd> | Float ticker window over slides (Document Picture-in-Picture) |
 | <kbd>⌥ + Q</kbd> | Open Fullscreen QR Projector modal |
 | <kbd>Esc</kbd> | Dismiss Fullscreen modal |
@@ -90,9 +90,11 @@ deno task dev
 
 ## 🛡️ Security & Privacy Architecture
 
-* **Zero-Database, In-Memory Rooms:** Rooms and transcript buffers live strictly in RAM. A server restart wipes all history. Idle rooms self-destruct after 30 minutes of inactivity.
-* **URL Fragment Token Security:** The administrative write token for the phone lapel mic is passed in the URL hash `#fragment` (e.g. `/mic/401dd18c#token`). Browsers never transmit `#fragments` over HTTP, preventing credentials from leaking into server access logs, reverse proxies, or referral headers.
-* **Client-Side Speech Processing:** Audio capture and interim parsing run locally in the browser using the Web Speech API and Web Audio `AnalyserNode`.
+* **Zero-Database, In-Memory Rooms:** Rooms and transcript buffers live strictly in RAM. A server restart wipes all history. Idle rooms self-destruct after 30 minutes of inactivity; the open presenter console sends a keepalive so a long Q&A or lunch break doesn't end the talk.
+* **URL Fragment Token Security:** The administrative write token for the phone lapel mic is passed in the URL hash `#fragment` (e.g. `/mic/401dd18c#token`). Browsers never transmit `#fragments` over HTTP, preventing credentials from leaking into server access logs, reverse proxies, or referral headers. **Don't project the lapel-mic QR:** anyone who scans it can write captions into your room. Scan it from the console yourself; the fullscreen projector view is for the audience QR.
+* **Abuse limits:** room creation, listeners per room, backlog length and push body size are all capped, and the write token is compared in constant time.
+* **The relay never sees audio.** Only text reaches the server. The speech-to-text itself is the browser's Web Speech API, which in Chrome and Edge streams your microphone audio to Google's recognition service and in Safari to Apple's. If a talk must stay fully on-device, that's the piece to swap (see Roadmap). The VU meter is local (Web Audio `AnalyserNode`) and never leaves the tab.
+* **No CDN at runtime.** The QR encoder is vendored in `vendor/qrcode.js`, so the console works on venue wifi with no internet and nothing third-party loads into the presenter page.
 
 ---
 
@@ -100,11 +102,13 @@ deno task dev
 
 ```
 stagetype/
-├── server.ts         # Zero-dependency Deno HTTP + SSE fan-out relay (~140 lines)
-├── server_test.ts    # Test suite: room lifecycle, SSE events, TTL sweep
+├── server.ts         # Zero-dependency Deno HTTP + SSE fan-out relay (~200 lines)
+├── server_test.ts    # Test suite: room lifecycle, SSE events, limits, TTL sweep
 ├── presenter.html    # Stage Console: VU meter, QR controller, floating ticker
 ├── audience.html     # Mobile reader: themes, dyslexic spacing, transcript export
 ├── mic.html          # Appendage lapel mic: wake lock, haptics, pocket guard
+├── ghost.svg         # Favicon / home-screen icon
+├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
 ├── deno.json         # Task runner & compiler options
 ├── GLOSSARY.md       # Shared vocabulary and design primitives
 └── CLAUDE.md         # Assistant ops and instructions
@@ -118,9 +122,21 @@ stagetype/
 deno task test
 ```
 
-Verifies the room lifecycle, token authorization, backlog delivery for late joiners, live SSE fan-out, and idle room garbage collection sweeps.
+Verifies the room lifecycle, token authorization, backlog delivery for late joiners (with the trim offset that keeps reconnects exact), live SSE fan-out, listener cleanup on end, keepalive pings, the room / body-size caps, and idle room garbage collection sweeps.
 
 ---
+
+## 🔌 Relay API
+
+| Method | Path | Auth | What |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/room` | none | Open a room → `{ id, token }` |
+| `POST` | `/api/room/:id` | Bearer token | Push `{ text, final }`; `{ ping: true }` is a keepalive that broadcasts nothing |
+| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt }`, then `interim { text }`, `final { text, seq }`, `end` |
+| `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
+| `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
+
+`offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
 
 ## 🌐 Mobile Rehearsals (HTTPS Tunnel)
 
@@ -133,6 +149,15 @@ cloudflared tunnel --url http://localhost:8787
 ```
 
 Scan the resulting `https://*.trycloudflare.com` QR code with your phone to use the phone as your wireless stage microphone.
+
+The same applies to the audience: a QR that points at `http://192.168.x.x:8787` only works for phones on the same wifi. At a meetup where people are on cellular, run the presenter console through the tunnel URL (or a small public host) so the audience QR is reachable from anywhere. The relay is a single process with rooms in memory, so it wants one instance, not a serverless fleet.
+
+## 🗺️ Roadmap
+
+* **On-device speech** for talks that must not leave the room: Chrome's `SpeechRecognition` on-device mode (`processLocally`) where available, or a WebGPU Whisper worker as the fallback.
+* **Live translation** so each phone picks its own language.
+* **More languages** in the presenter and mic selectors.
+* **Hosted edition** at a stable URL so the audience QR works on cellular without a tunnel.
 
 ---
 

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1714">
 <title>StageType · Lapel Mic</title>
@@ -157,9 +158,13 @@ const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
 
 if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
 if (!Rec) $("#err").textContent = "Speech recognition missing in this browser. Safari or Chrome recommended.";
+if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+  $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
+}
 
 async function push(text, final) {
   try {
@@ -224,7 +229,13 @@ function startRec() {
   };
 
   rec.onerror = (e) => {
-    if (e.error !== "no-speech" && e.error !== "aborted") {
+    if (FATAL_REC.has(e.error)) {
+      // A blocked mic would otherwise restart every 150ms forever.
+      stop();
+      $("#err").textContent = e.error === "not-allowed"
+        ? "Microphone blocked. Allow the mic for this site in your browser settings, then tap Go live."
+        : `Mic issue: ${e.error}. Check the browser's mic permission and tap Go live again.`;
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
       $("#err").textContent = `Mic issue: ${e.error}`;
     }
   };
@@ -254,6 +265,7 @@ async function go() {
 }
 
 function stop() {
+  if (!live) return;
   live = false;
   rec?.stop();
   wake?.release?.();

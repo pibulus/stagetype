@@ -1,58 +1,112 @@
-// talktype-live: one presenter speaks, many phones read along.
+// StageType: one presenter speaks, many phones read along.
 // Zero deps. Rooms live in memory; a restart ends every talk.
 // ponytail: single-process in-memory rooms, move to Deno KV/Redis only if this ever runs on >1 instance.
 
-type Line = { text: string; final: boolean };
+type Chunk = { text?: unknown; final?: unknown; ping?: unknown };
+type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
 type Room = {
   token: string;
   lines: string[]; // finalized sentences, the backlog late joiners get
-  listeners: Set<ReadableStreamDefaultController<Uint8Array>>;
+  offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
+  listeners: Set<Listener>;
   touched: number;
   startedAt: number;
 };
 
-const ROOM_TTL_MS = 30 * 60_000; // idle rooms vanish after 30 min
+const ROOM_TTL_MS = 30 * 60_000; // idle rooms vanish after 30 min (presenter keepalive extends it)
+const MAX_ROOMS = 1_000;
 const MAX_LISTENERS = 500;
 const MAX_BACKLOG = 400;
-const MAX_CHUNK = 2_000;
+const MAX_CHUNK = 2_000; // chars kept per final line
+const MAX_BODY = 16_384; // bytes accepted per push
+const PING_MS = 20_000;
 
 export const rooms = new Map<string, Room>();
 const enc = new TextEncoder();
+const dec = new TextDecoder();
 
 const id = (n: number) => crypto.randomUUID().replaceAll("-", "").slice(0, n);
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
+// Constant-time compare so a token can't be guessed a byte at a time from response timing.
+function tokenOk(header: string | null, token: string): boolean {
+  const a = enc.encode(header ?? "");
+  const b = enc.encode(`Bearer ${token}`);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+function frame(event: string, data: unknown): Uint8Array {
+  return enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function drop(room: Room, l: Listener) {
+  clearInterval(l.ping);
+  room.listeners.delete(l);
+}
+
 function send(room: Room, event: string, data: unknown) {
-  const frame = enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  for (const c of room.listeners) {
-    try { c.enqueue(frame); } catch { room.listeners.delete(c); }
+  const f = frame(event, data);
+  for (const l of room.listeners) {
+    try { l.ctrl.enqueue(f); } catch { drop(room, l); }
   }
 }
 
-function lanIp(): string {
+function endRoom(key: string, room: Room) {
+  send(room, "end", { lines: room.lines, startedAt: room.startedAt, endedAt: Date.now() });
+  for (const l of room.listeners) {
+    try { l.ctrl.close(); } catch { /* already gone */ }
+    drop(room, l);
+  }
+  rooms.delete(key);
+}
+
+// Prefer a real LAN address (192.168.x, 10.x, 172.16-31.x) on a physical-looking interface
+// over Docker bridges, VPN tunnels and the like, so the audience QR points somewhere phones can reach.
+export function lanIp(): string {
   try {
-    return Deno.networkInterfaces().find((i) => i.family === "IPv4" && !i.address.startsWith("127."))?.address ?? "localhost";
+    const rfc1918 = (a: string) => /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a);
+    const physical = (n: string) => /^(en|eth|wl|wlan|wlp|enp)/.test(n);
+    const candidates = Deno.networkInterfaces()
+      .filter((i) => i.family === "IPv4" && !i.address.startsWith("127.") && !i.address.startsWith("169.254."))
+      .sort((a, b) => score(b) - score(a));
+    function score(i: Deno.NetworkInterfaceInfo) {
+      return (rfc1918(i.address) ? 2 : 0) + (physical(i.name) ? 1 : 0) - (/^(docker|br-|veth|utun|tun|tap|vmnet|virbr)/.test(i.name) ? 4 : 0);
+    }
+    return candidates[0]?.address ?? "localhost";
   } catch { return "localhost"; }
 }
+
+const isLoopbackHost = (req: Request) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.get("host") ?? "");
 
 export async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
+  const get = req.method === "GET" || req.method === "HEAD";
+  const head = req.method === "HEAD";
 
-  // Pages
-  if ((req.method === "GET" || req.method === "HEAD") && path === "/") return file("presenter.html", req.method === "HEAD");
-  if ((req.method === "GET" || req.method === "HEAD") && /^\/live\/[a-z0-9]+$/.test(path)) return file("audience.html", req.method === "HEAD");
+  // Pages + the one vendored asset (QR encoder), so the console works on a venue LAN with no internet.
+  if (get && path === "/") return file("presenter.html", head);
+  if (get && /^\/live\/[a-z0-9]+$/.test(path)) return file("audience.html", head);
   // Phone as the mic: the write token rides in the URL #fragment, which browsers never send to the server
-  if ((req.method === "GET" || req.method === "HEAD") && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", req.method === "HEAD");
-  if ((req.method === "GET" || req.method === "HEAD") && path === "/api/info") return json({ lan: `http://${lanIp()}:${PORT}` });
+  if (get && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", head);
+  if (get && path === "/vendor/qrcode.js") return file("vendor/qrcode.js", head, "text/javascript; charset=utf-8");
+  if (get && (path === "/ghost.svg" || path === "/favicon.ico")) return file("ghost.svg", head, "image/svg+xml");
+  // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
+  if (get && path === "/api/info") {
+    return isLoopbackHost(req) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
+  }
 
   // Presenter opens a room
   if (req.method === "POST" && path === "/api/room") {
+    if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
     const roomId = id(8);
     const token = id(32);
     const now = Date.now();
-    rooms.set(roomId, { token, lines: [], listeners: new Set(), touched: now, startedAt: now });
+    rooms.set(roomId, { token, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
     return json({ id: roomId, token });
   }
 
@@ -60,46 +114,52 @@ export async function handler(req: Request): Promise<Response> {
   const room = m ? rooms.get(m[1]) : undefined;
   if (m && !room) return json({ error: "room gone" }, 404);
 
-  // Presenter pushes a chunk
+  // Presenter pushes a chunk (or a bare keepalive while paused)
   if (room && !m![2] && req.method === "POST") {
-    if (req.headers.get("authorization") !== `Bearer ${room.token}`) return json({ error: "nope" }, 403);
-    const body = await req.json().catch(() => null) as Line | null;
-    const text = typeof body?.text === "string" ? body.text.trim().slice(0, MAX_CHUNK) : "";
+    if (!tokenOk(req.headers.get("authorization"), room.token)) return json({ error: "nope" }, 403);
+    const raw = await readBody(req);
+    if (raw === null) return json({ error: "too big" }, 413);
+    let body: Chunk | null = null;
+    try { body = JSON.parse(raw); } catch { /* fallthrough */ }
+    if (!body || typeof body !== "object") return json({ error: "bad json" }, 400);
     room.touched = Date.now();
-    if (body?.final) {
+    const text = typeof body.text === "string" ? body.text.trim().slice(0, MAX_CHUNK) : "";
+    if (body.ping) {
+      // keepalive only
+    } else if (body.final) {
       if (text) {
         room.lines.push(text);
-        if (room.lines.length > MAX_BACKLOG) room.lines.shift();
+        if (room.lines.length > MAX_BACKLOG) { room.lines.shift(); room.offset++; }
       }
-      send(room, "final", { text, count: room.lines.length });
+      send(room, "final", { text, seq: room.offset + room.lines.length });
     } else {
       send(room, "interim", { text });
     }
-    return json({ ok: true, listeners: room.listeners.size, lineCount: room.lines.length });
+    return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length });
   }
 
   // Presenter ends the talk
   if (room && !m![2] && req.method === "DELETE") {
-    if (req.headers.get("authorization") !== `Bearer ${room.token}`) return json({ error: "nope" }, 403);
-    send(room, "end", { lines: room.lines, startedAt: room.startedAt, endedAt: Date.now() });
-    for (const c of room.listeners) try { c.close(); } catch { /* already gone */ }
-    rooms.delete(m![1]);
+    if (!tokenOk(req.headers.get("authorization"), room.token)) return json({ error: "nope" }, 403);
+    endRoom(m![1], room);
     return json({ ok: true });
   }
 
   // Audience listens (SSE; EventSource reconnects on its own)
   if (room && m![2] && req.method === "GET") {
     if (room.listeners.size >= MAX_LISTENERS) return json({ error: "room full" }, 503);
-    let ctrl: ReadableStreamDefaultController<Uint8Array>;
-    let ping: ReturnType<typeof setInterval>;
+    let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
-        ctrl = c;
-        room.listeners.add(c);
-        c.enqueue(enc.encode(`retry: 2000\nevent: backlog\ndata: ${JSON.stringify({ lines: room.lines, startedAt: room.startedAt })}\n\n`));
-        ping = setInterval(() => { try { c.enqueue(enc.encode(": ping\n\n")); } catch { clearInterval(ping); } }, 20_000);
+        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt });
+        c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
+        const ping = setInterval(() => {
+          try { c.enqueue(enc.encode(": ping\n\n")); } catch { drop(room, me); }
+        }, PING_MS);
+        me = { ctrl: c, ping };
+        room.listeners.add(me);
       },
-      cancel() { clearInterval(ping); room.listeners.delete(ctrl); },
+      cancel() { drop(room, me); },
     });
     return new Response(stream, {
       headers: { "content-type": "text/event-stream", "cache-control": "no-cache", "x-accel-buffering": "no" },
@@ -109,18 +169,38 @@ export async function handler(req: Request): Promise<Response> {
   return new Response("not here", { status: 404 });
 }
 
-async function file(name: string, isHead = false) {
+// Read a request body up to MAX_BODY bytes; null when it is larger.
+async function readBody(req: Request): Promise<string | null> {
+  const declared = Number(req.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY) return null;
+  if (!req.body) return "";
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for await (const chunk of req.body) {
+    size += chunk.byteLength;
+    if (size > MAX_BODY) { await req.body.cancel().catch(() => {}); return null; }
+    parts.push(chunk);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) { out.set(p, at); at += p.byteLength; }
+  return dec.decode(out);
+}
+
+async function file(name: string, isHead = false, type = "text/html; charset=utf-8") {
   const body = isHead ? null : await Deno.readFile(new URL(name, import.meta.url));
-  return new Response(body, { headers: { "content-type": "text/html; charset=utf-8" } });
+  return new Response(body, {
+    headers: {
+      "content-type": type,
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+    },
+  });
 }
 
 export function sweep(now = Date.now()) {
   for (const [k, r] of rooms) {
-    if (now - r.touched > ROOM_TTL_MS) {
-      send(r, "end", {});
-      for (const c of r.listeners) try { c.close(); } catch { /* gone */ }
-      rooms.delete(k);
-    }
+    if (now - r.touched > ROOM_TTL_MS) endRoom(k, r);
   }
 }
 

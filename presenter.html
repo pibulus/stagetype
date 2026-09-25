@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StageType · Presenter Console</title>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="/vendor/qrcode.js"></script>
 <style>
   :root {
     --paper: #fbf1e4; --ground: #fffef7; --ink: #1e1714; --line: #3a2e28;
@@ -80,6 +81,7 @@
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
   select { background: var(--ground); padding: 10px 16px; cursor: pointer; }
+  button[hidden] { display: none; } /* the display rule above would otherwise beat the hidden attribute */
   button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
   button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--line); }
   button.mint { background: var(--mint); }
@@ -87,6 +89,12 @@
   button.butter { background: var(--butter); }
   button.ground { background: var(--ground); }
   button.ghost { background: transparent; }
+
+  .notice {
+    margin: 0; font-size: 0.85rem; font-weight: 700; line-height: 1.4;
+    background: var(--butter); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px;
+  }
+  .notice[hidden] { display: none; }
 
   /* Audio Meter */
   .meter-box {
@@ -152,7 +160,7 @@
   }
   .tab-btn:active { transform: none; }
   #qrGraphic {
-    padding: 8px; background: #fff; border: 2px solid var(--line);
+    padding: 8px; background: #fffef7; border: 2px solid var(--line);
     border-radius: 16px; line-height: 0;
   }
   #qrGraphic svg { width: 175px; height: 175px; }
@@ -200,7 +208,7 @@
     z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
   }
   #ticker .prev { opacity: 0.65; font-weight: 500; }
-  #ticker .fresh-lead { color: #fff; font-weight: 700; }
+  #ticker .fresh-lead { color: #fffef7; font-weight: 700; }
   #ticker .interim { color: var(--pink); opacity: 0.9; }
   #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
 </style>
@@ -240,9 +248,11 @@
         <span class="section-label">Broadcast Voice</span>
         <div class="btn-row">
           <button id="startBtn" class="mint">Start captions</button>
+          <button id="pauseBtn" class="ground" hidden>Pause mic</button>
           <button id="floatBtn" class="lilac" hidden>Float ticker</button>
           <button id="stopBtn" class="butter" hidden>End talk</button>
         </div>
+        <p id="notice" class="notice" hidden></p>
       </div>
 
       <div class="panel-section">
@@ -313,7 +323,7 @@
 
   <!-- Keyboard Shortcuts Bar -->
   <div class="shortcuts-hint">
-    <span><kbd>Space</kbd> Start/Pause</span>
+    <span><kbd>Space</kbd> Start / pause mic</span>
     <span><kbd>⌥ + F</kbd> Float ticker</span>
     <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
     <span><kbd>Esc</kbd> Close modal</span>
@@ -330,9 +340,9 @@
       <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
       <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
     </div>
-    <div id="fsQr" style="background:#fff;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+    <div id="fsQr" style="background:#fffef7;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
     <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
-    <p style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
+    <p id="fsNote" style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
   </div>
 </div>
 
@@ -354,6 +364,10 @@ let activeTab = "audience"; // 'audience' | 'mic'
 let lanBase = "";
 let lastWordTime = Date.now();
 let silenceInterval = null;
+let keepaliveInterval = null;
+let paused = false;
+
+const notice = (msg) => { const n = $("#notice"); n.textContent = msg || ""; n.hidden = !msg; };
 
 // Web Audio Meter State
 let audioCtx = null;
@@ -413,10 +427,12 @@ function updateQR() {
     $("#qrTitle").textContent = "Phone lapel mic";
     $("#qrSub").textContent = "Scan with your phone to speak untethered on stage";
     $("#fsTitle").textContent = "Pair wireless lapel mic";
+    $("#fsNote").textContent = "This code carries the room's write key. Scan it yourself, keep it off the projector.";
   } else {
     $("#qrTitle").textContent = "Audience reader";
     $("#qrSub").textContent = "Scan with phone camera to follow captions live";
     $("#fsTitle").textContent = "Scan to read along";
+    $("#fsNote").textContent = "Project on screen before the talk kicks off.";
   }
 
   const fsQrSvg = qr.createSvgTag({ cellSize: 9, margin: 0, scalable: true });
@@ -489,14 +505,14 @@ function listenToRoomStream(roomId) {
     }
   });
 
+  // Finals come back from the relay whichever mic produced them (this tab or the phone),
+  // so the ticker shows exactly what the room sees.
   sseSource.addEventListener("final", (e) => {
     const { text } = JSON.parse(e.data);
     if (text) {
       lastWordTime = Date.now();
-      if (finals.length === 0 || finals[finals.length - 1] !== text) {
-        finals.push(text);
-        if (finals.length > 50) finals.shift();
-      }
+      finals.push(text);
+      if (finals.length > 50) finals.shift();
     }
     interim = "";
     renderTicker();
@@ -515,8 +531,8 @@ function listenToRoomStream(roomId) {
 }
 
 // Push transcript chunk to room
-async function push(text, final) {
-  if (!room) return;
+async function push(body) {
+  if (!room) return false;
   try {
     const r = await fetch(`/api/room/${room.id}`, {
       method: "POST",
@@ -524,14 +540,19 @@ async function push(text, final) {
         "content-type": "application/json",
         authorization: `Bearer ${room.token}`,
       },
-      body: JSON.stringify({ text, final }),
+      body: JSON.stringify(body),
     });
+    if (r.status === 404) { notice("The room is gone (server restarted?). End the talk and start again."); return false; }
     const j = await r.json();
     if (typeof j.listeners === "number") {
-      $("#countBadge").textContent = `${j.listeners} reading`;
+      // This console holds one of the stream connections itself; don't count it as an audience member.
+      const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
+      $("#countBadge").textContent = `${others} reading`;
     }
+    return r.ok;
   } catch {
     console.warn("Relay unreachable; captions still local");
+    return false;
   }
 }
 
@@ -540,15 +561,21 @@ function pushInterim() {
   clearTimeout(interimTimer);
   if (wait <= 0) {
     lastInterimSent = Date.now();
-    push(interim, false);
+    push({ text: interim, final: false });
   } else {
     interimTimer = setTimeout(pushInterim, wait);
   }
 }
 
 // Local Speech Recognition
+const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
+
 function startLocalRec() {
-  if (!Rec) return;
+  if (!Rec) {
+    notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
+    $("#micSource").textContent = "Phone mic only";
+    return;
+  }
   rec = new Rec();
   rec.continuous = true;
   rec.interimResults = true;
@@ -561,8 +588,8 @@ function startLocalRec() {
       const t = e.results[i][0].transcript.trim();
       if (e.results[i].isFinal) {
         if (t) {
-          finals.push(t);
-          push(t, true);
+          // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
+          push({ text: t, final: true }).then((ok) => { if (!ok) { finals.push(t); renderTicker(); } });
         }
       } else {
         freshInterim += t + " ";
@@ -574,34 +601,76 @@ function startLocalRec() {
   };
 
   rec.onerror = (e) => {
-    if (e.error !== "no-speech" && e.error !== "aborted") {
+    if (FATAL_REC.has(e.error)) {
+      // Don't loop forever restarting a mic the browser won't give us; the room stays open and
+      // "Resume mic" tries again once the presenter has fixed the permission.
+      notice(e.error === "not-allowed"
+        ? "Microphone blocked. Allow the mic for this site, or pair the phone lapel mic instead."
+        : `Speech recognition stopped: ${e.error}. Pair the phone lapel mic instead.`);
+      setPaused(true, false);
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
       console.warn("Speech recognition error:", e.error);
     }
   };
 
   rec.onend = () => {
-    if (localLive) setTimeout(() => localLive && startLocalRec(), 150);
+    if (localLive && !paused) setTimeout(() => localLive && !paused && startLocalRec(), 150);
   };
 
   rec.start();
   initAudioMeter();
 }
 
+// Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
+function setPaused(on, restart = true) {
+  paused = on;
+  $("#pauseBtn").textContent = on ? "Resume mic" : "Pause mic";
+  $("#pauseBtn").classList.toggle("butter", on);
+  if (on) {
+    rec?.stop();
+    interim = "";
+    renderTicker();
+    $("#liveText").textContent = "Live · Mic paused";
+  } else if (restart && localLive) {
+    notice("");
+    $("#liveText").textContent = "Live";
+    lastWordTime = Date.now();
+    startLocalRec();
+  }
+}
+
 // Room Lifecycle
 async function openRoom() {
-  const infoRes = await fetch("/api/info").then((r) => r.json()).catch(() => ({ lan: location.origin }));
-  lanBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? infoRes.lan
-    : location.origin;
+  if (room) return;
+  notice("");
+  const onLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const infoRes = onLocalhost
+    ? await fetch("/api/info").then((r) => r.json()).catch(() => ({}))
+    : {};
+  lanBase = (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
 
-  const roomRes = await fetch("/api/room", { method: "POST" });
-  room = await roomRes.json();
+  try {
+    const roomRes = await fetch("/api/room", { method: "POST" });
+    if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
+    room = await roomRes.json();
+  } catch (err) {
+    notice(`Couldn't open a room on the relay (${err.message}). Is the server running?`);
+    return;
+  }
 
+  // Fresh talk, fresh ticker
+  finals = [];
+  interim = "";
+  paused = false;
+  renderTicker();
   updateQR();
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
   $("#stopBtn").hidden = false;
+  $("#pauseBtn").hidden = false;
+  $("#pauseBtn").textContent = "Pause mic";
+  $("#pauseBtn").classList.remove("butter");
   $("#floatBtn").hidden = !("documentPictureInPicture" in window);
   $("#lang").disabled = true;
 
@@ -612,10 +681,15 @@ async function openRoom() {
   lastWordTime = Date.now();
   startLocalRec();
 
+  // Keep the room alive through a long pause or Q&A (idle rooms are swept after 30 min), and
+  // refresh the "reading" count even when the phone is doing all the talking.
+  clearInterval(keepaliveInterval);
+  keepaliveInterval = setInterval(() => push({ ping: true }), 30_000);
+
   // Silence monitor
   clearInterval(silenceInterval);
   silenceInterval = setInterval(() => {
-    if (!localLive) return;
+    if (!localLive || paused) return;
     const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
     if (quietSeconds > 25) {
       $("#liveText").textContent = "Live · Mic quiet";
@@ -627,9 +701,11 @@ async function openRoom() {
 
 function handleTalkEnded(callServer = true) {
   localLive = false;
+  paused = false;
   rec?.stop();
   stopAudioMeter();
   clearInterval(silenceInterval);
+  clearInterval(keepaliveInterval);
   if (sseSource) {
     sseSource.close();
     sseSource = null;
@@ -646,7 +722,10 @@ function handleTalkEnded(callServer = true) {
   $("#liveText").textContent = "Talk ended";
   $("#startBtn").hidden = false;
   $("#stopBtn").hidden = true;
+  $("#pauseBtn").hidden = true;
   $("#floatBtn").hidden = true;
+  interim = "";
+  renderTicker();
   $("#lang").disabled = false;
   $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
   $("#qrGraphic").innerHTML = "";
@@ -654,6 +733,7 @@ function handleTalkEnded(callServer = true) {
 
 $("#startBtn").onclick = () => openRoom();
 $("#stopBtn").onclick = () => handleTalkEnded(true);
+$("#pauseBtn").onclick = () => setPaused(!paused);
 
 // Tabs for QR switching
 $("#tabAudience").onclick = () => {
@@ -734,8 +814,9 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     openFullscreenQR();
   } else if (e.code === "Space" && e.target === document.body) {
+    // Space never ends the talk: that's a deliberate click on "End talk".
     e.preventDefault();
-    if (room) handleTalkEnded(true);
+    if (room) setPaused(!paused);
     else openRoom();
   }
 });
