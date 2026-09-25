@@ -279,7 +279,7 @@ Deno.test("LAN info only answers to a browser on this machine", async () => {
 });
 
 Deno.test("pages and the vendored QR encoder are served", async () => {
-  for (const p of ["/", "/live/abc123", "/mic/abc123", "/ticker/abc123", "/join"]) {
+  for (const p of ["/", "/live/abc123", "/mic/abc123", "/ticker/abc123", "/join", "/demo"]) {
     const r = await handler(new Request(base + p));
     assertEquals(r.status, 200);
     assert(r.headers.get("content-type")!.startsWith("text/html"));
@@ -304,4 +304,48 @@ Deno.test("pages and the vendored QR encoder are served", async () => {
   assertEquals((await handler(new Request(`${base}/vendor/../server.ts`))).status, 404);
   assertEquals((await handler(new Request(`${base}/live/../server.ts`))).status, 404);
   assertEquals((await handler(new Request(`${base}/nope`))).status, 404);
+});
+
+import * as noise from "./signed_noise.ts";
+
+Deno.test("signed noise: verifies its own, rejects tampering, expiry and strangers", async () => {
+  const n = await noise.mint("s3cret", 60_000, "d");
+  assert(/^d[0-9a-f]{12}$/.test(n.id));
+  assertEquals(await noise.verify("s3cret", n.id, n.sig), n.exp);
+  assertEquals(await noise.verify("other", n.id, n.sig), null);
+  assertEquals(await noise.verify("s3cret", n.id.replace(/.$/, (c) => (c === "0" ? "1" : "0")), n.sig), null);
+  assertEquals(await noise.verify("s3cret", n.id, n.sig.slice(0, -1) + (n.sig.endsWith("A") ? "B" : "A")), null);
+  assertEquals(await noise.verify("s3cret", n.id, null), null);
+  assertEquals(await noise.verify("s3cret", n.id, "garbage"), null);
+  assertEquals(await noise.verify("s3cret", n.id, n.sig, n.exp + 1), null);
+  assertEquals(await noise.derive("s3cret", n.id, "write"), await noise.derive("s3cret", n.id, "write"));
+  assert((await noise.derive("s3cret", n.id, "write")) !== (await noise.derive("s3cret", n.id, "read")));
+});
+
+Deno.test("demo rooms: nothing until a signed scan, then small, short and typing-only", async () => {
+  const mint = await (await handler(new Request(`${base}/api/demo/mint`))).json();
+  assert(!rooms.has(mint.id));
+  const status = (s: string) => handler(new Request(`${base}/api/demo/${mint.id}?s=${encodeURIComponent(s)}`));
+  assertEquals(await (await status(mint.sig)).json(), { alive: false, listeners: 0 });
+  assertEquals((await status("x.aaaaaaaaaaaaaaaaaaaaaa")).status, 404);
+  // a made-up or unsigned id never becomes a room
+  assertEquals((await handler(new Request(`${base}/api/room/dfeedfacecafe/stream?s=${encodeURIComponent(mint.sig)}`))).status, 404);
+  assertEquals((await handler(new Request(`${base}/api/room/${mint.id}/stream`))).status, 404);
+  assert(!rooms.has(mint.id));
+  // the first signed scan materialises it
+  const open = () => handler(new Request(`${base}/api/room/${mint.id}/stream?s=${encodeURIComponent(mint.sig)}`));
+  const a = await open(); const ra = a.body!.getReader();
+  assert(new TextDecoder().decode((await ra.read()).value).includes('"title":"StageType demo"'));
+  assertEquals(await (await status(mint.sig)).json(), { alive: true, listeners: 1 });
+  // the minting page's derived token writes; nothing else does
+  assertEquals((await post(`/api/room/${mint.id}`, { text: "hi", final: true, source: "typed" }, "nope")).status, 403);
+  assertEquals((await post(`/api/room/${mint.id}`, { text: "hi", final: true, source: "typed" }, mint.token)).status, 200);
+  assert(new TextDecoder().decode((await ra.read()).value).includes('"text":"hi"'));
+  // three listeners at most
+  const b = await open(), c = await open();
+  assertEquals((await open()).status, 503);
+  // expiry sweeps it
+  sweep(mint.exp + 1);
+  assert(!rooms.has(mint.id));
+  for (const r of [ra, b.body!.getReader(), c.body!.getReader()]) await r.cancel().catch(() => {});
 });

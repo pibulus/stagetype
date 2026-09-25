@@ -440,7 +440,9 @@ if (saved?.lines?.length) {
   seen = saved.seen || saved.lines.length;
   setState("saved", "Saved on this phone");
 }
-const es = new EventSource(`/api/room/${roomId}/stream`);
+// Demo links carry a signature; the relay turns it into a room on this first connection.
+const demoSig = new URLSearchParams(location.search).get("s");
+const es = new EventSource(`/api/room/${roomId}/stream${demoSig ? `?s=${encodeURIComponent(demoSig)}` : ""}`);
 
 es.addEventListener("open", () => setState("live", "Live"));
 

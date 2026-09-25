@@ -1,3 +1,5 @@
+import * as noise from "./signed_noise.ts";
+
 // StageType: one presenter speaks, many phones read along.
 // Zero deps. Rooms live in memory; a restart ends every talk.
 // ponytail: single-process in-memory rooms, move to Deno KV/Redis only if this ever runs on >1 instance.
@@ -13,6 +15,7 @@ type Room = {
   lines: string[]; // finalized sentences, the backlog late joiners get
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
   phone: { live: boolean; seen: number }; // the lapel mic: live while it heartbeats, lost after PHONE_LOST_MS
+  demo?: number; // demo rooms only: when they expire. Small, short, typing and browser speech only.
   listeners: Set<Listener>;
   touched: number;
   startedAt: number;
@@ -31,7 +34,13 @@ const DEEPGRAM_DEFAULT_URL = "wss://api.deepgram.com/v1/listen";
 const deepgramKey = () => Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 const deepgramUrl = () => Deno.env.get("DEEPGRAM_URL") ?? DEEPGRAM_DEFAULT_URL;
 const deepgramModel = () => Deno.env.get("DEEPGRAM_MODEL") ?? "nova-3";
-const PHONE_LOST_MS = 45_000; // a live phone that goes this long without a push is treated as dropped
+const PHONE_LOST_MS = 45_000;
+// The live demo on /demo: every visitor gets a signed-noise room id that only becomes a room when a
+// phone scans it. Set STAGETYPE_SECRET in production so demo QR codes survive a restart.
+const SECRET = Deno.env.get("STAGETYPE_SECRET") ?? crypto.randomUUID() + crypto.randomUUID();
+const DEMO_TTL_MS = 10 * 60_000;
+const DEMO_MAX_ROOMS = 200;
+const DEMO_MAX_LISTENERS = 3; // a live phone that goes this long without a push is treated as dropped
 
 export const rooms = new Map<string, Room>();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
@@ -116,7 +125,7 @@ function endRoom(key: string, room: Room) {
     try { l.ctrl.close(); } catch { /* already gone */ }
     drop(room, l);
   }
-  codes.delete(room.code);
+  if (room.code) codes.delete(room.code);
   rooms.delete(key);
 }
 
@@ -151,6 +160,18 @@ export async function handler(req: Request): Promise<Response> {
   if (get && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", head);
   // The bar on its own: any second screen, or an OBS browser source for a livestream
   if (get && /^\/ticker\/[a-z0-9]+$/.test(path)) return file("ticker.html", head);
+  if (get && path === "/demo") return file("demo.html", head);
+  // Mint a demo id. Stateless: nothing exists until a phone opens the signed link.
+  if (get && path === "/api/demo/mint") {
+    const n = await noise.mint(SECRET, DEMO_TTL_MS, "d");
+    return json({ id: n.id, sig: n.sig, exp: n.exp, token: await noise.derive(SECRET, n.id, "write") });
+  }
+  const demoStatus = path.match(/^\/api\/demo\/([a-z0-9]+)$/);
+  if (get && demoStatus) {
+    if (!await noise.verify(SECRET, demoStatus[1], url.searchParams.get("s"))) return json({ error: "not ours" }, 404);
+    const r = rooms.get(demoStatus[1]);
+    return json({ alive: !!r, listeners: r?.listeners.size ?? 0 });
+  }
   // Type-the-code entry for people who can't scan the projector
   if (get && (path === "/join" || path === "/live" || path === "/live/")) return file("join.html", head);
   if (get && /^\/j\/[A-Za-z]{4}$/.test(path)) {
@@ -204,6 +225,7 @@ export async function handler(req: Request): Promise<Response> {
     const offered = (req.headers.get("sec-websocket-protocol") ?? "").split(",").map((p) => p.trim());
     if (offered[0] !== "bearer" || !tokenOk(`Bearer ${offered[1] ?? ""}`, r.token)) return json({ error: "nope" }, 403);
     if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
+    if (r.demo) return json({ error: "not in the demo" }, 403);
     const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "bearer" });
     const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
     const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
@@ -212,6 +234,7 @@ export async function handler(req: Request): Promise<Response> {
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
+  if (m && m[2] && req.method === "GET" && !rooms.has(m[1])) await materialiseDemo(m[1], url.searchParams.get("s"));
   const room = m ? rooms.get(m[1]) : undefined;
   if (m && !room) return json({ error: "room gone" }, 404);
 
@@ -246,7 +269,7 @@ export async function handler(req: Request): Promise<Response> {
 
   // Audience listens (SSE; EventSource reconnects on its own)
   if (room && m![2] && req.method === "GET") {
-    if (room.listeners.size >= MAX_LISTENERS) return json({ error: "room full" }, 503);
+    if (room.listeners.size >= (room.demo ? DEMO_MAX_LISTENERS : MAX_LISTENERS)) return json({ error: "room full" }, 503);
     let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
@@ -332,6 +355,21 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
 }
 const roomKey = (room: Room) => { for (const [k, r] of rooms) if (r === room) return k; return ""; };
 
+// The first scan of a signed demo link turns noise into a room. The write token is derived from the
+// id, so the page that minted it can type into the room without the server ever having stored it.
+async function materialiseDemo(id: string, sig: string | null) {
+  const exp = await noise.verify(SECRET, id, sig);
+  if (!exp || rooms.has(id)) return;
+  let demos = 0;
+  for (const r of rooms.values()) if (r.demo) demos++;
+  if (demos >= DEMO_MAX_ROOMS || rooms.size >= MAX_ROOMS) return;
+  const now = Date.now();
+  rooms.set(id, {
+    token: await noise.derive(SECRET, id, "write"), code: "", title: "StageType demo",
+    lines: [], offset: 0, phone: { live: false, seen: 0 }, listeners: new Set(), touched: now, startedAt: now, demo: exp,
+  });
+}
+
 // Read a request body up to MAX_BODY bytes; null when it is larger.
 async function readBody(req: Request): Promise<string | null> {
   const declared = Number(req.headers.get("content-length") ?? 0);
@@ -367,7 +405,7 @@ async function file(name: string, isHead = false, type = "text/html; charset=utf
 
 export function sweep(now = Date.now()) {
   for (const [k, r] of rooms) {
-    if (now - r.touched > ROOM_TTL_MS) endRoom(k, r);
+    if (now - r.touched > ROOM_TTL_MS || (r.demo && now > r.demo)) endRoom(k, r);
   }
 }
 
@@ -376,6 +414,7 @@ const PORT = Number(Deno.env.get("PORT") ?? 8787);
 if (import.meta.main) {
   setInterval(sweep, 60_000);
   setInterval(checkPhones, 5_000);
+  setInterval(() => sweep(), 15_000); // demo rooms expire on the minute, not the half hour
   Deno.serve({ port: PORT, hostname: "0.0.0.0" }, handler);
   console.log(`presenter: http://localhost:${PORT}   phones: http://${lanIp()}:${PORT}`);
 }

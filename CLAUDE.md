@@ -17,6 +17,7 @@ deno task check    # TypeScript type-checking
 - Phone Lapel Mic: `GET /mic/:roomId#token`
 - Standalone Ticker: `GET /ticker/:roomId?style=ink|paper&face=…&weight=…&size=NNpx&depth=1-3&flow=live|settled&ring=…` (second screens, OBS)
 - Join by code: `GET /join` (also `/live`), `GET /j/:code` (302), `GET /api/join/:code` -> `{ id }`
+- Live demo: `GET /demo`, `GET /api/demo/mint` -> `{ id, sig, exp, token }`, `GET /api/demo/:id?s=` -> `{ alive, listeners }`. A signed demo id becomes a room on the first `GET /api/room/:id/stream?s=<sig>` (the reader forwards `?s=`). Demo rooms: 3 listeners, 10 min, no Deepgram, token = `derive(SECRET, id, "write")`. Env `STAGETYPE_SECRET` (random per process if unset).
 - Network Discovery: `GET /api/info` (returns LAN IP and port for QR encoding)
 - Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (favicon), `GET /deepgram.js` (client capture script)
 - Engines: `GET /api/engines` -> `{ browser, deepgram }`; `WS /api/room/:id/audio?source=&lang=` with subprotocol `["bearer", token]` streams PCM16 @ 16 kHz to Deepgram via the relay. Env: `DEEPGRAM_API_KEY` (off without it), `DEEPGRAM_MODEL` (nova-3), `DEEPGRAM_URL` (tests point it at a mock).
@@ -72,6 +73,10 @@ deno task check    # TypeScript type-checking
 ## 🎛️ Console layout (keep it this lean)
 - Header pills: Live state · mic source · reading count. Left column, top to bottom: **This Talk** (title, language, engine: everything set before Start), **Voice** (Start / Pause / End, notice, the typing box), **Stage Ticker** (Float, Second screen, Size, Style; face/weight/lines/flow/ring under a disclosure), **Transcript** (stat, Copy/.txt/.md, Previous talks). Right column: the QR card, with a ghost empty state before a talk.
 - Gone on purpose: the quickstart strip, the VU meter and Test mic button (the ghost is the meter), the Screen Overlay blurb. Don't bring them back; add guidance to empty states instead.
+
+## 🗺️ Strategy
+- ROADMAP.md holds the position, pricing model, numbers, guardrails and build order. Read it before proposing product work; update it when a decision changes. Licence change (MIT to AGPL) is Pablo's open decision: don't change it in code.
+- `signed_noise.ts` stays dependency-free and product-agnostic so it can be lifted into QR Buddy.
 
 ## 🧭 Presenter Rules
 - Space toggles mic pause/resume, never ends the talk. Ending is a deliberate click.

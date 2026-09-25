@@ -36,6 +36,10 @@ Part of the **TalkType** family.
 
 ---
 
+**Try it:** open `/demo` on a laptop, scan the code with your phone, type. The code is yours alone and only becomes a room when you scan it. Product thinking and the build order live in [ROADMAP.md](ROADMAP.md).
+
+---
+
 ## ✨ Why StageType?
 
 ### 1. The App-Switcher's Safety Net
@@ -119,6 +123,9 @@ stagetype/
 ├── mic.html          # Appendage lapel mic: wake lock, haptics, pocket guard
 ├── ticker.html       # The bar alone: second screens and OBS browser sources
 ├── join.html         # Four-letter code entry for people who can't scan
+├── demo.html         # Live demo: signed QR per visitor, type on the laptop, read on the phone
+├── signed_noise.ts   # Zero-dep HMAC ids that only become real when used (also for QR Buddy)
+├── ROADMAP.md        # Position, model, numbers, build order
 ├── ghost.svg         # Favicon / home-screen icon
 ├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
@@ -187,6 +194,9 @@ A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR c
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 | `GET` | `/api/engines` | none | `{ browser: true, deepgram: bool }` |
+| `GET` | `/demo` | none | The live demo: a private signed QR per visitor |
+| `GET` | `/api/demo/mint` | none | `{ id, sig, exp, token }`. Stores nothing |
+| `GET` | `/api/demo/:id?s=sig` | signature | `{ alive, listeners }` |
 | `WS` | `/api/room/:id/audio?source=mic\|phone&lang=xx` | subprotocol `bearer, <token>` | 16 kHz mono PCM in; `{ ready }`, `{ interim }`, `{ final }`, `{ error }` JSON back; send `{ "type": "stop" }` to finish |
 
 `offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
@@ -201,6 +211,8 @@ Fly, from a clone:
 fly launch --copy-config --no-deploy   # takes fly.toml as is; pick your own app name
 fly deploy
 ```
+
+Set a demo secret so `/demo` QR codes survive restarts: `fly secrets set STAGETYPE_SECRET=$(openssl rand -hex 32)`.
 
 `fly.toml` pins one machine that never sleeps (a sleeping machine ends every talk). The `Dockerfile` runs the relay with the exact permissions it needs and nothing more. Any Docker host works the same way: `docker build -t stagetype . && docker run -p 8787:8787 stagetype`, then put https in front of it.
 

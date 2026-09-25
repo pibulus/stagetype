@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fffef7">
+<title>StageType · Try it</title>
+<meta name="description" content="Live captions on every phone in the room. Scan the code and type.">
+<script src="/vendor/qrcode.js"></script>
+<link rel="stylesheet" href="/vendor/fonts.css">
+<style>
+  :root {
+    --ground: #fffef7; --paper: #fbf1e4; --ink: #1e1714; --line: #3a2e28;
+    --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
+    --muted: rgba(30, 23, 20, 0.66);
+    --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100dvh; color: var(--ink); background: var(--ground); font-family: var(--swiss); -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(rgba(30, 23, 20, 0.085) 1.1px, transparent 1.3px); background-size: 22px 22px;
+  }
+  ::selection { background: var(--pink); }
+  main { max-width: 1040px; margin: 0 auto; padding: 40px 20px 200px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; gap: 28px; padding-top: 24px; } }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .ghost { width: 46px; height: 46px; color: var(--ink); filter: drop-shadow(3px 3px 0 var(--pink)); animation: float 3.4s ease-in-out infinite; transition: filter .3s; }
+  body.connected .ghost { filter: drop-shadow(3px 3px 0 var(--mint)); animation-duration: 1.9s; }
+  .ghost .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.6s infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+  .wordmark { font-weight: 900; font-size: 1.4rem; letter-spacing: -0.04em; }
+  .wordmark::after { content: "."; color: var(--pink); }
+  h1 { margin: 0 0 16px; font-size: clamp(2.2rem, 5.4vw, 3.6rem); line-height: 1; letter-spacing: -0.045em; font-weight: 900; }
+  h1 em { font-style: normal; background: linear-gradient(transparent 58%, var(--pink) 58%, var(--pink) 92%, transparent 92%); }
+  .lede { margin: 0 0 26px; font-size: 1.1rem; line-height: 1.5; color: var(--muted); font-weight: 500; max-width: 30em; }
+  ol.steps { list-style: none; margin: 0 0 28px; padding: 0; display: grid; gap: 12px; }
+  ol.steps li { display: flex; gap: 12px; align-items: baseline; font-weight: 700; transition: opacity .3s; }
+  ol.steps li span {
+    flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; font-size: 12px; font-weight: 900;
+    border: 2px solid var(--line); box-shadow: 1.5px 1.5px 0 var(--line); background: var(--butter); transform: rotate(-6deg);
+    transition: background .3s, transform .3s var(--spring);
+  }
+  ol.steps li:nth-child(2) span { background: var(--mint); transform: rotate(5deg); }
+  ol.steps li:nth-child(3) span { background: var(--lilac); transform: rotate(-4deg); }
+  ol.steps li.done { opacity: .45; }
+  ol.steps li.done span { transform: rotate(0) scale(.9); }
+  ol.steps li.now span { transform: rotate(0) scale(1.15); }
+  .fine { font-size: .85rem; color: var(--muted); font-weight: 600; line-height: 1.45; margin: 0; }
+  .fine a { color: inherit; }
+
+  /* The card: signed noise until a phone scans it */
+  .card {
+    position: relative; background: var(--paper); border: 3px solid var(--line); border-radius: 28px; padding: 26px;
+    box-shadow: 8px 8px 0 var(--line); display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; overflow: hidden;
+  }
+  #noise { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .9; transition: opacity .9s ease; pointer-events: none; }
+  body.connected #noise { opacity: 0; }
+  .qr {
+    position: relative; line-height: 0; padding: 12px; background: var(--ground); border: 2.5px solid var(--line); border-radius: 18px;
+    box-shadow: 5px 5px 0 var(--pink); transition: box-shadow .4s var(--spring), transform .4s var(--spring);
+  }
+  .qr svg { width: min(62vw, 230px); height: min(62vw, 230px); display: block; }
+  body.connected .qr { box-shadow: 5px 5px 0 var(--mint); transform: rotate(-1.5deg) scale(.96); }
+  .qr.pop { animation: pop .5s var(--spring); }
+  @keyframes pop { from { transform: scale(.86) rotate(3deg); opacity: .3; } }
+  #status { position: relative; margin: 0; font-weight: 800; font-size: 1.02rem; display: inline-flex; align-items: center; gap: 8px; }
+  #status i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--line); background: var(--butter); animation: breathe 1.4s ease-in-out infinite; }
+  body.connected #status i { background: #51cf66; }
+  @keyframes breathe { 50% { transform: scale(1.25); } }
+  #link { position: relative; font: 700 .76rem ui-monospace, Menlo, monospace; color: var(--muted); word-break: break-all; margin: 0; max-width: 100%; }
+  .type { position: relative; width: 100%; display: none; }
+  body.connected .type { display: block; }
+  #typed {
+    width: 100%; font: 700 1.05rem var(--swiss); color: var(--ink); background: var(--ground); border: 2.5px solid var(--line);
+    border-radius: 14px; padding: 13px 14px; box-shadow: 3px 3px 0 var(--line); transition: box-shadow .2s var(--spring);
+  }
+  #typed:focus { outline: none; box-shadow: 3px 3px 0 var(--mint); }
+  #typed::placeholder { color: var(--muted); font-weight: 500; }
+  button {
+    font: 800 .95rem var(--swiss); color: var(--ink); background: var(--mint); border: 2.5px solid var(--line); border-radius: 999px;
+    padding: 12px 22px; cursor: pointer; box-shadow: 3px 3px 0 var(--line); transition: transform .22s var(--spring), box-shadow .22s var(--spring);
+  }
+  @media (hover: hover) { button:hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); } }
+  button:active { transform: translate(2px, 2px) scale(.97); box-shadow: 0 0 0 var(--line); transition-duration: .06s; }
+  button:focus-visible, #typed:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+  button[hidden] { display: none; }
+
+  /* The stage bar, same as the real ticker */
+  #ticker {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(92vw, 1100px);
+    padding: 18px 30px; min-height: 1.2em; background: rgba(30, 23, 20, 0.95); color: var(--ground); border-radius: 22px;
+    font: 700 clamp(22px, 3.2vw, 36px)/1.25 var(--swiss); letter-spacing: -0.01em;
+    box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.35); max-height: calc(2 * 1.25em + 36px); overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end; transition: box-shadow .3s;
+  }
+  body.connected #ticker { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.35); }
+  #ticker .prev { opacity: .55; font-weight: 500; }
+  #ticker .fresh { animation: land .55s ease-out; }
+  #ticker .interim { color: var(--pink); }
+  #ticker .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -.1em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  #ticker:empty::before { content: "Whatever you type lands here, and on your phone"; opacity: .38; font-weight: 500; }
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 18px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes caret { to { opacity: 0; } }
+
+  /* On a phone already: no second screen to scan */
+  .mobile-note { display: none; }
+  @media (pointer: coarse) and (max-width: 820px) {
+    .card, ol.steps { display: none; }
+    .mobile-note { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <div class="brand">
+      <svg class="ghost" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false"><path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/><path class="eye" fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/><path class="eye" fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/></svg>
+      <span class="wordmark">StageType</span>
+    </div>
+    <h1>The room reads <em>along</em>.</h1>
+    <p class="lede">Live captions on every phone in the room. No app, no account, no demo call. Scan the code, and the phone in your hand becomes the audience.</p>
+    <ol class="steps" id="steps">
+      <li class="now"><span>1</span>Scan the code with your phone camera.</li>
+      <li><span>2</span>Type something here and press Enter.</li>
+      <li><span>3</span>Watch it land on your phone, in your font, your size, your theme.</li>
+    </ol>
+    <div class="mobile-note">
+      <p class="fine" style="font-size:1rem">You're already on a phone, so there's nothing to scan. Open this page on a laptop to try it properly, or watch a short sample here.</p>
+      <button id="sample">Play a sample</button>
+    </div>
+    <p class="fine" style="margin-top:18px">This code is yours alone. It isn't anything until you scan it, and it's gone in ten minutes. <a href="https://github.com/pibulus/stagetype">Open source</a> and free to self-host.</p>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <canvas id="noise" aria-hidden="true"></canvas>
+    <div class="qr" id="qr" role="img" aria-label="QR code for your private demo room"></div>
+    <p id="status"><i></i><span id="statusText">Waiting for your phone</span></p>
+    <p id="link"></p>
+    <div class="type">
+      <input id="typed" type="text" autocomplete="off" placeholder="Type a caption and press Enter" aria-label="Type a caption">
+    </div>
+  </section>
+</main>
+<div id="ticker" aria-live="polite"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let demo = null, finals = [], interim = "", connected = false, poll = null;
+
+function render() {
+  const tail = finals.slice(-2);
+  let html = "";
+  if (tail.length > 1) html += `<span class="prev">${esc(tail[0])}</span> `;
+  if (tail.length) html += `<span class="fresh">${esc(tail[tail.length - 1])}</span>`;
+  if (interim) html += ` <span class="interim">${esc(interim)}</span>`;
+  $("#ticker").innerHTML = html ? `<div>${html}</div>` : "";
+}
+function step(n) {
+  document.querySelectorAll("#steps li").forEach((li, i) => { li.classList.toggle("done", i < n); li.classList.toggle("now", i === n); });
+}
+
+// Pastel static around the code. It's decoration, so it stays off the code itself and stops once a phone connects.
+function startNoise() {
+  const c = $("#noise"), ctx = c.getContext("2d");
+  const colours = ["#ffb3d1", "#b8f0d8", "#d9c8ff", "#fff0a8", "#3a2e28"];
+  let frame = 0;
+  const draw = () => {
+    if (connected) return;
+    const w = c.width = c.clientWidth, h = c.height = c.clientHeight;
+    const q = $("#qr").getBoundingClientRect(), box = c.getBoundingClientRect();
+    const qx = q.left - box.left - 6, qy = q.top - box.top - 6, qw = q.width + 12, qh = q.height + 12;
+    for (let i = 0; i < (w * h) / 180; i++) {
+      const x = Math.random() * w, y = Math.random() * h;
+      if (x > qx && x < qx + qw && y > qy && y < qy + qh) continue;
+      ctx.fillStyle = colours[(Math.random() * colours.length) | 0];
+      ctx.globalAlpha = Math.random() * 0.5;
+      ctx.fillRect(x | 0, y | 0, 2, 2);
+    }
+    if (!reduced && frame++ < 100000) setTimeout(() => requestAnimationFrame(draw), 90);
+  };
+  draw();
+}
+
+async function mint() {
+  demo = await fetch("/api/demo/mint").then((r) => r.json());
+  const url = `${location.origin}/live/${demo.id}?s=${encodeURIComponent(demo.sig)}`;
+  const qr = qrcode(0, "M"); qr.addData(url); qr.make();
+  $("#qr").innerHTML = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
+  $("#qr").classList.remove("pop"); void $("#qr").offsetWidth; $("#qr").classList.add("pop");
+  $("#link").textContent = url;
+  $("#link").dataset.url = url;
+  startNoise();
+  clearInterval(poll);
+  poll = setInterval(check, 1500);
+  setTimeout(expire, demo.exp - Date.now());
+}
+
+async function check() {
+  const s = await fetch(`/api/demo/${demo.id}?s=${encodeURIComponent(demo.sig)}`).then((r) => r.json()).catch(() => ({}));
+  if (s.alive && s.listeners > 0 && !connected) {
+    connected = true;
+    document.body.classList.add("connected");
+    $("#statusText").textContent = "Your phone is here. Type something.";
+    step(1);
+    $("#typed").focus();
+    listen();
+  }
+}
+
+// The desktop reads the same room the phone does, so the bar shows exactly what the phone shows.
+function listen() {
+  const es = new EventSource(`/api/room/${demo.id}/stream?s=${encodeURIComponent(demo.sig)}`);
+  es.addEventListener("final", (e) => { const { text } = JSON.parse(e.data); if (text) finals.push(text); interim = ""; render(); });
+  es.addEventListener("interim", (e) => { interim = JSON.parse(e.data).text || ""; render(); });
+  es.addEventListener("end", () => { es.close(); expire(); });
+}
+
+const push = (body) => fetch(`/api/room/${demo.id}`, {
+  method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${demo.token}` },
+  body: JSON.stringify({ ...body, source: "typed" }),
+}).catch(() => {});
+let t = null;
+$("#typed").addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => push({ text: $("#typed").value, final: false }), 200); });
+$("#typed").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault(); clearTimeout(t);
+  const text = $("#typed").value.trim();
+  $("#typed").value = "";
+  push({ text, final: !!text });
+  if (text) step(2);
+});
+
+function expire() {
+  clearInterval(poll);
+  $("#typed").disabled = true;
+  $("#statusText").textContent = "This demo room has closed. Refresh for a fresh one.";
+}
+
+// Phones: a short sample plays into the bar instead.
+$("#sample").onclick = async () => {
+  $("#sample").hidden = true;
+  const lines = ["Hi, I'm speaking at the front of the room.", "Everyone here reads along on their own phone.", "Big text, their theme, their language soon.", "And when I finish, they keep the transcript."];
+  for (const line of lines) {
+    for (let i = 1; i <= line.length; i += 3) { interim = line.slice(0, i); render(); await new Promise((r) => setTimeout(r, 45)); }
+    interim = ""; finals.push(line); render();
+    await new Promise((r) => setTimeout(r, 900));
+  }
+  $("#sample").hidden = false; $("#sample").textContent = "Play it again";
+};
+
+render();
+mint();
+</script>
+</body>
+</html>

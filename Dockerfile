@@ -1,7 +1,7 @@
 # StageType on the open web: one small box, one process, rooms in memory.
 FROM denoland/deno:2.9.7
 WORKDIR /app
-COPY deno.json deno.lock server.ts ./
+COPY deno.json deno.lock server.ts signed_noise.ts ./
 COPY *.html ghost.svg deepgram.js ./
 COPY vendor ./vendor
 RUN deno cache server.ts
