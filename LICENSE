@@ -22,3 +22,7 @@ SOFTWARE.
 
 vendor/qrcode.js is QR Code Generator for JavaScript, copyright (c) 2009
 Kazuhiko Arase, also MIT licensed (see its header).
+
+vendor/fonts/ contains Inter (The Inter Project Authors), Atkinson
+Hyperlegible (Braille Institute of America), Fraunces (Undercase Type) and
+JetBrains Mono (JetBrains), each under the SIL Open Font License 1.1.

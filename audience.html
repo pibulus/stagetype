@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/vendor/fonts.css">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbf1e4">
 <title>StageType Live Reader</title>
@@ -88,6 +89,15 @@
   .swatch[data-t="espresso"] { background: linear-gradient(135deg, #1e1714 50%, #fbf1e4 50%); }
   .swatch[data-t="contrast"] { background: linear-gradient(135deg, #fff0a8 50%, #1e1714 50%); }
   .swatch[data-t="night"]    { background: linear-gradient(135deg, #1e1714 50%, #fff0a8 50%); }
+  select {
+    font: 800 14px var(--swiss); color: var(--ink); background: var(--ground);
+    border: 2.5px solid var(--line); border-radius: 999px; height: 40px; padding: 0 14px; width: 100%;
+  }
+  select:focus-visible { outline: 3px solid var(--pill); outline-offset: 3px; }
+  .seg { display: flex; width: 100%; border: 2.5px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button { flex: 1; height: 32px; min-width: 0; padding: 0 8px; border: none; box-shadow: none; font-size: 13px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+  .seg button:active { transform: scale(.96); }
   .wide { width: 100%; justify-content: flex-start; }
   .wide[aria-pressed="true"] { background: var(--pill); color: #1e1714; }
 
@@ -98,16 +108,12 @@
   #talkTitle[hidden] { display: none; }
   #talkTitle + #feed { padding-top: 12px; }
 
-  /* Plain rooms: neutral highlighter, no confetti, no wink */
-  :root[data-playful="0"] #feed p.fresh span { background-image: linear-gradient(color-mix(in srgb, var(--ink) 10%, transparent), color-mix(in srgb, var(--ink) 10%, transparent)); }
-  :root[data-playful="0"] #interim { background: color-mix(in srgb, var(--ink) 8%, transparent); }
-  :root[data-playful="0"] #endCard h2::after { content: none; }
-  :root[data-playful="0"] #bar[data-state="ended"] .live-badge { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
-
   /* Feed Area */
-  #feed { padding: 24px 20px 160px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto; }
+  #feed { padding: 24px 20px 160px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto;
+    font-family: var(--face, var(--face-system)); font-weight: var(--weight, 400); }
   #feed p { margin: 0 0 .75em; opacity: .78; transition: opacity .6s ease; }
-  #feed p.fresh { opacity: 1; font-weight: 600; }
+  #feed p.fresh { opacity: 1; font-weight: min(700, calc(var(--weight, 400) + 200)); }
+  :root[data-flow="settled"] #interim { display: none; }
   #feed p.fresh span {
     background-image: linear-gradient(color-mix(in srgb, var(--pill) 55%, transparent), color-mix(in srgb, var(--pill) 55%, transparent));
     background-repeat: no-repeat; background-size: 0% 45%; background-position: 0 85%;
@@ -159,14 +165,6 @@
   #endCard { position: relative; overflow: hidden; animation: cardIn .5s var(--spring); }
   @keyframes cardIn { from { transform: translateY(20px) rotate(-1deg) scale(.96); opacity: 0; } }
   #endCard h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.03em; font-weight: 900; }
-  #endCard h2::after { content: "."; color: var(--pill); }
-  .confetti { position: absolute; inset: 0; pointer-events: none; }
-  .confetti i {
-    position: absolute; top: -12px; width: 9px; height: 13px; border: 1.5px solid var(--line); border-radius: 2px;
-    animation: fall var(--d, 2.2s) cubic-bezier(.3, .6, .6, 1) var(--w, 0s) both;
-    left: var(--x); background: var(--c); transform: rotate(var(--r));
-  }
-  @keyframes fall { 0% { transform: translateY(0) rotate(var(--r)); opacity: 1; } 100% { transform: translateY(260px) rotate(calc(var(--r) + 300deg)); opacity: 0; } }
   #endCard p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.4; }
   #endCard .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   #endCard .actions button { flex: 1 1 130px; height: 46px; }
@@ -217,6 +215,31 @@
           <button class="swatch" data-t="night" aria-label="Night theme"></button>
         </div>
       </div>
+      <div class="panel-row">
+        <span class="panel-label">Typeface</span>
+        <select id="face" aria-label="Typeface">
+          <option value="system">System</option>
+          <option value="inter">Inter</option>
+          <option value="atkinson">Atkinson Hyperlegible</option>
+          <option value="fraunces">Fraunces</option>
+          <option value="mono">JetBrains Mono</option>
+        </select>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">Weight</span>
+        <div class="seg" id="weightSeg">
+          <button data-v="400" aria-pressed="false">Regular</button>
+          <button data-v="500" aria-pressed="false">Medium</button>
+          <button data-v="700" aria-pressed="false">Bold</button>
+        </div>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">Flow</span>
+        <div class="seg" id="flowSeg">
+          <button data-v="live" aria-pressed="false">Live words</button>
+          <button data-v="settled" aria-pressed="false">Settled</button>
+        </div>
+      </div>
       <button id="loose" class="wide" aria-pressed="false">Loose spacing</button>
       <button class="wide copy-btn">Copy transcript</button>
       <button class="wide" id="printBtn">Print or Save PDF</button>
@@ -239,8 +262,7 @@
 <button id="jump" hidden>Jump to live</button>
 
 <section id="endCard" role="status" hidden>
-  <div class="confetti" aria-hidden="true"></div>
-  <h2>That's a wrap</h2>
+  <h2>Talk ended</h2>
   <p class="sub">The transcript above stays readable. Take it along with you.</p>
   <div class="actions">
     <button class="copy-btn">Copy transcript</button>
@@ -266,6 +288,9 @@ const store = {
 let size = Number(store.get("stl-size")) || 22;
 let theme = store.get("stl-theme") || "cream";
 let loose = store.get("stl-loose") === "1";
+let face = store.get("stl-face") || "system";
+let weight = store.get("stl-weight") || "400";
+let flow = store.get("stl-flow") || "live";
 const themeColor = { cream: "#fbf1e4", espresso: "#1e1714", contrast: "#fff0a8", night: "#1e1714" };
 
 function applyPrefs() {
@@ -276,6 +301,13 @@ function applyPrefs() {
   $("#sizeLabel").textContent = size + "px";
   $$(".swatch").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.t === theme)));
   $("#loose").setAttribute("aria-pressed", String(loose));
+  document.documentElement.style.setProperty("--face", `var(--face-${face})`);
+  document.documentElement.style.setProperty("--weight", weight);
+  document.documentElement.dataset.face = face;
+  document.documentElement.dataset.flow = flow;
+  $("#face").value = face;
+  $$("#weightSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === weight)));
+  $$("#flowSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === flow)));
 }
 applyPrefs();
 
@@ -283,6 +315,9 @@ $("#bigger").onclick = () => { size = Math.min(56, size + 3); store.set("stl-siz
 $("#smaller").onclick = () => { size = Math.max(14, size - 3); store.set("stl-size", size); applyPrefs(); };
 $$(".swatch").forEach((s) => s.onclick = () => { theme = s.dataset.t; store.set("stl-theme", theme); applyPrefs(); });
 $("#loose").onclick = () => { loose = !loose; store.set("stl-loose", loose ? "1" : "0"); applyPrefs(); };
+$("#face").onchange = () => { face = $("#face").value; store.set("stl-face", face); applyPrefs(); };
+$$("#weightSeg button").forEach((b) => b.onclick = () => { weight = b.dataset.v; store.set("stl-weight", weight); applyPrefs(); });
+$$("#flowSeg button").forEach((b) => b.onclick = () => { flow = b.dataset.v; store.set("stl-flow", flow); applyPrefs(); });
 
 const atBottom = () => innerHeight + scrollY >= document.body.scrollHeight - 80;
 let following = true;
@@ -301,18 +336,14 @@ const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight
 const linesArr = [];
 let totalWords = 0;
 let talkTitle = "";
-let playful = true;
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
 
 function applyRoom(info) {
   talkTitle = info.title || "";
-  playful = info.playful !== false;
-  document.documentElement.dataset.playful = playful ? "1" : "0";
   $("#talkTitle").textContent = talkTitle;
   $("#talkTitle").hidden = !talkTitle;
   document.title = talkTitle ? `${talkTitle} · StageType` : "StageType Live Reader";
-  $("#endCard h2").textContent = playful ? "That's a wrap" : "Talk ended";
 }
 
 function updateStats() {
@@ -408,23 +439,6 @@ es.addEventListener("interim", (e) => {
   follow();
 });
 
-function throwConfetti() {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const colours = ["#ffb3d1", "#b8f0d8", "#d9c8ff", "#fff0a8"];
-  const box = $(".confetti");
-  box.innerHTML = "";
-  for (let i = 0; i < 26; i++) {
-    const bit = document.createElement("i");
-    bit.style.setProperty("--x", `${Math.random() * 100}%`);
-    bit.style.setProperty("--c", colours[i % 4]);
-    bit.style.setProperty("--r", `${Math.random() * 360}deg`);
-    bit.style.setProperty("--d", `${1.8 + Math.random() * 1.4}s`);
-    bit.style.setProperty("--w", `${Math.random() * 0.6}s`);
-    box.append(bit);
-  }
-  setTimeout(() => (box.innerHTML = ""), 3500);
-}
-
 function talkOver(label) {
   es.close();
   interimEl.textContent = "";
@@ -432,12 +446,11 @@ function talkOver(label) {
   $("#jump").hidden = true;
   if (linesArr.length) {
     $("#endCard").hidden = false;
-    if (playful) throwConfetti();
     if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   }
 }
 
-es.addEventListener("end", () => talkOver(playful ? "That's a wrap" : "Talk ended"));
+es.addEventListener("end", () => talkOver("Talk ended"));
 
 es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {

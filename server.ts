@@ -7,7 +7,6 @@ type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: Retur
 type Room = {
   token: string;
   title: string; // shown on every phone and in the export; "" when the presenter left it blank
-  playful: boolean; // false = front-of-house pages drop confetti, jokes and coloured rings
   lines: string[]; // finalized sentences, the backlog late joiners get
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
   listeners: Set<Listener>;
@@ -96,27 +95,30 @@ export async function handler(req: Request): Promise<Response> {
   if (get && /^\/live\/[a-z0-9]+$/.test(path)) return file("audience.html", head);
   // Phone as the mic: the write token rides in the URL #fragment, which browsers never send to the server
   if (get && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", head);
-  if (get && path === "/vendor/qrcode.js") return file("vendor/qrcode.js", head, "text/javascript; charset=utf-8");
+  // Vendored assets: the QR encoder, the curated fonts and their stylesheet. Strict allowlist of names, long cache.
+  if (get && /^\/vendor\/(fonts\/)?[a-z0-9-]+\.(js|css|woff2)$/.test(path)) {
+    const type = path.endsWith(".js") ? "text/javascript; charset=utf-8" : path.endsWith(".css") ? "text/css; charset=utf-8" : "font/woff2";
+    return file(path.slice(1), head, type, true);
+  }
   if (get && (path === "/ghost.svg" || path === "/favicon.ico")) return file("ghost.svg", head, "image/svg+xml");
   // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
   if (get && path === "/api/info") {
     return isLoopbackHost(req) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
   }
 
-  // Presenter opens a room, optionally with a title and the playful switch
+  // Presenter opens a room, optionally with a title
   if (req.method === "POST" && path === "/api/room") {
     if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
     const raw = await readBody(req);
     if (raw === null) return json({ error: "too big" }, 413);
-    let opts: { title?: unknown; playful?: unknown } = {};
+    let opts: { title?: unknown } = {};
     if (raw.trim()) { try { opts = JSON.parse(raw) ?? {}; } catch { return json({ error: "bad json" }, 400); } }
     const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
-    const playful = opts.playful !== false;
     const roomId = id(8);
     const token = id(32);
     const now = Date.now();
-    rooms.set(roomId, { token, title, playful, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
-    return json({ id: roomId, token, title, playful });
+    rooms.set(roomId, { token, title, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
+    return json({ id: roomId, token, title });
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
@@ -144,7 +146,7 @@ export async function handler(req: Request): Promise<Response> {
     } else {
       send(room, "interim", { text });
     }
-    return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title, playful: room.playful });
+    return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title });
   }
 
   // Presenter ends the talk
@@ -160,7 +162,7 @@ export async function handler(req: Request): Promise<Response> {
     let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
-        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title, playful: room.playful });
+        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title });
         c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
         const ping = setInterval(() => {
           try { c.enqueue(enc.encode(": ping\n\n")); } catch { drop(room, me); }
@@ -196,13 +198,17 @@ async function readBody(req: Request): Promise<string | null> {
   return dec.decode(out);
 }
 
-async function file(name: string, isHead = false, type = "text/html; charset=utf-8") {
-  const body = isHead ? null : await Deno.readFile(new URL(name, import.meta.url));
+async function file(name: string, isHead = false, type = "text/html; charset=utf-8", immutable = false) {
+  let body: Uint8Array<ArrayBuffer> | null = null;
+  if (!isHead) {
+    try { body = await Deno.readFile(new URL(name, import.meta.url)); } catch { return new Response("not here", { status: 404 }); }
+  }
   return new Response(body, {
     headers: {
       "content-type": type,
       "x-content-type-options": "nosniff",
       "referrer-policy": "no-referrer",
+      "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
     },
   });
 }

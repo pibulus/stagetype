@@ -45,21 +45,17 @@ Deno.test("room lifecycle: create, auth, backlog, stream, end, ttl", async () =>
   assertEquals((await handler(new Request(`${base}/api/room/${id}/stream`))).status, 404);
 });
 
-Deno.test("room carries a trimmed title and the playful switch", async () => {
-  const r = await (await post("/api/room", { title: "  COMP1010   Week 3 " + "x".repeat(200), playful: false })).json();
-  assertEquals(r.playful, false);
+Deno.test("room carries a trimmed title", async () => {
+  const r = await (await post("/api/room", { title: "  COMP1010   Week 3 " + "x".repeat(200) })).json();
   assert(r.title.startsWith("COMP1010 Week 3 x") && r.title.length === 80);
   const s = await openStream(r.id);
-  const hello = await s.read();
-  assert(hello.includes('"playful":false') && hello.includes('"title":"COMP1010 Week 3'));
+  assert((await s.read()).includes('"title":"COMP1010 Week 3'));
   await s.reader.cancel();
   const echo = await (await post(`/api/room/${r.id}`, { text: "hi", final: true }, r.token)).json();
-  assertEquals(echo.playful, false);
+  assertEquals(echo.title, r.title);
   await del(`/api/room/${r.id}`, r.token);
-  // defaults: no body at all still works, playful on, empty title
-  const d = await mkRoom() as { id: string; token: string; title: string; playful: boolean };
+  const d = await mkRoom() as { id: string; token: string; title: string };
   assertEquals(d.title, "");
-  assertEquals(d.playful, true);
   await del(`/api/room/${d.id}`, d.token);
 });
 
@@ -153,6 +149,15 @@ Deno.test("pages and the vendored QR encoder are served", async () => {
   assert(js.headers.get("content-type")!.startsWith("text/javascript"));
   assert((await js.text()).includes("var qrcode"));
   assertEquals((await handler(new Request(`${base}/ghost.svg`))).headers.get("content-type"), "image/svg+xml");
+  const css = await handler(new Request(`${base}/vendor/fonts.css`));
+  assertEquals(css.headers.get("content-type"), "text/css; charset=utf-8");
+  assert((await css.text()).includes("Atkinson Hyperlegible"));
+  const woff = await handler(new Request(`${base}/vendor/fonts/inter-latin-wght-normal.woff2`));
+  assertEquals(woff.status, 200);
+  assertEquals(woff.headers.get("content-type"), "font/woff2");
+  assert(woff.headers.get("cache-control")!.includes("immutable"));
+  assertEquals((await handler(new Request(`${base}/vendor/fonts/nope.woff2`))).status, 404);
+  assertEquals((await handler(new Request(`${base}/vendor/../server.ts`))).status, 404);
   assertEquals((await handler(new Request(`${base}/live/../server.ts`))).status, 404);
   assertEquals((await handler(new Request(`${base}/nope`))).status, 404);
 });

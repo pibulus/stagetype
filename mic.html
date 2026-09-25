@@ -228,9 +228,8 @@ async function push(body) {
   }
 }
 
-let words = 0, listeners = 0, playful = true;
+let words = 0, listeners = 0;
 function applyRoom(j) {
-  if (typeof j.playful === "boolean") playful = j.playful;
   if (typeof j.title === "string") { $("#talk").textContent = j.title; $("#talk").hidden = !j.title; if (j.title) document.title = `${j.title} · Lapel mic`; }
 }
 function stats() {
@@ -355,12 +354,10 @@ $("#end").onclick = async () => {
     headers: { authorization: `Bearer ${token}` }
   }).catch(() => {});
 
-  $("#stateText").textContent = playful ? "That's a wrap" : "Talk ended";
+  $("#stateText").textContent = "Talk ended";
   $("#go").disabled = true;
   $("#end").hidden = true;
-  $("#err").textContent = playful
-    ? `${words} words landed on every phone in the room. Nice one.`
-    : `${words} words captioned. The transcript is on every phone in the room.`;
+  $("#err").textContent = `${words} words captioned. The transcript is on every phone in the room.`;
 };
 
 if (token) push({ ping: true });

@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StageType · Presenter Console</title>
 <script src="/vendor/qrcode.js"></script>
+<link rel="stylesheet" href="/vendor/fonts.css">
 <style>
   :root {
     --paper: #fbf1e4; --ground: #fffef7; --ink: #1e1714; --line: #3a2e28;
@@ -108,6 +109,7 @@
   button, select {
     font: 800 0.95rem var(--swiss); color: var(--ink); background: var(--pink);
     border: 2.5px solid var(--line); border-radius: 999px; padding: 12px 20px; cursor: pointer;
+    font-family: var(--swiss);
     box-shadow: 3px 3px 0 var(--line);
     transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -124,8 +126,6 @@
   }
   button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--line); }
   #startBtn { padding: 14px 26px; font-size: 1.05rem; }
-  #startBtn:not(:hover) { animation: nudge 5s ease-in-out infinite; }
-  @keyframes nudge { 0%, 88%, 100% { transform: none; } 92% { transform: translate(-1px, -2px) rotate(-1.5deg); } 96% { transform: translate(1px, 0) rotate(1deg); } }
   button.mint { background: var(--mint); }
   button.lilac { background: var(--lilac); }
   button.butter { background: var(--butter); }
@@ -147,25 +147,6 @@
   .text-input::placeholder { color: var(--muted); font-weight: 500; }
   .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
   .text-input:disabled { opacity: .7; }
-  .switch { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
-  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-  .switch-track {
-    flex: none; width: 46px; height: 26px; border-radius: 999px; background: var(--ground);
-    border: 2.5px solid var(--line); position: relative; transition: background .2s;
-    box-shadow: inset 2px 2px 0 rgba(30, 23, 20, 0.12);
-  }
-  .switch-knob {
-    position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
-    background: var(--ink); transition: transform .28s var(--spring);
-  }
-  .switch input:checked + .switch-track { background: var(--mint); }
-  .switch input:checked + .switch-track .switch-knob { transform: translateX(20px); }
-  .switch input:focus-visible + .switch-track { outline: 3px solid var(--pink); outline-offset: 3px; }
-  .switch input:disabled ~ * { opacity: .7; cursor: default; }
-  .switch-text { display: flex; flex-direction: column; line-height: 1.25; }
-  .switch-text b { font-size: 0.95rem; }
-  .switch-text small { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
-
   /* Audio Meter */
   .meter-box {
     background: var(--ground); border: 2.5px solid var(--line); border-radius: 16px;
@@ -201,6 +182,19 @@
   body[data-live="1"] #liveBadge { background: var(--mint); box-shadow: 0 0 0 4px rgba(184, 240, 216, 0.45); }
   #countBadge.bump { animation: bump .45s var(--spring); }
   @keyframes bump { 30% { transform: scale(1.18) rotate(-3deg); } 100% { transform: none; } }
+
+  /* Stage ticker options */
+  .opt-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; }
+  .opt-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .opt-select { font: 800 12px var(--swiss); padding: 7px 12px; box-shadow: none; border-width: 2px; justify-self: start; }
+  .ring-row { display: flex; gap: 8px; }
+  .ring {
+    width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); box-shadow: none; border-width: 2px;
+    transition: transform .22s var(--spring);
+  }
+  .ring[aria-checked="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .ring:hover { transform: scale(1.15); }
+  .ring:not(:disabled):active { transform: scale(.92); box-shadow: none; }
 
   /* Segmented Ticker Sizer */
   .segmented-control {
@@ -289,13 +283,13 @@
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
     width: min(92vw, 1340px); min-height: 1.2em; padding: 20px 34px;
     background: rgba(30, 23, 20, 0.94); color: #fffef7; border-radius: 24px;
-    font: 700 var(--ticker-size, 38px)/1.25 var(--swiss); letter-spacing: -0.01em;
+    font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.25 var(--ticker-face, var(--face-system)); letter-spacing: -0.01em;
     display: flex; flex-direction: column; justify-content: flex-end;
-    max-height: calc(2.6em + 42px); overflow: hidden;
+    max-height: calc(var(--ticker-depth, 2) * 1.3em + 42px); overflow: hidden;
     box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4);
     z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
   }
-  #ticker .prev { opacity: 0.55; font-weight: 500; }
+  #ticker .prev { opacity: 0.55; font-weight: max(300, calc(var(--ticker-weight, 700) - 200)); }
   #ticker .fresh-lead { color: #fffef7; font-weight: 700; animation: land .55s ease-out; }
   #ticker .interim { color: var(--pink); opacity: 0.9; }
   #ticker .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
@@ -304,11 +298,13 @@
   @keyframes caret { to { opacity: 0; } }
   #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
   body[data-live="1"] #ticker { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
-  /* Plain (playful off): the bar the room sees is ink only, no coloured ring, no glow, no caret */
-  #ticker.plain, body[data-live="1"] #ticker.plain { box-shadow: 0 0 0 3px var(--ground), 0 18px 52px rgba(30, 23, 20, 0.4); }
-  #ticker.plain .fresh-lead { animation: none; }
-  #ticker.plain .interim { color: var(--butter); }
-  #ticker.plain .interim::after { display: none; }
+  /* Ring colour is the presenter's choice; the mint live ring is only the default */
+  #ticker[data-ring="pink"], body[data-live="1"] #ticker[data-ring="pink"] { box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="mint"], body[data-live="1"] #ticker[data-ring="mint"] { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="lilac"], body[data-live="1"] #ticker[data-ring="lilac"] { box-shadow: 0 0 0 3px var(--lilac), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="butter"], body[data-live="1"] #ticker[data-ring="butter"] { box-shadow: 0 0 0 3px var(--butter), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="none"], body[data-live="1"] #ticker[data-ring="none"] { box-shadow: 0 0 0 3px var(--ground), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-flow="settled"] .interim { display: none; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
@@ -349,11 +345,6 @@
         <span class="section-label">This Talk</span>
         <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
                placeholder="Title, e.g. COMP1010 Week 3 or Mesa Cosa live" aria-label="Talk title">
-        <label class="switch" for="playful">
-          <input id="playful" type="checkbox" checked>
-          <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
-          <span class="switch-text"><b>Playful details</b><small>Confetti and a wink on the phones. Off keeps the room plain.</small></span>
-        </label>
       </div>
 
       <div class="panel-section">
@@ -379,11 +370,47 @@
       </div>
 
       <div class="panel-section">
-        <span class="section-label">Ticker Font Size</span>
-        <div class="segmented-control">
-          <button class="seg-btn" data-sz="28px">Compact</button>
-          <button class="seg-btn active" data-sz="38px">Standard</button>
-          <button class="seg-btn" data-sz="50px">Jumbotron</button>
+        <span class="section-label">Stage Ticker</span>
+        <div class="opt-grid">
+          <span class="opt-label">Size</span>
+          <div class="segmented-control" data-pref="size">
+            <button class="seg-btn" data-v="28px">Compact</button>
+            <button class="seg-btn" data-v="38px">Standard</button>
+            <button class="seg-btn" data-v="50px">Jumbotron</button>
+          </div>
+          <span class="opt-label">Face</span>
+          <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
+            <option value="system">System (Helvetica)</option>
+            <option value="inter">Inter</option>
+            <option value="atkinson">Atkinson Hyperlegible</option>
+            <option value="fraunces">Fraunces</option>
+            <option value="mono">JetBrains Mono</option>
+          </select>
+          <span class="opt-label">Weight</span>
+          <div class="segmented-control" data-pref="weight">
+            <button class="seg-btn" data-v="400">Regular</button>
+            <button class="seg-btn" data-v="500">Medium</button>
+            <button class="seg-btn" data-v="700">Bold</button>
+          </div>
+          <span class="opt-label">Lines</span>
+          <div class="segmented-control" data-pref="depth">
+            <button class="seg-btn" data-v="1">1</button>
+            <button class="seg-btn" data-v="2">2</button>
+            <button class="seg-btn" data-v="3">3</button>
+          </div>
+          <span class="opt-label">Flow</span>
+          <div class="segmented-control" data-pref="flow">
+            <button class="seg-btn" data-v="live">Live words</button>
+            <button class="seg-btn" data-v="settled">Settled sentences</button>
+          </div>
+          <span class="opt-label">Ring</span>
+          <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
+            <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
+            <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
+            <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
+            <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
+            <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
+          </div>
         </div>
       </div>
 
@@ -514,11 +541,9 @@ let animMeterId = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
 function renderTicker() {
-  const tail = finals.slice(-2);
+  const tail = finals.slice(-Number(prefs.depth));
   let html = "";
-  if (tail.length > 1) {
-    html += `<span class="prev">${esc(tail[0])}</span> `;
-  }
+  for (const line of tail.slice(0, -1)) html += `<span class="prev">${esc(line)}</span> `;
   if (tail.length > 0) {
     html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
   }
@@ -530,22 +555,49 @@ function renderTicker() {
   }
 }
 
-// Ticker Font Size Selection
-$$(".seg-btn").forEach((btn) => {
-  btn.onclick = () => {
-    $$(".seg-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    const sz = btn.dataset.sz;
-    document.documentElement.style.setProperty("--ticker-size", sz);
-    for (const el of tickerEls) {
-      el.style.fontSize = sz;
-    }
-  };
+// Stage ticker preferences: size, face, weight, depth, flow, ring. Remembered on this machine.
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+const prefs = {
+  size: store.get("st-size") || "38px",
+  face: store.get("st-face") || "system",
+  weight: store.get("st-weight") || "700",
+  depth: store.get("st-depth") || "2",
+  flow: store.get("st-flow") || "live",
+  ring: store.get("st-ring") || "mint",
+};
+function applyPrefs() {
+  for (const el of tickerEls) {
+    el.style.setProperty("--ticker-size", prefs.size);
+    el.style.setProperty("--ticker-face", `var(--face-${prefs.face})`);
+    el.style.setProperty("--ticker-weight", prefs.weight);
+    el.style.setProperty("--ticker-depth", prefs.depth);
+    el.dataset.face = prefs.face;
+    el.dataset.flow = prefs.flow;
+    el.dataset.ring = prefs.ring;
+  }
+  $$("[data-pref]").forEach((group) => {
+    const v = prefs[group.dataset.pref];
+    if (group.tagName === "SELECT") { group.value = v; return; }
+    $$("button", group).forEach((b) => {
+      b.classList.toggle("active", b.dataset.v === v);
+      if (b.classList.contains("ring")) b.setAttribute("aria-checked", String(b.dataset.v === v));
+    });
+  });
+  renderTicker();
+}
+$$("[data-pref]").forEach((group) => {
+  const key = group.dataset.pref;
+  if (group.tagName === "SELECT") {
+    group.onchange = () => { prefs[key] = group.value; store.set(`st-${key}`, prefs[key]); applyPrefs(); };
+    return;
+  }
+  $$("button", group).forEach((b) => b.onclick = () => { prefs[key] = b.dataset.v; store.set(`st-${key}`, prefs[key]); applyPrefs(); });
 });
 
-// The ticker is front-of-house: it follows the room's playful switch. Applied to the PiP copy too.
 function applyRoomStyle() {
-  for (const el of tickerEls) el.classList.toggle("plain", !!room && !room.playful);
   const t = room?.title || "";
   $("#qrTalk").textContent = t; $("#qrTalk").hidden = !t;
   $("#fsTalk").textContent = t; $("#fsTalk").hidden = !t;
@@ -803,12 +855,11 @@ async function openRoom() {
   lanBase = (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
 
   const title = $("#title").value.trim();
-  const playful = $("#playful").checked;
   try {
     const roomRes = await fetch("/api/room", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title, playful }),
+      body: JSON.stringify({ title }),
     });
     if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
     room = await roomRes.json();
@@ -825,7 +876,6 @@ async function openRoom() {
   renderTicker();
   updateQR();
   $("#title").disabled = true;
-  $("#playful").disabled = true;
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
@@ -882,7 +932,7 @@ function handleTalkEnded(callServer = true) {
   room = null;
 
   $("#liveDot").classList.remove("active");
-  $("#liveText").textContent = "That's a wrap";
+  $("#liveText").textContent = "Talk ended";
   delete document.body.dataset.live;
   $("#startBtn").hidden = false;
   $("#stopBtn").hidden = true;
@@ -892,7 +942,6 @@ function handleTalkEnded(callServer = true) {
   renderTicker();
   $("#lang").disabled = false;
   $("#title").disabled = false;
-  $("#playful").disabled = false;
   $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
   $("#qrGraphic").innerHTML = "";
 }
@@ -948,17 +997,20 @@ const floatTickerWindow = async () => {
   if (!("documentPictureInPicture" in window)) return;
   try {
     const pip = await documentPictureInPicture.requestWindow({ width: 1100, height: 160 });
-    const style = document.querySelector("style").cloneNode(true);
-    pip.document.head.append(style);
+    const fonts = pip.document.createElement("link");
+    fonts.rel = "stylesheet"; fonts.href = new URL("/vendor/fonts.css", location.origin).href;
+    pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
     pip.document.body.style.cssText = "margin:0;background:#1e1714;display:flex;align-items:center;justify-content:center;overflow:hidden;";
 
     const t = pip.document.createElement("div");
     t.id = "ticker";
-    t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;font-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
+    t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;--ticker-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
     pip.document.body.append(t);
     tickerEls.push(t);
     applyRoomStyle();
-    renderTicker();
+    applyPrefs();
+    t.style.setProperty("--ticker-size", "clamp(22px,5.2vw,50px)");
+    t.style.boxShadow = "none";
 
     pip.addEventListener("pagehide", () => {
       tickerEls = tickerEls.filter((el) => el !== t);
@@ -968,6 +1020,8 @@ const floatTickerWindow = async () => {
   }
 };
 $("#floatBtn").onclick = floatTickerWindow;
+
+applyPrefs();
 
 // Keyboard Shortcuts
 window.addEventListener("keydown", (e) => {

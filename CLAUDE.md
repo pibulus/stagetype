@@ -16,11 +16,11 @@ deno task check    # TypeScript type-checking
 - Audience Live Reader: `GET /live/:roomId`
 - Phone Lapel Mic: `GET /mic/:roomId#token`
 - Network Discovery: `GET /api/info` (returns LAN IP and port for QR encoding)
-- Static: `GET /vendor/qrcode.js` (vendored QR encoder, no CDN), `GET /ghost.svg` (favicon)
+- Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (favicon)
 - Room Lifecycle API:
-  - `POST /api/room` (optional `{ title, playful }`) -> `{ id, token, title, playful }` (capped at 1000 open rooms; title ≤ 80 chars)
+  - `POST /api/room` (optional `{ title }`) -> `{ id, token, title }` (capped at 1000 open rooms; title ≤ 80 chars)
   - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final }`; `{ ping: true }` is a silent keepalive
-  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title, playful }`, `interim`, `final { text, seq }`, `end`
+  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title }`, `interim`, `final { text, seq }`, `end`
   - `DELETE /api/room/:id` (Bearer auth) -> ends talk and flushes room
 - Invariants: token compared in constant time; push body ≤ 16 KB; backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
 
@@ -35,13 +35,14 @@ deno task check    # TypeScript type-checking
 - **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
 - `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
 - **Mascot**: TalkType ghost SVG in header. It is alive: eyes blink (`.eye` paths), it floats faster when live, and it swells with mic level via the `--vu` CSS variable.
-- **Motto: juicy, sticky, fresh.**
-  - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); captions glow in, the audience's fresh line gets a pink highlighter sweep, the interim text carries a blinking caret.
-  - Sticky: small rewards, not chrome. Count badge bumps when it changes, sticker-style step numbers, confetti and "That's a wrap" when a talk ends, the mic page tells you how many words landed.
-  - Fresh: dot-grid ground, one accent colour per state (mint = live, pink = ended/attention, lilac = phone mic), lots of air. No gradients on surfaces, no glassmorphism.
+- **Motto: juicy, sticky, fresh.** The vibe lives in aesthetics of utility, in what we offer, and in how things feel to touch. Never in gags.
+  - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); the newest caption glows in; the audience's fresh line gets a highlighter sweep; interim text carries a caret. Each of these tells the reader something.
+  - Sticky: small, honest feedback. Count badge bumps when it changes, sticker-style step numbers, the mic page says how many words were captioned. The ghost blinks and swells with your voice because it is the connection indicator, not a mascot on holiday.
+  - Fresh: dot-grid ground, one accent per state (mint = live, pink = attention, lilac = phone mic), lots of air. No gradients on surfaces, no glassmorphism.
+  - Classy is the ceiling. No confetti, no "That's a wrap", no "Nice one", no idle nudges. If a flourish needs a switch to turn it off, it shouldn't exist. Copy is warm and factual.
   - Landing animations on inline caption text must be wrap-safe (opacity/text-shadow only, never `inline-block` + transform).
   - Everything respects `prefers-reduced-motion`.
-- **Backstage vs front-of-house.** The presenter console is backstage: personality at full strength, always. The ticker, fullscreen QR, audience reader and mic sign-off are front-of-house and follow the room's `playful` switch. Plain means no confetti, no jokes in copy, no coloured ring on the ticker, "Talk ended" not "That's a wrap". Never add a front-of-house flourish without gating it on `playful`.
+- **Choices are curated, not exhaustive.** Faces: System, Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono (all OFL, vendored, Latin + Latin Ext). Weights: 400 / 500 / 700. Flow: live / settled. Ticker depth 1–3, ring mint/pink/lilac/butter/none. Readers choose on their phone (`stl-*` in localStorage); the presenter chooses the ticker (`st-*`). Add a face only if it brings a new voice and an open licence.
 - **Contrast floor.** Caption text ≥ 7:1 on every reader theme, secondary UI ≥ 4.5:1. The README table has the numbers; recompute if you touch a theme colour or `--muted`.
 
 ## 📱 Appendage Pattern (Phone as Lapel Mic)

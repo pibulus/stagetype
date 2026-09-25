@@ -94,7 +94,7 @@ deno task dev
 * **URL Fragment Token Security:** The administrative write token for the phone lapel mic is passed in the URL hash `#fragment` (e.g. `/mic/401dd18c#token`). Browsers never transmit `#fragments` over HTTP, preventing credentials from leaking into server access logs, reverse proxies, or referral headers. **Don't project the lapel-mic QR:** anyone who scans it can write captions into your room. Scan it from the console yourself; the fullscreen projector view is for the audience QR.
 * **Abuse limits:** room creation, listeners per room, backlog length and push body size are all capped, and the write token is compared in constant time.
 * **The relay never sees audio.** Only text reaches the server. The speech-to-text itself is the browser's Web Speech API, which in Chrome and Edge streams your microphone audio to Google's recognition service and in Safari to Apple's. If a talk must stay fully on-device, that's the piece to swap (see Roadmap). The VU meter is local (Web Audio `AnalyserNode`) and never leaves the tab.
-* **No CDN at runtime.** The QR encoder is vendored in `vendor/qrcode.js`, so the console works on venue wifi with no internet and nothing third-party loads into the presenter page.
+* **No CDN at runtime.** The QR encoder and the fonts are vendored under `vendor/`, so every page works on venue wifi with no internet and nothing third-party loads into any page.
 
 ---
 
@@ -109,6 +109,8 @@ stagetype/
 ├── mic.html          # Appendage lapel mic: wake lock, haptics, pocket guard
 ├── ghost.svg         # Favicon / home-screen icon
 ├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
+├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
+├── vendor/fonts/     # Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono as woff2 (Latin + Latin Ext)
 ├── deno.json         # Task runner & compiler options
 ├── GLOSSARY.md       # Shared vocabulary and design primitives
 └── CLAUDE.md         # Assistant ops and instructions
@@ -140,17 +142,29 @@ StageType exists so the people at the back, the people who can't hear the speake
 
 Every caption line clears WCAG AAA (7:1); secondary UI text clears AA (4.5:1). Beyond colour: the reader has a 14 to 56 px type scale, a loose-spacing mode for dyslexic readers, `aria-live` regions that announce finished sentences but not the in-progress fragment, full keyboard focus rings, and every animation honours `prefers-reduced-motion`. The transcript is downloadable as plain text or Markdown so it can go into a screen reader, a notes app, or an LMS.
 
-## 🎛️ Plain or playful
+## 🔤 Typography, curated
 
-The presenter console has a **Playful details** switch, on by default. Turn it off for a lecture, a clinical setting, or a board room: the audience pages drop the confetti, the wink in the copy, and the coloured ring on the stage ticker, and the talk ends with "Talk ended" instead of "That's a wrap". The console itself keeps its personality either way, because only you see it. A **talk title** ("COMP1010 Week 3") shows on every phone, in the projector QR card, and in the exported file name and Markdown header.
+Five faces, all SIL Open Font License, vendored in `vendor/fonts/` so they load on venue wifi with no internet. Readers pick theirs in the Aa panel on their own phone; the presenter picks the stage ticker's on the console. Nobody has to touch either: the default is the Swiss system look.
+
+| Face | Why it's here |
+| :--- | :--- |
+| System (Helvetica / SF) | Zero bytes, invisible, the stage default |
+| Inter | Clean humanist grotesk, tall x-height, variable weight |
+| Atkinson Hyperlegible | Designed by the Braille Institute for low-vision readers; letterforms that can't be confused for each other |
+| Fraunces | Warm soft serif at its softest setting, for rooms that want a friendlier voice |
+| JetBrains Mono | For the dev talk, where captions read like the code on screen |
+
+Weight is three stops (Regular, Medium, Bold). **Flow** is two: *Live words* streams the in-progress fragment as it's recognised; *Settled sentences* shows finished sentences only, which is calmer on a six-metre screen and for readers who find the flicker tiring. The stage ticker also chooses its **depth** (one to three lines) and **ring** colour (or none). Webfonts cover Latin and Latin Extended; other scripts fall through to the system stack.
+
+A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR card, and in the exported file name and Markdown header.
 
 ## 🔌 Relay API
 
 | Method | Path | Auth | What |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/room` | none | Open a room; optional body `{ title, playful }` → `{ id, token, title, playful }` |
+| `POST` | `/api/room` | none | Open a room; optional body `{ title }` → `{ id, token, title }` |
 | `POST` | `/api/room/:id` | Bearer token | Push `{ text, final }`; `{ ping: true }` is a keepalive that broadcasts nothing |
-| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, playful }`, then `interim { text }`, `final { text, seq }`, `end` |
+| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title }`, then `interim { text }`, `final { text, seq }`, `end` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 
