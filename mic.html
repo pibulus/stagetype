@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<script src="/deepgram.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1714">
 <title>StageType · Lapel Mic</title>
@@ -10,12 +12,14 @@
     --ground: #1e1714; --ink: #fbf1e4; --muted: rgba(251,241,228,.55); --line: #fbf1e4;
     --pink: #ffb3d1; --mint: #b8f0d8; --butter: #fff0a8;
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; height: 100%; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
+  body { background-image: radial-gradient(rgba(251,241,228,.09) 1.1px, transparent 1.3px); background-size: 22px 22px; }
   body {
     display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
     padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
@@ -26,14 +30,18 @@
     display: flex; justify-content: space-between; align-items: center;
     border-bottom: 2px solid rgba(251,241,228,0.15); padding-bottom: 12px;
   }
-  .brand-title { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .brand-title { font-weight: 900; font-size: 1.15rem; letter-spacing: -0.03em; }
+  .brand-title::after { content: "."; color: var(--pink); }
   .brand-sub { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
   
   select {
     font: 700 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
     border: 2px solid var(--line); border-radius: 999px; height: 38px; padding: 0 14px;
-    cursor: pointer;
+    cursor: pointer; max-width: 46vw; text-overflow: ellipsis;
   }
+  select option { color: #1e1714; }
+  #talk { font-size: 13px; font-weight: 800; color: var(--butter); margin: 0 0 8px; }
+  #talk[hidden] { display: none; }
 
   /* Status Bar */
   .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -49,6 +57,17 @@
   #state.on .dot { background: var(--mint); animation: breatheDot 1.4s infinite ease-in-out; }
   @keyframes breatheDot { 50% { transform: scale(1.3); background: var(--pink); } }
   #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
+  #room b { color: var(--butter); font-weight: 900; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+
+  .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; flex: 1; border: 2px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button { flex: 1; height: 30px; border: none; border-radius: 999px; background: transparent; color: var(--ink); font: 800 13px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--spring); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); background: var(--mint); color: #1e1714; }
+  .seg button:disabled { opacity: .4; }
+  .seg button:active { transform: scale(.96); }
+  body.started .engine-row { display: none; }
 
   /* Live Transcription Echo */
   .echo-container {
@@ -56,12 +75,23 @@
     background: rgba(251,241,228,0.04); border: 2px solid rgba(251,241,228,0.15);
     border-radius: 24px; padding: 20px; min-height: 140px; margin-bottom: 16px;
   }
+  #guide { margin: 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 10px; color: var(--muted); font-size: 15px; line-height: 1.4; font-weight: 500; }
+  #guide li::marker { color: var(--pink); font-weight: 900; }
+  #guide b { color: var(--ink); font-weight: 800; }
+  body.started #guide { display: none; }
   #echo {
     font: 700 clamp(20px, 6vw, 30px)/1.35 var(--swiss);
     overflow: hidden; max-height: 4.8em; letter-spacing: -0.01em;
   }
   #echo .interim { color: var(--pink); }
+  #echo .interim::after { content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .12em; vertical-align: -.08em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  #echo .last { animation: land .55s ease-out; }
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 16px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes caret { to { opacity: 0; } }
+  body.live .echo-container { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(184,240,216,.12); }
+  .echo-container { transition: border-color .3s, box-shadow .3s; }
   #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
+  body:not(.started) #echo:empty::before { content: none; }
 
   /* Big Stage Button & Glow Aura */
   .mic-button-wrap {
@@ -85,11 +115,13 @@
     border-radius: 36px; cursor: pointer;
     font: 800 clamp(28px, 8.5vw, 42px) var(--swiss); color: #1e1714;
     background: var(--pink); border: 4px solid var(--line); box-shadow: 0 8px 0 #3a2e28;
-    transition: transform .08s, box-shadow .08s, background .2s;
+    transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .2s;
     -webkit-tap-highlight-color: transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   }
-  #go:active { transform: translateY(6px); box-shadow: 0 2px 0 #3a2e28; }
+  #go:active { transform: translateY(6px) scale(.98); box-shadow: 0 2px 0 #3a2e28; transition-duration: .06s; }
+  #go:focus-visible, #end:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
+  #go:disabled { opacity: .5; }
   #go.live { background: var(--mint); }
   .btn-subtext { font-size: 13px; font-weight: 700; opacity: 0.7; letter-spacing: 0.04em; }
 
@@ -99,7 +131,8 @@
     background: transparent; color: var(--ink); border: 2.5px solid var(--line);
     font: 800 16px var(--swiss); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
   }
-  #end:active { transform: scale(0.98); }
+  #end { transition: transform .22s var(--spring), background .15s, color .15s; }
+  #end:active { transform: scale(0.96); }
   #end.armed { background: var(--butter); color: #1e1714; }
 
   #err {
@@ -119,19 +152,52 @@
     <span class="brand-sub">lapel mic</span>
   </div>
   <select id="lang" aria-label="Speech language">
-    <option value="en-AU">EN · AU</option>
-    <option value="en-US">EN · US</option>
-    <option value="en-GB">EN · UK</option>
-    <option value="es-MX">ES · MX</option>
+    <option value="en-AU">English (Australia)</option>
+    <option value="en-GB">English (UK)</option>
+    <option value="en-US">English (US)</option>
+    <option value="en-IN">English (India)</option>
+    <option value="es-ES">Español (España)</option>
+    <option value="es-MX">Español (México)</option>
+    <option value="fr-FR">Français</option>
+    <option value="de-DE">Deutsch</option>
+    <option value="it-IT">Italiano</option>
+    <option value="pt-BR">Português (Brasil)</option>
+    <option value="nl-NL">Nederlands</option>
+    <option value="pl-PL">Polski</option>
+    <option value="tr-TR">Türkçe</option>
+    <option value="ru-RU">Русский</option>
+    <option value="ar-SA">العربية</option>
+    <option value="hi-IN">हिन्दी</option>
+    <option value="id-ID">Bahasa Indonesia</option>
+    <option value="vi-VN">Tiếng Việt</option>
+    <option value="th-TH">ไทย</option>
+    <option value="zh-CN">中文 (普通话)</option>
+    <option value="zh-TW">中文 (台灣)</option>
+    <option value="yue-Hant-HK">粵語 (香港)</option>
+    <option value="ja-JP">日本語</option>
+    <option value="ko-KR">한국어</option>
   </select>
 </header>
 
 <div>
+  <p id="talk" hidden></p>
   <div class="status-row">
-    <span id="state"><span class="dot"></span><span id="stateText">Paired · Standby</span></span>
+    <span id="state"><span class="dot"></span><span id="stateText">Paired · Ready</span></span>
     <span id="room">0 in room</span>
   </div>
+  <div class="engine-row">
+    <span class="engine-label">Engine</span>
+    <div class="seg" id="engineSeg" role="radiogroup" aria-label="Speech engine">
+      <button data-v="browser" aria-pressed="true">Browser</button>
+      <button data-v="deepgram" aria-pressed="false">Deepgram</button>
+    </div>
+  </div>
   <div class="echo-container">
+    <ol id="guide">
+      <li><b>Tap Go live</b> and allow the microphone.</li>
+      <li><b>Pocket it,</b> screen facing out, or hold it near your chin.</li>
+      <li><b>Leave the screen on.</b> StageType keeps it awake. Your laptop mic pauses while this one is live.</li>
+    </ol>
     <div id="echo" aria-live="polite"></div>
   </div>
 </div>
@@ -157,37 +223,49 @@ const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
 
 if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
-if (!Rec) $("#err").textContent = "Speech recognition missing in this browser. Safari or Chrome recommended.";
+if (!Rec) $("#err").textContent = "This browser has no speech recognition. Use Safari or Chrome, or pick the Deepgram engine if the relay offers it.";
+if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+  $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
+}
 
-async function push(text, final) {
+async function push(body) {
   try {
     const r = await fetch(`/api/room/${roomId}`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ text, final }),
+      body: JSON.stringify(body),
     });
     if (r.status === 404) {
-      stop();
+      stop(false);
       $("#err").textContent = "Talk ended on stage.";
     } else if (r.status === 403) {
-      stop();
+      stop(false);
       $("#err").textContent = "Pairing expired. Rescan the mic QR code.";
     } else {
       $("#err").textContent = "";
       const j = await r.json();
-      if (typeof j.listeners === "number") {
-        $("#room").textContent = `${j.listeners} in room`;
-      }
+      if (typeof j.listeners === "number") { listeners = j.listeners; stats(); }
+      applyRoom(j);
     }
   } catch {
     $("#err").textContent = "Relay unreachable; retrying on next sentence";
   }
 }
 
+let words = 0, listeners = 0;
+function applyRoom(j) {
+  if (typeof j.title === "string") { $("#talk").textContent = j.title; $("#talk").hidden = !j.title; if (j.title) document.title = `${j.title} · Lapel mic`; }
+}
+function stats() {
+  $("#room").innerHTML = `<b>${words}</b> word${words === 1 ? "" : "s"} · ${listeners} in room`;
+}
 function render(interim) {
-  $("#echo").innerHTML = finals.slice(-2).map(esc).join(" ") + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
+  const tail = finals.slice(-2);
+  const html = tail.map((t, i) => (i === tail.length - 1 ? `<span class="last">${esc(t)}</span>` : esc(t))).join(" ");
+  $("#echo").innerHTML = html + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
 }
 
 function startRec() {
@@ -203,7 +281,9 @@ function startRec() {
       if (e.results[i].isFinal) {
         if (t) {
           finals.push(t);
-          push(t, true);
+          words += t.split(/\s+/).filter(Boolean).length;
+          stats();
+          push({ text: t, final: true, source: "phone" });
         }
       } else {
         interim += t + " ";
@@ -217,14 +297,20 @@ function startRec() {
       const wait = 250 - (Date.now() - lastInterim);
       const send = () => {
         lastInterim = Date.now();
-        push(interim, false);
+        push({ text: interim, final: false, source: "phone" });
       };
       wait <= 0 ? send() : (interimTimer = setTimeout(send, wait));
     }
   };
 
   rec.onerror = (e) => {
-    if (e.error !== "no-speech" && e.error !== "aborted") {
+    if (FATAL_REC.has(e.error)) {
+      // A blocked mic would otherwise restart every 150ms forever.
+      stop();
+      $("#err").textContent = e.error === "not-allowed"
+        ? "Microphone blocked. Allow the mic for this site in your browser settings, then tap Go live."
+        : `Mic issue: ${e.error}. Check the browser's mic permission and tap Go live again.`;
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
       $("#err").textContent = `Mic issue: ${e.error}`;
     }
   };
@@ -236,9 +322,43 @@ function startRec() {
   rec.start();
 }
 
+// Engine: browser recognition, or Deepgram through the relay if the relay has a key.
+let engine = (() => { try { return localStorage.getItem("stm-engine") || "browser"; } catch { return "browser"; } })();
+let dg = null;
+const paintEngine = () => document.querySelectorAll("#engineSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === engine)));
+document.querySelectorAll("#engineSeg button").forEach((b) => b.onclick = () => { if (b.disabled) return; engine = b.dataset.v; try { localStorage.setItem("stm-engine", engine); } catch {} paintEngine(); });
+paintEngine();
+fetch("/api/engines").then((r) => r.json()).then((e) => {
+  const b = document.querySelector('#engineSeg [data-v="deepgram"]');
+  b.disabled = !e.deepgram;
+  b.title = e.deepgram ? "" : "The relay has no Deepgram key";
+  if (!e.deepgram && engine === "deepgram") { engine = "browser"; paintEngine(); }
+}).catch(() => {});
+
+async function startDeepgram() {
+  try {
+    dg = await StageTypeDeepgram.start({
+      roomId, token, source: "phone", lang: $("#lang").value,
+      onInterim: (i) => render(i),
+      onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); render(""); },
+      onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
+    });
+  } catch (err) {
+    $("#err").textContent = `Couldn't start the Deepgram link: ${err.message}.`;
+    stop();
+  }
+}
+
+let heartbeat = null;
 async function go() {
   live = true;
-  startRec();
+  document.body.classList.add("live", "started");
+  // Tell the console this phone is the mic now, and keep saying so while live, so a dead battery
+  // or a locked screen is noticed within a minute and the laptop mic can take over.
+  push({ ping: true, source: "phone", live: true });
+  clearInterval(heartbeat);
+  heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
+  if (engine === "deepgram") startDeepgram(); else startRec();
   try {
     wake = await navigator.wakeLock?.request("screen");
   } catch {}
@@ -250,12 +370,18 @@ async function go() {
   $("#pulseAura").classList.add("active");
   $("#stateText").textContent = "Live on stage";
   $("#state").classList.add("on");
+  document.body.classList.add("live");
   $("#lang").disabled = true;
 }
 
-function stop() {
+function stop(announce = true) {
+  if (!live) return;
   live = false;
+  document.body.classList.remove("live");
+  clearInterval(heartbeat);
+  if (announce) push({ ping: true, source: "phone", live: false });
   rec?.stop();
+  dg?.stop(); dg = null;
   wake?.release?.();
   wake = null;
 
@@ -266,6 +392,7 @@ function stop() {
   $("#pulseAura").classList.remove("active");
   $("#stateText").textContent = "Paused";
   $("#state").classList.remove("on");
+  document.body.classList.remove("live");
   $("#lang").disabled = false;
 }
 
@@ -285,7 +412,7 @@ $("#end").onclick = async () => {
   }
   clearTimeout(endArmed);
   endArmed = null;
-  stop();
+  stop(false);
   if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   await fetch(`/api/room/${roomId}`, {
     method: "DELETE",
@@ -295,13 +422,25 @@ $("#end").onclick = async () => {
   $("#stateText").textContent = "Talk ended";
   $("#go").disabled = true;
   $("#end").hidden = true;
-  $("#err").textContent = "Full transcript saved on every attendee's phone.";
+  $("#err").textContent = `${words} words captioned. The transcript is on every phone in the room.`;
 };
 
+if (token) push({ ping: true });
+
 $("#go").onclick = () => {
-  if (!Rec || !token) return;
+  if (!token) return;
+  if (engine === "browser" && !Rec) return;
   live ? stop() : go();
 };
+
+addEventListener("pagehide", () => {
+  if (!live || !token) return;
+  fetch(`/api/room/${roomId}`, {
+    method: "POST", keepalive: true,
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ping: true, source: "phone", live: false }),
+  }).catch(() => {});
+});
 
 document.addEventListener("visibilitychange", async () => {
   if (live && document.visibilityState === "visible") {

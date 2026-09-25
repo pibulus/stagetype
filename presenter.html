@@ -2,21 +2,31 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StageType · Presenter Console</title>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="/vendor/qrcode.js"></script>
+<script src="/deepgram.js"></script>
+<link rel="stylesheet" href="/vendor/fonts.css">
 <style>
   :root {
     --paper: #fbf1e4; --ground: #fffef7; --ink: #1e1714; --line: #3a2e28;
     --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
     --muted: rgba(30, 23, 20, 0.58);
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --spring: cubic-bezier(.2, .9, .3, 1.35);   /* juicy overshoot */
+    --snap: cubic-bezier(.4, 0, .2, 1);
+    --vu: 0;                                    /* 0..1 mic level, drives the ghost */
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; min-height: 100vh; background: var(--ground); color: var(--ink);
+    margin: 0; min-height: 100vh; color: var(--ink);
+    background: var(--ground);
+    background-image: radial-gradient(rgba(30, 23, 20, 0.085) 1.1px, transparent 1.3px);
+    background-size: 22px 22px;
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
+  ::selection { background: var(--pink); color: var(--ink); }
   main {
     max-width: 980px; margin: 0 auto; padding: 36px 20px 220px;
     display: grid; gap: 24px;
@@ -28,31 +38,35 @@
     gap: 16px; flex-wrap: wrap;
   }
   .brand { display: flex; align-items: center; gap: 14px; }
+  .ghost-wrap {
+    display: inline-flex; animation: ghostFloat 3.4s ease-in-out infinite;
+    filter: drop-shadow(3px 3px 0 var(--pink));
+    transition: filter .3s var(--snap);
+  }
+  body[data-live="1"] .ghost-wrap { animation-duration: 1.9s; filter: drop-shadow(3px 3px 0 var(--mint)); }
   .ghost-icon {
-    width: 44px; height: 44px; color: var(--ink);
-    animation: ghostFloat 3.4s ease-in-out infinite;
+    width: 46px; height: 46px; color: var(--ink);
+    transform: scale(calc(1 + var(--vu) * 0.16));
+    transition: transform .09s ease-out;
+    transform-origin: 50% 70%;
+  }
+  .brand:hover .ghost-wrap { animation-duration: 1.2s; }
+  .ghost-icon .eye {
+    transform-box: fill-box; transform-origin: center;
+    animation: blink 4.6s infinite;
+  }
+  .ghost-icon .eye.r { animation-delay: .04s; }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.08); }
   }
   @keyframes ghostFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-5px) rotate(2deg); }
   }
-  h1 { margin: 0; font-size: 2.1rem; letter-spacing: -0.03em; font-weight: 800; }
+  h1 { margin: 0; font-size: 2.2rem; letter-spacing: -0.04em; font-weight: 900; line-height: 1; }
+  h1::after { content: "."; color: var(--pink); }
   .sub { margin: 2px 0 0; color: var(--muted); font-size: 0.96rem; }
-
-  /* Quickstart Checklist Bar */
-  .quickstart-strip {
-    background: var(--paper); border: 2.5px solid var(--line); border-radius: 16px;
-    padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; font-size: 13px; font-weight: 700; flex-wrap: wrap;
-  }
-  .step-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .step-num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fffef7;
-    font-size: 11px; font-weight: 800;
-  }
 
   /* Stage Console Card (Split Layout) */
   .stage-deck {
@@ -76,32 +90,72 @@
   button, select {
     font: 800 0.95rem var(--swiss); color: var(--ink); background: var(--pink);
     border: 2.5px solid var(--line); border-radius: 999px; padding: 12px 20px; cursor: pointer;
-    box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s, background .15s;
+    font-family: var(--swiss);
+    box-shadow: 3px 3px 0 var(--line);
+    transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    -webkit-tap-highlight-color: transparent;
   }
   select { background: var(--ground); padding: 10px 16px; cursor: pointer; }
-  button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  button[hidden] { display: none; } /* the display rule above would otherwise beat the hidden attribute */
+  @media (hover: hover) {
+    button:not(:disabled):hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); }
+  }
+  button:not(:disabled):active { transform: translate(2px, 2px) scale(.97); box-shadow: 0 0 0 var(--line); transition-duration: .06s; }
+  button:focus-visible, select:focus-visible, .seg-btn:focus-visible, .tab-btn:focus-visible {
+    outline: 3px solid var(--pink); outline-offset: 3px;
+  }
   button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--line); }
+  #startBtn { padding: 14px 26px; font-size: 1.05rem; }
   button.mint { background: var(--mint); }
   button.lilac { background: var(--lilac); }
   button.butter { background: var(--butter); }
   button.ground { background: var(--ground); }
   button.ghost { background: transparent; }
 
-  /* Audio Meter */
-  .meter-box {
-    background: var(--ground); border: 2.5px solid var(--line); border-radius: 16px;
-    padding: 12px 16px; display: flex; align-items: center; gap: 14px;
+  .notice {
+    margin: 0; font-size: 0.85rem; font-weight: 700; line-height: 1.4;
+    background: var(--butter); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px;
   }
-  .meter-label { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--muted); }
-  .meter-bar-track {
-    flex: 1; height: 14px; background: rgba(30, 23, 20, 0.08);
-    border: 2px solid var(--line); border-radius: 999px; overflow: hidden; position: relative;
+  .notice[hidden] { display: none; }
+
+  /* Talk setup */
+  .text-input {
+    font: 700 1rem var(--swiss); color: var(--ink); background: var(--ground);
+    border: 2.5px solid var(--line); border-radius: 14px; padding: 12px 14px; width: 100%;
+    box-shadow: 3px 3px 0 var(--line); transition: box-shadow .2s var(--spring), transform .2s var(--spring);
   }
-  .meter-bar-fill {
-    width: 0%; height: 100%; background: var(--mint);
-    transition: width 0.06s ease, background 0.1s ease;
-  }
+  .text-input::placeholder { color: var(--muted); font-weight: 500; }
+  .hint { margin: 0; font-size: 0.78rem; color: var(--muted); font-weight: 600; line-height: 1.4; }
+  .transcript-row { display: flex; flex-direction: column; gap: 8px; }
+  button.small { padding: 8px 14px; font-size: 0.82rem; }
+  #pastTalks[hidden] { display: none; }
+  #pastTalks summary { cursor: pointer; list-style: none; }
+  #pastTalks summary::-webkit-details-marker { display: none; }
+  #pastTalks summary::before { content: "▸ "; }
+  #pastTalks[open] summary::before { content: "▾ "; }
+  #pastList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #pastList li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.82rem; font-weight: 700; background: var(--ground); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  #pastList small { display: block; color: var(--muted); font-weight: 600; font-size: 0.75rem; }
+  .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
+  .text-input:disabled { opacity: .7; }
+  /* Setup fields */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field .opt-select { width: 100%; justify-self: stretch; }
+  .more { margin-top: 2px; }
+  .more summary { cursor: pointer; list-style: none; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary::before { content: "▸ "; }
+  .more[open] summary::before { content: "▾ "; }
+  .more[open] summary { margin-bottom: 10px; }
+  #qrEmpty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 8px 6px; }
+  #qrEmpty[hidden] { display: none; }
+  #qrEmpty svg { width: 88px; height: 88px; color: var(--line); opacity: .35; }
+  #qrEmpty p { margin: 0; font-size: 0.85rem; color: var(--muted); font-weight: 600; line-height: 1.4; max-width: 24em; }
+  #qrGraphic:empty { display: none; }
+  .url-pill[hidden] { display: none; }
 
   /* Status Badges */
   .status-pills { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -118,6 +172,23 @@
   @keyframes breatheDot {
     50% { transform: scale(1.25); background: var(--pink); }
   }
+  .pill-badge { transition: background .2s, transform .3s var(--spring); }
+  body[data-live="1"] #liveBadge { background: var(--mint); box-shadow: 0 0 0 4px rgba(184, 240, 216, 0.45); }
+  #countBadge.bump { animation: bump .45s var(--spring); }
+  @keyframes bump { 30% { transform: scale(1.18) rotate(-3deg); } 100% { transform: none; } }
+
+  /* Stage ticker options */
+  .opt-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; }
+  .opt-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .opt-select { font: 800 12px var(--swiss); padding: 7px 12px; box-shadow: none; border-width: 2px; justify-self: start; border-radius: 12px; }
+  .ring-row { display: flex; gap: 8px; }
+  .ring {
+    width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); box-shadow: none; border-width: 2px;
+    transition: transform .22s var(--spring);
+  }
+  .ring[aria-checked="true"] { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .ring:hover { transform: scale(1.15); }
+  .ring:not(:disabled):active { transform: scale(.92); box-shadow: none; }
 
   /* Segmented Ticker Sizer */
   .segmented-control {
@@ -128,10 +199,12 @@
     border: none; box-shadow: none; border-radius: 999px;
     padding: 6px 14px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
   }
+  .seg-btn { transition: background .2s var(--snap), color .2s, transform .2s var(--spring); }
   .seg-btn.active {
     background: var(--ink); color: #fffef7;
   }
-  .seg-btn:active { transform: none; }
+  .seg-btn:not(.active):hover { background: var(--butter); transform: none; box-shadow: none; }
+  .seg-btn:active { transform: scale(.94); }
 
   /* QR Box & Tabs */
   .qr-card {
@@ -147,15 +220,31 @@
     flex: 1; border: none; box-shadow: none; border-radius: 999px;
     padding: 8px 12px; font: 800 12px var(--swiss); background: transparent; cursor: pointer;
   }
+  .tab-btn { transition: background .2s var(--snap), color .2s, transform .2s var(--spring); }
   .tab-btn.active {
     background: var(--ink); color: #fffef7;
   }
-  .tab-btn:active { transform: none; }
+  .tab-btn:not(.active):hover { background: var(--lilac); transform: none; box-shadow: none; }
+  .tab-btn:active { transform: scale(.96); }
   #qrGraphic {
-    padding: 8px; background: #fff; border: 2px solid var(--line);
-    border-radius: 16px; line-height: 0;
+    padding: 8px; background: #fffef7; border: 2px solid var(--line);
+    border-radius: 16px; line-height: 0; box-shadow: 4px 4px 0 var(--pink);
+    transition: box-shadow .3s var(--spring), transform .3s var(--spring);
   }
+  #qrGraphic:hover { transform: rotate(-1.5deg) scale(1.02); }
+  #qrGraphic.pop { animation: qrPop .5s var(--spring); }
+  @keyframes qrPop { 0% { transform: scale(.85) rotate(4deg); opacity: .4; } 100% { transform: none; opacity: 1; } }
+  .qr-card[data-tab="mic"] #qrGraphic { box-shadow: 4px 4px 0 var(--lilac); }
   #qrGraphic svg { width: 175px; height: 175px; }
+  .qr-talk { margin: 0 0 4px; font-weight: 900; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .qr-talk[hidden] { display: none; }
+  .join-line { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+  .join-line[hidden] { display: none; }
+  .join-line b { font: 900 1.05rem ui-monospace, Menlo, monospace; letter-spacing: .14em; color: var(--ink); background: var(--butter); border: 2px solid var(--line); border-radius: 8px; padding: 2px 8px; }
+  .fs-code { display: flex; align-items: baseline; gap: 14px; }
+  .fs-code[hidden] { display: none; }
+  .fs-code span { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .fs-code b { font: 900 clamp(48px, 9vw, 84px)/1 ui-monospace, Menlo, monospace; letter-spacing: .2em; text-indent: .2em; color: var(--ink); background: var(--butter); border: 3px solid var(--line); border-radius: 18px; padding: 8px 12px 8px 28px; box-shadow: 5px 5px 0 var(--line); }
   .qr-info-title { font-weight: 800; font-size: 1.05rem; margin: 0; }
   .qr-info-sub { font-size: 0.85rem; color: var(--muted); margin: 0; }
   .url-pill {
@@ -171,6 +260,8 @@
     padding: 24px;
   }
   #fsModal.open { display: flex; }
+  #fsModal.open .fs-card { animation: cardIn .38s var(--spring); }
+  @keyframes cardIn { from { transform: translateY(24px) scale(.94) rotate(-1deg); opacity: 0; } }
   .fs-card {
     background: var(--paper); border: 4px solid var(--line); border-radius: 32px;
     padding: 36px 32px; box-shadow: 10px 10px 0 var(--line);
@@ -193,27 +284,51 @@
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
     width: min(92vw, 1340px); min-height: 1.2em; padding: 20px 34px;
     background: rgba(30, 23, 20, 0.94); color: #fffef7; border-radius: 24px;
-    font: 700 var(--ticker-size, 38px)/1.25 var(--swiss); letter-spacing: -0.01em;
+    font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.25 var(--ticker-face, var(--face-system)); letter-spacing: -0.01em;
     display: flex; flex-direction: column; justify-content: flex-end;
-    max-height: calc(2.6em + 42px); overflow: hidden;
+    max-height: calc(var(--ticker-depth, 2) * 1.25em + 40px); overflow: hidden;
     box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4);
     z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
   }
-  #ticker .prev { opacity: 0.65; font-weight: 500; }
-  #ticker .fresh-lead { color: #fff; font-weight: 700; }
+  #ticker .prev { opacity: 0.55; font-weight: max(300, calc(var(--ticker-weight, 700) - 200)); }
+  #ticker .fresh-lead { color: #fffef7; font-weight: 700; animation: land .55s ease-out; }
   #ticker .interim { color: var(--pink); opacity: 0.9; }
+  #ticker .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  /* inline-safe landing: a long sentence still wraps mid-line, it just glows in */
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 18px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  @keyframes caret { to { opacity: 0; } }
   #ticker:empty::before { content: "Captions appear here in real time"; opacity: 0.35; font-weight: 500; }
+  body[data-live="1"] #ticker { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  /* Ring colour is the presenter's choice; the mint live ring is only the default */
+  #ticker[data-ring="pink"], body[data-live="1"] #ticker[data-ring="pink"] { box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="mint"], body[data-live="1"] #ticker[data-ring="mint"] { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="lilac"], body[data-live="1"] #ticker[data-ring="lilac"] { box-shadow: 0 0 0 3px var(--lilac), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="butter"], body[data-live="1"] #ticker[data-ring="butter"] { box-shadow: 0 0 0 3px var(--butter), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-ring="none"], body[data-live="1"] #ticker[data-ring="none"] { box-shadow: 0 0 0 3px var(--ground), 0 18px 52px rgba(30, 23, 20, 0.4); }
+  #ticker[data-flow="settled"] .interim { display: none; }
+  #ticker[data-style="paper"] { background: var(--paper); color: var(--ink); box-shadow: 0 0 0 3px var(--line), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"] .fresh-lead { color: var(--ink); }
+  #ticker[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, transparent); border-radius: .15em; padding: 0 .12em; }
+  #ticker[data-style="paper"] .interim::after { background: var(--ink); }
+  #ticker[data-style="paper"][data-ring="pink"], body[data-live="1"] #ticker[data-style="paper"][data-ring="pink"] { box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="mint"], body[data-live="1"] #ticker[data-style="paper"][data-ring="mint"] { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="lilac"], body[data-live="1"] #ticker[data-style="paper"][data-ring="lilac"] { box-shadow: 0 0 0 3px var(--lilac), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="butter"], body[data-live="1"] #ticker[data-style="paper"][data-ring="butter"] { box-shadow: 0 0 0 3px var(--butter), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="none"], body[data-live="1"] #ticker[data-style="paper"][data-ring="none"] { box-shadow: 0 0 0 3px var(--line), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
 </style>
 </head>
 <body>
 <main>
   <header>
     <div class="brand">
-      <svg class="ghost-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
+      <span class="ghost-wrap"><svg class="ghost-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
         <path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
-        <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
-        <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
-      </svg>
+        <path class="eye r" fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+        <path class="eye" fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/>
+      </svg></span>
       <div>
         <h1>StageType</h1>
         <p class="sub">Speak. The room reads along.</p>
@@ -221,72 +336,145 @@
     </div>
     <div class="status-pills">
       <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
+      <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
       <span class="pill-badge" id="countBadge">0 reading</span>
     </div>
   </header>
 
-  <!-- Quickstart Checklist Strip -->
-  <div class="quickstart-strip">
-    <div class="step-pill"><span class="step-num">1</span> Float ticker over slides</div>
-    <div class="step-pill"><span class="step-num">2</span> Project audience QR code</div>
-    <div class="step-pill"><span class="step-num">3</span> Speak via Mac or phone lapel mic</div>
-  </div>
-
-  <!-- The Unified Stage Console -->
+  <!-- The console: set up on the left, share on the right -->
   <section class="stage-deck">
-    <!-- Left Column: Presenter Controls -->
     <div class="deck-col">
       <div class="panel-section">
-        <span class="section-label">Broadcast Voice</span>
+        <span class="section-label">This Talk</span>
+        <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
+               placeholder="Title, e.g. COMP1010 Week 3" aria-label="Talk title">
+        <div class="field-row">
+          <label class="field"><span class="opt-label">Language</span>
+            <select id="lang" class="opt-select" aria-label="Language">
+            <option value="en-AU">English (Australia)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="es-ES">Español (España)</option>
+            <option value="es-MX">Español (México)</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="it-IT">Italiano</option>
+            <option value="pt-BR">Português (Brasil)</option>
+            <option value="nl-NL">Nederlands</option>
+            <option value="pl-PL">Polski</option>
+            <option value="tr-TR">Türkçe</option>
+            <option value="ru-RU">Русский</option>
+            <option value="ar-SA">العربية</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="id-ID">Bahasa Indonesia</option>
+            <option value="vi-VN">Tiếng Việt</option>
+            <option value="th-TH">ไทย</option>
+            <option value="zh-CN">中文 (普通话)</option>
+            <option value="zh-TW">中文 (台灣)</option>
+            <option value="yue-Hant-HK">粵語 (香港)</option>
+            <option value="ja-JP">日本語</option>
+            <option value="ko-KR">한국어</option>
+            </select>
+          </label>
+          <label class="field"><span class="opt-label">Engine</span>
+            <select id="engine" class="opt-select" aria-label="Speech engine">
+              <option value="browser">Browser, free</option>
+              <option value="deepgram">Deepgram, via the relay</option>
+            </select>
+          </label>
+        </div>
+        <p id="engineHint" class="hint" hidden></p>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Voice</span>
         <div class="btn-row">
           <button id="startBtn" class="mint">Start captions</button>
-          <button id="floatBtn" class="lilac" hidden>Float ticker</button>
+          <button id="pauseBtn" class="ground" hidden>Pause mic</button>
           <button id="stopBtn" class="butter" hidden>End talk</button>
         </div>
+        <p id="notice" class="notice" hidden></p>
+        <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
+               placeholder="Or type a caption and press Enter" aria-label="Type a caption">
       </div>
 
       <div class="panel-section">
-        <span class="section-label">Audio Input & Level</span>
-        <div class="meter-box">
-          <span class="meter-label">Mic</span>
-          <div class="meter-bar-track">
-            <div id="meterFill" class="meter-bar-fill"></div>
-          </div>
-          <span id="micSource" style="font-size:12px;font-weight:700;color:var(--muted)">Local tab</span>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Ticker Font Size</span>
-        <div class="segmented-control">
-          <button class="seg-btn" data-sz="28px">Compact</button>
-          <button class="seg-btn active" data-sz="38px">Standard</button>
-          <button class="seg-btn" data-sz="50px">Jumbotron</button>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Language</span>
+        <span class="section-label">Stage Ticker</span>
         <div class="btn-row">
-          <select id="lang" aria-label="Language selection">
-            <option value="en-AU">English (AU)</option>
-            <option value="en-US">English (US)</option>
-            <option value="en-GB">English (UK)</option>
-            <option value="es-MX">Español (MX)</option>
-          </select>
-          <button id="testAudioBtn" class="ghost" style="padding:10px 16px;font-size:0.85rem">Test mic level</button>
+          <button id="floatBtn" class="lilac" disabled>Float over slides</button>
+          <button id="screenBtn" class="ground" disabled>Second screen</button>
         </div>
+        <div class="opt-grid">
+          <span class="opt-label">Size</span>
+          <div class="segmented-control" data-pref="size">
+            <button class="seg-btn" data-v="28px">Compact</button>
+            <button class="seg-btn" data-v="38px">Standard</button>
+            <button class="seg-btn" data-v="50px">Jumbotron</button>
+          </div>
+          <span class="opt-label">Style</span>
+          <div class="segmented-control" data-pref="style">
+            <button class="seg-btn" data-v="ink">Ink</button>
+            <button class="seg-btn" data-v="paper">Paper</button>
+          </div>
+        </div>
+        <details class="more" id="moreTicker">
+          <summary>Face, weight, lines, flow, ring</summary>
+          <div class="opt-grid">
+            <span class="opt-label">Face</span>
+            <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
+              <option value="system">System (Helvetica)</option>
+              <option value="inter">Inter</option>
+              <option value="atkinson">Atkinson Hyperlegible</option>
+              <option value="fraunces">Fraunces</option>
+              <option value="mono">JetBrains Mono</option>
+            </select>
+            <span class="opt-label">Weight</span>
+            <div class="segmented-control" data-pref="weight">
+              <button class="seg-btn" data-v="400">Regular</button>
+              <button class="seg-btn" data-v="500">Medium</button>
+              <button class="seg-btn" data-v="700">Bold</button>
+            </div>
+            <span class="opt-label">Lines</span>
+            <div class="segmented-control" data-pref="depth">
+              <button class="seg-btn" data-v="1">1</button>
+              <button class="seg-btn" data-v="2">2</button>
+              <button class="seg-btn" data-v="3">3</button>
+            </div>
+            <span class="opt-label">Flow</span>
+            <div class="segmented-control" data-pref="flow">
+              <button class="seg-btn" data-v="live">Live words</button>
+              <button class="seg-btn" data-v="settled">Settled sentences</button>
+            </div>
+            <span class="opt-label">Ring</span>
+            <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
+              <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
+              <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
+              <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
+              <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
+              <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="panel-section" style="margin-top:auto">
-        <span class="section-label">Screen Overlay</span>
-        <p style="margin:0;font-size:0.85rem;color:var(--muted);line-height:1.4">
-          Click <strong>Float ticker</strong> to open an always-on-top caption pill pinned over Keynote, PowerPoint, VS Code, or browser tabs.
-        </p>
+        <span class="section-label">Transcript</span>
+        <div class="transcript-row">
+          <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
+          <div class="btn-row">
+            <button id="copyTx" class="ground small" disabled>Copy</button>
+            <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
+            <button id="saveTxMd" class="ground small" disabled>Save .md</button>
+          </div>
+        </div>
+        <details id="pastTalks" hidden>
+          <summary class="hint">Previous talks on this machine</summary>
+          <ul id="pastList"></ul>
+        </details>
       </div>
     </div>
 
-    <!-- Right Column: QR Anchor & Multi-Channel Links -->
     <div class="deck-col">
       <div class="qr-card">
         <div class="tab-bar">
@@ -294,18 +482,26 @@
           <button class="tab-btn" id="tabMic">Phone lapel mic</button>
         </div>
 
+        <div id="qrEmpty">
+          <svg viewBox="0 0 1024 1024" aria-hidden="true" focusable="false"><path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
+        <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+        <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/></svg>
+          <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
+        </div>
         <div id="qrGraphic"></div>
 
         <div>
+          <p class="qr-talk" id="qrTalk" hidden></p>
           <p class="qr-info-title" id="qrTitle">Audience reader</p>
           <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
         </div>
 
-        <div class="url-pill" id="urlDisplay">Opening room…</div>
+        <div class="url-pill" id="urlDisplay" hidden>Standby</div>
+        <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
 
         <div class="btn-row">
-          <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem">Copy link</button>
-          <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem">Fullscreen QR</button>
+          <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Copy link</button>
+          <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Fullscreen QR</button>
         </div>
       </div>
     </div>
@@ -313,7 +509,7 @@
 
   <!-- Keyboard Shortcuts Bar -->
   <div class="shortcuts-hint">
-    <span><kbd>Space</kbd> Start/Pause</span>
+    <span><kbd>Space</kbd> Start / pause mic</span>
     <span><kbd>⌥ + F</kbd> Float ticker</span>
     <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
     <span><kbd>Esc</kbd> Close modal</span>
@@ -327,18 +523,27 @@
 <div id="fsModal">
   <div class="fs-card">
     <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
-      <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+      <div style="text-align:left">
+        <p id="fsTalk" style="margin:0 0 2px;font-weight:900;font-size:1.1rem;color:var(--muted)" hidden></p>
+        <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+      </div>
       <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
     </div>
-    <div id="fsQr" style="background:#fff;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+    <div id="fsQr" style="background:#fffef7;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+    <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
     <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
-    <p style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
+    <p id="fsNote" style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
   </div>
 </div>
 
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch {} },
+};
 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let room = null;
@@ -354,6 +559,79 @@ let activeTab = "audience"; // 'audience' | 'mic'
 let lanBase = "";
 let lastWordTime = Date.now();
 let silenceInterval = null;
+let keepaliveInterval = null;
+let paused = false;
+let phoneLive = false;
+let transcript = []; // every final line of this talk, in room order, for export. `finals` is just the ticker's tail.
+let saveTimer = null;
+let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
+
+const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+const fileStem = (title, roomId, when) => `${title ? slug(title) : "stagetype-" + roomId}-${new Date(when).toISOString().split("T")[0]}`;
+const words = (lines) => lines.reduce((n, l) => n + l.split(/\s+/).filter(Boolean).length, 0);
+function download(filename, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const asMarkdown = (t) => `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${new Date(t.startedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${t.lines.join("\n\n")}\n`;
+const asText = (t) => (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + t.lines.join("\n\n");
+
+// The transcript survives on this machine: saved under the room id as lines arrive, listed under
+// Previous talks, and the open room itself is remembered for this tab so a reload mid-talk resumes.
+const talkRecord = (ended) => ({ id: room.id, title: room.title || "", code: room.code || "", lines: transcript, startedAt: room.startedAt || Date.now(), updatedAt: Date.now(), ended });
+function persist(rec) {
+  store.set(`st-talk-${rec.id}`, JSON.stringify(rec));
+  let idx = []; try { idx = JSON.parse(localStorage.getItem("st-talks")) || []; } catch {}
+  idx = idx.filter((t) => t.id !== rec.id);
+  idx.unshift({ id: rec.id, title: rec.title, words: words(rec.lines), startedAt: rec.startedAt, updatedAt: rec.updatedAt, ended: rec.ended });
+  while (idx.length > 10) { const old = idx.pop(); store.del(`st-talk-${old.id}`); }
+  store.set("st-talks", JSON.stringify(idx));
+  renderPastTalks();
+  updateTranscriptStat();
+}
+function saveTalk() {
+  if (!room) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { if (room) persist(talkRecord(false)); }, 800);
+}
+function updateTranscriptStat() {
+  const n = words(transcript);
+  $("#transcriptStat").textContent = n ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}` : "Nothing captioned yet.";
+  for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
+}
+function renderPastTalks() {
+  let idx = []; try { idx = JSON.parse(localStorage.getItem("st-talks")) || []; } catch {}
+  const past = idx.filter((t) => !room || t.id !== room.id);
+  $("#pastTalks").hidden = past.length === 0;
+  const list = $("#pastList"); list.innerHTML = "";
+  for (const t of past) {
+    const li = document.createElement("li");
+    const span = document.createElement("span");
+    span.textContent = t.title || "Untitled talk";
+    const small = document.createElement("small");
+    small.textContent = `${new Date(t.startedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} · ${t.words} words`;
+    span.append(small);
+    const btn = document.createElement("button"); btn.className = "ground small"; btn.textContent = "Save .md";
+    btn.onclick = () => { try { const rec = JSON.parse(localStorage.getItem(`st-talk-${t.id}`)); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown"); } catch {} };
+    li.append(span, btn); list.append(li);
+  }
+}
+let exportRoom = null; // the last talk's identity, kept after End so the export buttons still know what to name
+const currentRecord = () => (room ? talkRecord(false) : exportRoom);
+$("#copyTx").onclick = async () => {
+  const rec = currentRecord(); if (!rec) return;
+  try { await navigator.clipboard.writeText(rec.lines.join("\n\n")); const b = $("#copyTx"); b.textContent = "Copied!"; setTimeout(() => (b.textContent = "Copy"), 1500); } catch {}
+};
+$("#saveTxTxt").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.txt`, asText(rec), "text/plain"); };
+$("#saveTxMd").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown"); };
+
+const engine = () => $("#engine").value;
+let dg = null; // the relay-side audio link when the Deepgram engine is on
+
+const notice = (msg) => { const n = $("#notice"); n.textContent = msg || ""; n.hidden = !msg; };
 
 // Web Audio Meter State
 let audioCtx = null;
@@ -364,11 +642,9 @@ let animMeterId = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
 function renderTicker() {
-  const tail = finals.slice(-2);
+  const tail = finals.slice(-Number(prefs.depth));
   let html = "";
-  if (tail.length > 1) {
-    html += `<span class="prev">${esc(tail[0])}</span> `;
-  }
+  for (const line of tail.slice(0, -1)) html += `<span class="prev">${esc(line)}</span> `;
   if (tail.length > 0) {
     html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
   }
@@ -380,18 +656,74 @@ function renderTicker() {
   }
 }
 
-// Ticker Font Size Selection
-$$(".seg-btn").forEach((btn) => {
-  btn.onclick = () => {
-    $$(".seg-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    const sz = btn.dataset.sz;
-    document.documentElement.style.setProperty("--ticker-size", sz);
-    for (const el of tickerEls) {
-      el.style.fontSize = sz;
-    }
-  };
+// Stage ticker preferences: size, face, weight, depth, flow, ring. Remembered on this machine.
+const prefs = {
+  size: store.get("st-size") || "38px",
+  face: store.get("st-face") || "system",
+  weight: store.get("st-weight") || "700",
+  depth: store.get("st-depth") || "2",
+  flow: store.get("st-flow") || "live",
+  ring: store.get("st-ring") || "mint",
+  style: store.get("st-style") || "ink",
+};
+const tickerUrl = () => {
+  if (!room) return "";
+  const q = new URLSearchParams({ style: prefs.style, face: prefs.face, weight: prefs.weight, depth: prefs.depth, flow: prefs.flow, ring: prefs.ring });
+  return `${location.origin}/ticker/${room.id}?${q}`;
+};
+function applyPrefs() {
+  for (const el of tickerEls) {
+    el.style.setProperty("--ticker-size", prefs.size);
+    el.style.setProperty("--ticker-face", `var(--face-${prefs.face})`);
+    el.style.setProperty("--ticker-weight", prefs.weight);
+    el.style.setProperty("--ticker-depth", prefs.depth);
+    el.dataset.face = prefs.face;
+    el.dataset.flow = prefs.flow;
+    el.dataset.ring = prefs.ring;
+    el.dataset.style = prefs.style;
+  }
+  $$("[data-pref]").forEach((group) => {
+    const v = prefs[group.dataset.pref];
+    if (group.tagName === "SELECT") { group.value = v; return; }
+    $$("button", group).forEach((b) => {
+      b.classList.toggle("active", b.dataset.v === v);
+      if (b.classList.contains("ring")) b.setAttribute("aria-checked", String(b.dataset.v === v));
+    });
+  });
+  renderTicker();
+}
+// Typed captions: the room is a chat room, and this is the simplest way in.
+let typedTimer = null;
+$("#typed").addEventListener("input", () => {
+  if (!room) return;
+  clearTimeout(typedTimer);
+  typedTimer = setTimeout(() => push({ text: $("#typed").value.trim(), final: false, source: "typed" }), 250);
 });
+$("#typed").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !room) return;
+  e.preventDefault();
+  clearTimeout(typedTimer);
+  const text = $("#typed").value.trim();
+  $("#typed").value = "";
+  if (text) push({ text, final: true, source: "typed" });
+  else push({ text: "", final: false, source: "typed" });
+});
+$("#screenBtn").onclick = () => { if (room) window.open(tickerUrl(), "_blank", "noopener"); };
+$$("[data-pref]").forEach((group) => {
+  const key = group.dataset.pref;
+  if (group.tagName === "SELECT") {
+    group.onchange = () => { prefs[key] = group.value; store.set(`st-${key}`, prefs[key]); applyPrefs(); };
+    return;
+  }
+  $$("button", group).forEach((b) => b.onclick = () => { prefs[key] = b.dataset.v; store.set(`st-${key}`, prefs[key]); applyPrefs(); });
+});
+
+function applyRoomStyle() {
+  const t = room?.title || "";
+  $("#qrTalk").textContent = t; $("#qrTalk").hidden = !t;
+  $("#fsTalk").textContent = t; $("#fsTalk").hidden = !t;
+  document.title = t ? `${t} · StageType` : "StageType · Presenter Console";
+}
 
 // Update QR Code
 function updateQR() {
@@ -407,16 +739,24 @@ function updateQR() {
 
   const svg = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
   $("#qrGraphic").innerHTML = svg;
+  $("#qrGraphic").classList.remove("pop"); void $("#qrGraphic").offsetWidth; $("#qrGraphic").classList.add("pop");
+  $(".qr-card").dataset.tab = activeTab;
   $("#urlDisplay").textContent = targetUrl;
 
+  const showCode = !isMic && !!room.code;
+  $("#joinLine").hidden = !showCode; $("#fsCode").hidden = !showCode;
+  $("#joinCode").textContent = room.code || ""; $("#fsCodeText").textContent = room.code || "";
+  $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
   if (isMic) {
     $("#qrTitle").textContent = "Phone lapel mic";
     $("#qrSub").textContent = "Scan with your phone to speak untethered on stage";
     $("#fsTitle").textContent = "Pair wireless lapel mic";
+    $("#fsNote").textContent = "This code carries the room's write key. Scan it yourself, keep it off the projector.";
   } else {
     $("#qrTitle").textContent = "Audience reader";
     $("#qrSub").textContent = "Scan with phone camera to follow captions live";
     $("#fsTitle").textContent = "Scan to read along";
+    $("#fsNote").textContent = "Project on screen before the talk kicks off.";
   }
 
   const fsQrSvg = qr.createSvgTag({ cellSize: 9, margin: 0, scalable: true });
@@ -444,12 +784,7 @@ async function initAudioMeter() {
       for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
       const avg = sum / dataArray.length;
       const pct = Math.min(100, Math.round((avg / 90) * 100));
-      $("#meterFill").style.width = pct + "%";
-      if (pct > 65) {
-        $("#meterFill").style.background = "var(--pink)";
-      } else {
-        $("#meterFill").style.background = "var(--mint)";
-      }
+      document.documentElement.style.setProperty("--vu", (pct / 100).toFixed(2));
     }
     drawMeter();
   } catch (err) {
@@ -463,18 +798,8 @@ function stopAudioMeter() {
   meterStream = null;
   audioCtx?.close();
   audioCtx = null;
-  $("#meterFill").style.width = "0%";
+  document.documentElement.style.setProperty("--vu", "0");
 }
-
-$("#testAudioBtn").onclick = async () => {
-  if (audioCtx) {
-    stopAudioMeter();
-    $("#testAudioBtn").textContent = "Test mic level";
-  } else {
-    await initAudioMeter();
-    $("#testAudioBtn").textContent = "Stop mic test";
-  }
-};
 
 // SSE Stream Connection
 function listenToRoomStream(roomId) {
@@ -482,21 +807,27 @@ function listenToRoomStream(roomId) {
   sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
   sseSource.addEventListener("backlog", (e) => {
-    const { lines } = JSON.parse(e.data);
+    const { lines, offset = 0, phone } = JSON.parse(e.data);
     if (lines && lines.length > 0) {
-      finals = [...lines];
+      finals = lines.slice(-50);
+      // A resumed console may have missed lines while it was away: append what the relay has past our count.
+      const have = transcript.length;
+      if (have < offset + lines.length) { transcript.push(...lines.slice(Math.max(0, have - offset))); saveTalk(); }
       renderTicker();
     }
+    if (phone && !phoneLive) onPhone(true, false);
   });
 
+  // Finals come back from the relay whichever mic produced them (this tab or the phone),
+  // so the ticker shows exactly what the room sees.
   sseSource.addEventListener("final", (e) => {
     const { text } = JSON.parse(e.data);
     if (text) {
       lastWordTime = Date.now();
-      if (finals.length === 0 || finals[finals.length - 1] !== text) {
-        finals.push(text);
-        if (finals.length > 50) finals.shift();
-      }
+      finals.push(text);
+      if (finals.length > 50) finals.shift();
+      transcript.push(text);
+      saveTalk();
     }
     interim = "";
     renderTicker();
@@ -512,11 +843,16 @@ function listenToRoomStream(roomId) {
   sseSource.addEventListener("end", () => {
     handleTalkEnded(false);
   });
+
+  sseSource.addEventListener("source", (e) => {
+    const { source, live, lost } = JSON.parse(e.data);
+    if (source === "phone") onPhone(live, lost);
+  });
 }
 
 // Push transcript chunk to room
-async function push(text, final) {
-  if (!room) return;
+async function push(body) {
+  if (!room) return false;
   try {
     const r = await fetch(`/api/room/${room.id}`, {
       method: "POST",
@@ -524,14 +860,23 @@ async function push(text, final) {
         "content-type": "application/json",
         authorization: `Bearer ${room.token}`,
       },
-      body: JSON.stringify({ text, final }),
+      body: JSON.stringify(body),
     });
+    if (r.status === 404) { notice("The room is gone (server restarted?). End the talk and start again."); return false; }
     const j = await r.json();
     if (typeof j.listeners === "number") {
-      $("#countBadge").textContent = `${j.listeners} reading`;
+      // This console holds one of the stream connections itself; don't count it as an audience member.
+      const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
+      const label = `${others} reading`;
+      if ($("#countBadge").textContent !== label) {
+        $("#countBadge").textContent = label;
+        $("#countBadge").classList.remove("bump"); void $("#countBadge").offsetWidth; $("#countBadge").classList.add("bump");
+      }
     }
+    return r.ok;
   } catch {
     console.warn("Relay unreachable; captions still local");
+    return false;
   }
 }
 
@@ -540,15 +885,35 @@ function pushInterim() {
   clearTimeout(interimTimer);
   if (wait <= 0) {
     lastInterimSent = Date.now();
-    push(interim, false);
+    push({ text: interim, final: false, source: "mic" });
   } else {
     interimTimer = setTimeout(pushInterim, wait);
   }
 }
 
 // Local Speech Recognition
+const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
+
+async function startDeepgram() {
+  try {
+    dg = await StageTypeDeepgram.start({
+      roomId: room.id, token: room.token, source: "mic", lang: $("#lang").value,
+      onError: (msg) => { dg = null; notice(`Deepgram: ${msg}`); setPaused(true, false); },
+    });
+    updateMicLabel(true);
+  } catch (err) {
+    notice(`Couldn't start the Deepgram link: ${err.message}.`);
+    setPaused(true, false);
+  }
+}
+
 function startLocalRec() {
-  if (!Rec) return;
+  if (engine() === "deepgram") { startDeepgram(); initAudioMeter(); return; }
+  if (!Rec) {
+    notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
+    $("#micSource").textContent = "Phone mic only";
+    return;
+  }
   rec = new Rec();
   rec.continuous = true;
   rec.interimResults = true;
@@ -561,8 +926,8 @@ function startLocalRec() {
       const t = e.results[i][0].transcript.trim();
       if (e.results[i].isFinal) {
         if (t) {
-          finals.push(t);
-          push(t, true);
+          // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
+          push({ text: t, final: true, source: "mic" }).then((ok) => { if (!ok) { finals.push(t); transcript.push(t); saveTalk(); renderTicker(); } });
         }
       } else {
         freshInterim += t + " ";
@@ -574,48 +939,184 @@ function startLocalRec() {
   };
 
   rec.onerror = (e) => {
-    if (e.error !== "no-speech" && e.error !== "aborted") {
+    if (FATAL_REC.has(e.error)) {
+      // Don't loop forever restarting a mic the browser won't give us; the room stays open and
+      // "Resume mic" tries again once the presenter has fixed the permission.
+      notice(e.error === "not-allowed"
+        ? "Microphone blocked. Allow the mic for this site, or pair the phone lapel mic instead."
+        : `Speech recognition stopped: ${e.error}. Pair the phone lapel mic instead.`);
+      setPaused(true, false);
+    } else if (e.error !== "no-speech" && e.error !== "aborted") {
       console.warn("Speech recognition error:", e.error);
     }
   };
 
   rec.onend = () => {
-    if (localLive) setTimeout(() => localLive && startLocalRec(), 150);
+    if (localLive && !paused) setTimeout(() => localLive && !paused && startLocalRec(), 150);
   };
 
   rec.start();
   initAudioMeter();
 }
 
+// The phone lapel mic is the presenter's voice when it's live, so the laptop mic steps aside:
+// two recognisers on one voice would put every sentence in the transcript twice.
+function onPhone(live, lost) {
+  phoneLive = live;
+  const label = $("#micSource");
+  if (live) {
+    label.textContent = "Phone mic live";
+    if (localLive && !paused) { pausedByPhone = true; setPaused(true, false); }
+    $("#liveText").textContent = "Live · Phone mic";
+    // Clear only our own earlier phone notices; leave anything else (a resume note, a relay warning) alone.
+    if (/^(Phone mic|The phone mic)/.test($("#notice").textContent)) notice("");
+  } else if (lost) {
+    label.textContent = "Phone mic dropped";
+    if (pausedByPhone && localLive) {
+      pausedByPhone = false;
+      setPaused(false);
+      notice("The phone mic dropped out (battery, lock screen or wifi). The laptop mic is back on.");
+    } else {
+      notice("The phone mic dropped out (battery, lock screen or wifi).");
+    }
+  } else {
+    label.textContent = "Phone mic paused";
+    if (pausedByPhone) {
+      notice("Phone mic paused. The laptop mic is still paused: press Space or Resume mic to caption from here.");
+    }
+  }
+  updateMicLabel();
+}
+function updateMicLabel(force = false) {
+  if (phoneLive) return;
+  const label = $("#micSource");
+  if (!force && label.textContent.startsWith("Phone")) return;
+  label.textContent = paused ? "Laptop mic paused" : (engine() === "deepgram" ? "Laptop mic · Deepgram" : "Laptop mic");
+}
+
+// Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
+function setPaused(on, restart = true) {
+  paused = on;
+  if (!on) pausedByPhone = false;
+  $("#pauseBtn").textContent = on ? "Resume mic" : "Pause mic";
+  $("#pauseBtn").classList.toggle("butter", on);
+  if (on) {
+    rec?.stop();
+    dg?.stop(); dg = null;
+    interim = "";
+    renderTicker();
+    $("#liveText").textContent = phoneLive ? "Live · Phone mic" : "Live · Mic paused";
+  } else if (restart && localLive) {
+    notice("");
+    $("#liveText").textContent = "Live";
+    lastWordTime = Date.now();
+    startLocalRec();
+  }
+  updateMicLabel(true);
+}
+
 // Room Lifecycle
+async function lanBaseFor() {
+  const onLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const infoRes = onLocalhost ? await fetch("/api/info").then((r) => r.json()).catch(() => ({})) : {};
+  return (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
+}
+
 async function openRoom() {
-  const infoRes = await fetch("/api/info").then((r) => r.json()).catch(() => ({ lan: location.origin }));
-  lanBase = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? infoRes.lan
-    : location.origin;
+  if (room) return;
+  notice("");
+  lanBase = await lanBaseFor();
+  const title = $("#title").value.trim();
+  let created;
+  try {
+    const roomRes = await fetch("/api/room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
+    created = await roomRes.json();
+  } catch (err) {
+    notice(`Couldn't open a room on the relay (${err.message}). Is the server running?`);
+    return;
+  }
+  created.startedAt = Date.now();
+  transcript = [];
+  attachRoom(created);
+}
 
-  const roomRes = await fetch("/api/room", { method: "POST" });
-  room = await roomRes.json();
+// A reload mid-talk shouldn't lose the room: this tab remembers it (sessionStorage, so the token
+// never leaves the tab) and picks it back up if the relay still has it.
+async function resumeRoom() {
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem("st-room")); } catch {}
+  if (!saved?.id || !saved?.token) return false;
+  const alive = await fetch(`/api/room/${saved.id}`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${saved.token}` },
+    body: JSON.stringify({ ping: true }),
+  }).then((r) => r.ok).catch(() => false);
+  if (!alive) { try { sessionStorage.removeItem("st-room"); } catch {} return false; }
+  lanBase = await lanBaseFor();
+  $("#title").value = saved.title || "";
+  try { const rec = JSON.parse(localStorage.getItem(`st-talk-${saved.id}`)); transcript = rec?.lines || []; } catch { transcript = []; }
+  attachRoom(saved);
+  notice("Picked the talk back up after a reload. Phones never noticed.");
+  return true;
+}
 
+function attachRoom(r) {
+  room = r;
+  try { sessionStorage.setItem("st-room", JSON.stringify(room)); } catch {}
+  exportRoom = null;
+
+  // Fresh talk, fresh ticker
+  finals = [];
+  interim = "";
+  paused = false;
+  phoneLive = false;
+  pausedByPhone = false;
+  updateMicLabel(true);
+  applyRoomStyle();
+  renderTicker();
   updateQR();
+  $("#title").disabled = true;
+  $("#typed").disabled = false;
+  $("#screenBtn").disabled = false;
+  updateTranscriptStat();
+  renderPastTalks();
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
   $("#stopBtn").hidden = false;
-  $("#floatBtn").hidden = !("documentPictureInPicture" in window);
+  $("#pauseBtn").hidden = false;
+  $("#pauseBtn").textContent = "Pause mic";
+  $("#pauseBtn").classList.remove("butter");
+  $("#floatBtn").disabled = !("documentPictureInPicture" in window);
+  $("#floatBtn").title = "documentPictureInPicture" in window ? "" : "Floating needs Chrome or Edge. Use Second screen elsewhere.";
   $("#lang").disabled = true;
+  $("#engine").disabled = true;
+  $("#qrEmpty").hidden = true;
+  $("#urlDisplay").hidden = false;
+  $("#copyUrlBtn").disabled = false;
+  $("#fsQrBtn").disabled = false;
 
   $("#liveDot").classList.add("active");
   $("#liveText").textContent = "Live";
+  document.body.dataset.live = "1";
 
   localLive = true;
   lastWordTime = Date.now();
   startLocalRec();
 
+  // Keep the room alive through a long pause or Q&A (idle rooms are swept after 30 min), and
+  // refresh the "reading" count even when the phone is doing all the talking.
+  clearInterval(keepaliveInterval);
+  keepaliveInterval = setInterval(() => push({ ping: true }), 30_000);
+
   // Silence monitor
   clearInterval(silenceInterval);
   silenceInterval = setInterval(() => {
-    if (!localLive) return;
+    if (!localLive || paused || phoneLive) return;
     const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
     if (quietSeconds > 25) {
       $("#liveText").textContent = "Live · Mic quiet";
@@ -627,9 +1128,15 @@ async function openRoom() {
 
 function handleTalkEnded(callServer = true) {
   localLive = false;
+  paused = false;
+  phoneLive = false;
+  pausedByPhone = false;
   rec?.stop();
+  dg?.stop(); dg = null;
+  updateMicLabel(true);
   stopAudioMeter();
   clearInterval(silenceInterval);
+  clearInterval(keepaliveInterval);
   if (sseSource) {
     sseSource.close();
     sseSource = null;
@@ -640,20 +1147,40 @@ function handleTalkEnded(callServer = true) {
       headers: { authorization: `Bearer ${room.token}` },
     }).catch(() => {});
   }
+  if (room) { clearTimeout(saveTimer); exportRoom = talkRecord(true); if (transcript.length) persist(exportRoom); }
+  try { sessionStorage.removeItem("st-room"); } catch {}
   room = null;
+  updateTranscriptStat();
+  renderPastTalks();
 
   $("#liveDot").classList.remove("active");
   $("#liveText").textContent = "Talk ended";
+  delete document.body.dataset.live;
   $("#startBtn").hidden = false;
   $("#stopBtn").hidden = true;
-  $("#floatBtn").hidden = true;
+  $("#pauseBtn").hidden = true;
+  $("#floatBtn").disabled = true;
+  $("#engine").disabled = false;
+  $("#qrEmpty").hidden = false;
+  $("#urlDisplay").hidden = true;
+  $("#copyUrlBtn").disabled = true;
+  $("#fsQrBtn").disabled = true;
+  interim = "";
+  renderTicker();
   $("#lang").disabled = false;
-  $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
+  $("#title").disabled = false;
+  $("#typed").disabled = true;
+  $("#typed").value = "";
+  $("#screenBtn").disabled = true;
+  $("#urlDisplay").textContent = "Standby";
   $("#qrGraphic").innerHTML = "";
+  $("#joinLine").hidden = true;
+  $("#fsCode").hidden = true;
 }
 
 $("#startBtn").onclick = () => openRoom();
 $("#stopBtn").onclick = () => handleTalkEnded(true);
+$("#pauseBtn").onclick = () => setPaused(!paused);
 
 // Tabs for QR switching
 $("#tabAudience").onclick = () => {
@@ -702,16 +1229,20 @@ const floatTickerWindow = async () => {
   if (!("documentPictureInPicture" in window)) return;
   try {
     const pip = await documentPictureInPicture.requestWindow({ width: 1100, height: 160 });
-    const style = document.querySelector("style").cloneNode(true);
-    pip.document.head.append(style);
+    const fonts = pip.document.createElement("link");
+    fonts.rel = "stylesheet"; fonts.href = new URL("/vendor/fonts.css", location.origin).href;
+    pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
     pip.document.body.style.cssText = "margin:0;background:#1e1714;display:flex;align-items:center;justify-content:center;overflow:hidden;";
 
     const t = pip.document.createElement("div");
     t.id = "ticker";
-    t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;font-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
+    t.style.cssText = "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;--ticker-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
     pip.document.body.append(t);
     tickerEls.push(t);
-    renderTicker();
+    applyRoomStyle();
+    applyPrefs();
+    t.style.setProperty("--ticker-size", "clamp(22px,5.2vw,50px)");
+    t.style.boxShadow = "none";
 
     pip.addEventListener("pagehide", () => {
       tickerEls = tickerEls.filter((el) => el !== t);
@@ -721,6 +1252,23 @@ const floatTickerWindow = async () => {
   }
 };
 $("#floatBtn").onclick = floatTickerWindow;
+
+// Engine: browser recognition is always there; Deepgram only if the relay has a key.
+$("#engine").value = store.get("st-engine") || "browser";
+$("#engine").onchange = () => { store.set("st-engine", engine()); updateMicLabel(true); };
+fetch("/api/engines").then((r) => r.json()).then((e) => {
+  const opt = $('#engine option[value="deepgram"]');
+  opt.disabled = !e.deepgram;
+  if (!e.deepgram) {
+    if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
+    $("#engineHint").textContent = "Deepgram needs a key on the relay (DEEPGRAM_API_KEY). Browser recognition is on.";
+    $("#engineHint").hidden = false;
+  }
+}).catch(() => {});
+applyPrefs();
+renderPastTalks();
+updateTranscriptStat();
+resumeRoom();
 
 // Keyboard Shortcuts
 window.addEventListener("keydown", (e) => {
@@ -734,8 +1282,9 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     openFullscreenQR();
   } else if (e.code === "Space" && e.target === document.body) {
+    // Space never ends the talk: that's a deliberate click on "End talk".
     e.preventDefault();
-    if (room) handleTalkEnded(true);
+    if (room) setPaused(!paused);
     else openRoom();
   }
 });
