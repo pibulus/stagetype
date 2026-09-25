@@ -21,8 +21,8 @@ deno task check    # TypeScript type-checking
 - Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (favicon)
 - Room Lifecycle API:
   - `POST /api/room` (optional `{ title }`) -> `{ id, token, title, code }`; codes are 4 letters from ABCDEFGHJKLMNPRSTUVWXYZ, blocklisted words skipped, unique among open rooms, released on end (capped at 1000 open rooms; title ≤ 80 chars)
-  - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final }`; `{ ping: true }` is a silent keepalive
-  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title }`, `interim`, `final { text, seq }`, `end`
+  - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live }` announces/heartbeats the phone (lost after 45 s of silence, checked every 5 s)
+  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title, phone }`, `interim { text, source }`, `final { text, seq, source }`, `source { source, live, lost }`, `end`
   - `DELETE /api/room/:id` (Bearer auth) -> ends talk and flushes room
 - Invariants: token compared in constant time; push body ≤ 16 KB; backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
 
@@ -54,6 +54,7 @@ deno task check    # TypeScript type-checking
 - Screen Wake Lock active while broadcasting.
 - Mobile browsers enforce HTTPS for mic capture (`cloudflared tunnel --url http://localhost:8787` for mobile rehearsals).
 - Never project the mic QR: it carries the write token. The fullscreen modal copy says so.
+- **Handoff rule.** Phone live ⇒ console pauses the laptop recogniser (`pausedByPhone`). Phone paused ⇒ laptop stays paused, notice explains. Phone lost ⇒ laptop resumes only if it was paused by the phone. The presenter can always override with Space / Resume mic. The mic page heartbeats every 20 s while live and sends `live:false` on pause, End talk (via stop), and `pagehide` (keepalive fetch, not sendBeacon, so the token stays in a header).
 
 ## 🧠 Mental Model
 - **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box; later Deepgram via a relay proxy or a native app). Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and never sees audio. New capability should be a new source or a new display, not a new server feature.

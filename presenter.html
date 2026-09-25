@@ -389,7 +389,7 @@
           <div class="meter-bar-track">
             <div id="meterFill" class="meter-bar-fill"></div>
           </div>
-          <span id="micSource" style="font-size:12px;font-weight:700;color:var(--muted)">Local tab</span>
+          <span id="micSource" style="font-size:12px;font-weight:700;color:var(--muted)">Laptop mic</span>
         </div>
       </div>
 
@@ -564,6 +564,8 @@ let lastWordTime = Date.now();
 let silenceInterval = null;
 let keepaliveInterval = null;
 let paused = false;
+let phoneLive = false;
+let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
 
 const notice = (msg) => { const n = $("#notice"); n.textContent = msg || ""; n.hidden = !msg; };
 
@@ -635,7 +637,7 @@ let typedTimer = null;
 $("#typed").addEventListener("input", () => {
   if (!room) return;
   clearTimeout(typedTimer);
-  typedTimer = setTimeout(() => push({ text: $("#typed").value.trim(), final: false }), 250);
+  typedTimer = setTimeout(() => push({ text: $("#typed").value.trim(), final: false, source: "typed" }), 250);
 });
 $("#typed").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || !room) return;
@@ -643,8 +645,8 @@ $("#typed").addEventListener("keydown", (e) => {
   clearTimeout(typedTimer);
   const text = $("#typed").value.trim();
   $("#typed").value = "";
-  if (text) push({ text, final: true });
-  else push({ text: "", final: false });
+  if (text) push({ text, final: true, source: "typed" });
+  else push({ text: "", final: false, source: "typed" });
 });
 $("#screenBtn").onclick = () => { if (room) window.open(tickerUrl(), "_blank", "noopener"); };
 $$("[data-pref]").forEach((group) => {
@@ -762,11 +764,12 @@ function listenToRoomStream(roomId) {
   sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
   sseSource.addEventListener("backlog", (e) => {
-    const { lines } = JSON.parse(e.data);
+    const { lines, phone } = JSON.parse(e.data);
     if (lines && lines.length > 0) {
       finals = [...lines];
       renderTicker();
     }
+    if (phone && !phoneLive) onPhone(true, false);
   });
 
   // Finals come back from the relay whichever mic produced them (this tab or the phone),
@@ -791,6 +794,11 @@ function listenToRoomStream(roomId) {
 
   sseSource.addEventListener("end", () => {
     handleTalkEnded(false);
+  });
+
+  sseSource.addEventListener("source", (e) => {
+    const { source, live, lost } = JSON.parse(e.data);
+    if (source === "phone") onPhone(live, lost);
   });
 }
 
@@ -829,7 +837,7 @@ function pushInterim() {
   clearTimeout(interimTimer);
   if (wait <= 0) {
     lastInterimSent = Date.now();
-    push({ text: interim, final: false });
+    push({ text: interim, final: false, source: "mic" });
   } else {
     interimTimer = setTimeout(pushInterim, wait);
   }
@@ -857,7 +865,7 @@ function startLocalRec() {
       if (e.results[i].isFinal) {
         if (t) {
           // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
-          push({ text: t, final: true }).then((ok) => { if (!ok) { finals.push(t); renderTicker(); } });
+          push({ text: t, final: true, source: "mic" }).then((ok) => { if (!ok) { finals.push(t); renderTicker(); } });
         }
       } else {
         freshInterim += t + " ";
@@ -889,22 +897,57 @@ function startLocalRec() {
   initAudioMeter();
 }
 
+// The phone lapel mic is the presenter's voice when it's live, so the laptop mic steps aside:
+// two recognisers on one voice would put every sentence in the transcript twice.
+function onPhone(live, lost) {
+  phoneLive = live;
+  const label = $("#micSource");
+  if (live) {
+    label.textContent = "Phone mic live";
+    if (localLive && !paused) { pausedByPhone = true; setPaused(true, false); }
+    $("#liveText").textContent = "Live · Phone mic";
+    notice("");
+  } else if (lost) {
+    label.textContent = "Phone mic dropped";
+    if (pausedByPhone && localLive) {
+      pausedByPhone = false;
+      setPaused(false);
+      notice("The phone mic dropped out (battery, lock screen or wifi). The laptop mic is back on.");
+    } else {
+      notice("The phone mic dropped out (battery, lock screen or wifi).");
+    }
+  } else {
+    label.textContent = "Phone mic paused";
+    if (pausedByPhone) {
+      notice("Phone mic paused. The laptop mic is still paused: press Space or Resume mic to caption from here.");
+    }
+  }
+  updateMicLabel();
+}
+function updateMicLabel() {
+  if (phoneLive) return;
+  const label = $("#micSource");
+  if (!label.textContent.startsWith("Phone")) label.textContent = paused ? "Laptop mic paused" : "Laptop mic";
+}
+
 // Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
 function setPaused(on, restart = true) {
   paused = on;
+  if (!on) pausedByPhone = false;
   $("#pauseBtn").textContent = on ? "Resume mic" : "Pause mic";
   $("#pauseBtn").classList.toggle("butter", on);
   if (on) {
     rec?.stop();
     interim = "";
     renderTicker();
-    $("#liveText").textContent = "Live · Mic paused";
+    $("#liveText").textContent = phoneLive ? "Live · Phone mic" : "Live · Mic paused";
   } else if (restart && localLive) {
     notice("");
     $("#liveText").textContent = "Live";
     lastWordTime = Date.now();
     startLocalRec();
   }
+  if (!phoneLive) $("#micSource").textContent = on ? "Laptop mic paused" : "Laptop mic";
 }
 
 // Room Lifecycle
@@ -935,6 +978,9 @@ async function openRoom() {
   finals = [];
   interim = "";
   paused = false;
+  phoneLive = false;
+  pausedByPhone = false;
+  $("#micSource").textContent = "Laptop mic";
   applyRoomStyle();
   renderTicker();
   updateQR();
@@ -967,7 +1013,7 @@ async function openRoom() {
   // Silence monitor
   clearInterval(silenceInterval);
   silenceInterval = setInterval(() => {
-    if (!localLive || paused) return;
+    if (!localLive || paused || phoneLive) return;
     const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
     if (quietSeconds > 25) {
       $("#liveText").textContent = "Live · Mic quiet";
@@ -980,6 +1026,9 @@ async function openRoom() {
 function handleTalkEnded(callServer = true) {
   localLive = false;
   paused = false;
+  phoneLive = false;
+  pausedByPhone = false;
+  $("#micSource").textContent = "Laptop mic";
   rec?.stop();
   stopAudioMeter();
   clearInterval(silenceInterval);

@@ -2,7 +2,9 @@
 // Zero deps. Rooms live in memory; a restart ends every talk.
 // ponytail: single-process in-memory rooms, move to Deno KV/Redis only if this ever runs on >1 instance.
 
-type Chunk = { text?: unknown; final?: unknown; ping?: unknown };
+type Chunk = { text?: unknown; final?: unknown; ping?: unknown; source?: unknown; live?: unknown };
+type Source = "mic" | "phone" | "typed";
+const SOURCES = new Set<string>(["mic", "phone", "typed"]);
 type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
 type Room = {
   token: string;
@@ -10,6 +12,7 @@ type Room = {
   title: string; // shown on every phone and in the export; "" when the presenter left it blank
   lines: string[]; // finalized sentences, the backlog late joiners get
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
+  phone: { live: boolean; seen: number }; // the lapel mic: live while it heartbeats, lost after PHONE_LOST_MS
   listeners: Set<Listener>;
   touched: number;
   startedAt: number;
@@ -23,6 +26,7 @@ const MAX_CHUNK = 2_000; // chars kept per final line
 const MAX_TITLE = 80;
 const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
+const PHONE_LOST_MS = 45_000; // a live phone that goes this long without a push is treated as dropped
 
 export const rooms = new Map<string, Room>();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
@@ -68,6 +72,20 @@ function send(room: Room, event: string, data: unknown) {
   const f = frame(event, data);
   for (const l of room.listeners) {
     try { l.ctrl.enqueue(f); } catch { drop(room, l); }
+  }
+}
+
+function setPhone(room: Room, live: boolean, lost: boolean) {
+  if (room.phone.live === live) return;
+  room.phone.live = live;
+  send(room, "source", { source: "phone", live, lost });
+}
+
+// Runs every few seconds: a phone that stopped heartbeating (battery, lock screen, walked out of wifi)
+// is marked lost so the console can bring the laptop mic back.
+export function checkPhones(now = Date.now()) {
+  for (const r of rooms.values()) {
+    if (r.phone.live && now - r.phone.seen > PHONE_LOST_MS) setPhone(r, false, true);
   }
 }
 
@@ -146,7 +164,7 @@ export async function handler(req: Request): Promise<Response> {
     const token = id(32);
     const code = newCode();
     const now = Date.now();
-    rooms.set(roomId, { token, code, title, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
+    rooms.set(roomId, { token, code, title, lines: [], offset: 0, phone: { live: false, seen: 0 }, listeners: new Set(), touched: now, startedAt: now });
     codes.set(code, roomId);
     return json({ id: roomId, token, title, code });
   }
@@ -163,8 +181,17 @@ export async function handler(req: Request): Promise<Response> {
     let body: Chunk | null = null;
     try { body = JSON.parse(raw); } catch { /* fallthrough */ }
     if (!body || typeof body !== "object") return json({ error: "bad json" }, 400);
-    room.touched = Date.now();
+    const now = Date.now();
+    room.touched = now;
+    const source: Source = typeof body.source === "string" && SOURCES.has(body.source) ? body.source as Source : "mic";
     const text = typeof body.text === "string" ? body.text.trim().slice(0, MAX_CHUNK) : "";
+    if (source === "phone") {
+      // The phone says live:true when it starts and heartbeats it; live:false when the presenter pauses it.
+      // Any words from it also count as live. The console pauses the laptop mic on the change.
+      room.phone.seen = now;
+      const wants = typeof body.live === "boolean" ? body.live : (body.ping ? room.phone.live : true);
+      setPhone(room, wants, false);
+    }
     if (body.ping) {
       // keepalive only
     } else if (body.final) {
@@ -172,9 +199,9 @@ export async function handler(req: Request): Promise<Response> {
         room.lines.push(text);
         if (room.lines.length > MAX_BACKLOG) { room.lines.shift(); room.offset++; }
       }
-      send(room, "final", { text, seq: room.offset + room.lines.length });
+      send(room, "final", { text, seq: room.offset + room.lines.length, source });
     } else {
-      send(room, "interim", { text });
+      send(room, "interim", { text, source });
     }
     return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title });
   }
@@ -192,7 +219,7 @@ export async function handler(req: Request): Promise<Response> {
     let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
-        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title });
+        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title, phone: room.phone.live });
         c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
         const ping = setInterval(() => {
           try { c.enqueue(enc.encode(": ping\n\n")); } catch { drop(room, me); }
@@ -253,6 +280,7 @@ const PORT = Number(Deno.env.get("PORT") ?? 8787);
 
 if (import.meta.main) {
   setInterval(sweep, 60_000);
+  setInterval(checkPhones, 5_000);
   Deno.serve({ port: PORT, hostname: "0.0.0.0" }, handler);
   console.log(`presenter: http://localhost:${PORT}   phones: http://${lanIp()}:${PORT}`);
 }

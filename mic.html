@@ -65,6 +65,10 @@
     background: rgba(251,241,228,0.04); border: 2px solid rgba(251,241,228,0.15);
     border-radius: 24px; padding: 20px; min-height: 140px; margin-bottom: 16px;
   }
+  #guide { margin: 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 10px; color: var(--muted); font-size: 15px; line-height: 1.4; font-weight: 500; }
+  #guide li::marker { color: var(--pink); font-weight: 900; }
+  #guide b { color: var(--ink); font-weight: 800; }
+  body.started #guide { display: none; }
   #echo {
     font: 700 clamp(20px, 6vw, 30px)/1.35 var(--swiss);
     overflow: hidden; max-height: 4.8em; letter-spacing: -0.01em;
@@ -77,6 +81,7 @@
   body.live .echo-container { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(184,240,216,.12); }
   .echo-container { transition: border-color .3s, box-shadow .3s; }
   #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
+  body:not(.started) #echo:empty::before { content: none; }
 
   /* Big Stage Button & Glow Aura */
   .mic-button-wrap {
@@ -167,10 +172,15 @@
 <div>
   <p id="talk" hidden></p>
   <div class="status-row">
-    <span id="state"><span class="dot"></span><span id="stateText">Paired · Standby</span></span>
+    <span id="state"><span class="dot"></span><span id="stateText">Paired · Ready</span></span>
     <span id="room">0 in room</span>
   </div>
   <div class="echo-container">
+    <ol id="guide">
+      <li><b>Tap Go live</b> and allow the microphone.</li>
+      <li><b>Pocket it,</b> screen facing out, or hold it near your chin.</li>
+      <li><b>Leave the screen on.</b> StageType keeps it awake. Your laptop mic pauses while this one is live.</li>
+    </ol>
     <div id="echo" aria-live="polite"></div>
   </div>
 </div>
@@ -212,10 +222,10 @@ async function push(body) {
       body: JSON.stringify(body),
     });
     if (r.status === 404) {
-      stop();
+      stop(false);
       $("#err").textContent = "Talk ended on stage.";
     } else if (r.status === 403) {
-      stop();
+      stop(false);
       $("#err").textContent = "Pairing expired. Rescan the mic QR code.";
     } else {
       $("#err").textContent = "";
@@ -256,7 +266,7 @@ function startRec() {
           finals.push(t);
           words += t.split(/\s+/).filter(Boolean).length;
           stats();
-          push({ text: t, final: true });
+          push({ text: t, final: true, source: "phone" });
         }
       } else {
         interim += t + " ";
@@ -270,7 +280,7 @@ function startRec() {
       const wait = 250 - (Date.now() - lastInterim);
       const send = () => {
         lastInterim = Date.now();
-        push({ text: interim, final: false });
+        push({ text: interim, final: false, source: "phone" });
       };
       wait <= 0 ? send() : (interimTimer = setTimeout(send, wait));
     }
@@ -295,8 +305,15 @@ function startRec() {
   rec.start();
 }
 
+let heartbeat = null;
 async function go() {
   live = true;
+  document.body.classList.add("live", "started");
+  // Tell the console this phone is the mic now, and keep saying so while live, so a dead battery
+  // or a locked screen is noticed within a minute and the laptop mic can take over.
+  push({ ping: true, source: "phone", live: true });
+  clearInterval(heartbeat);
+  heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
   startRec();
   try {
     wake = await navigator.wakeLock?.request("screen");
@@ -313,9 +330,12 @@ async function go() {
   $("#lang").disabled = true;
 }
 
-function stop() {
+function stop(announce = true) {
   if (!live) return;
   live = false;
+  document.body.classList.remove("live");
+  clearInterval(heartbeat);
+  if (announce) push({ ping: true, source: "phone", live: false });
   rec?.stop();
   wake?.release?.();
   wake = null;
@@ -347,7 +367,7 @@ $("#end").onclick = async () => {
   }
   clearTimeout(endArmed);
   endArmed = null;
-  stop();
+  stop(false);
   if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   await fetch(`/api/room/${roomId}`, {
     method: "DELETE",
@@ -366,6 +386,15 @@ $("#go").onclick = () => {
   if (!Rec || !token) return;
   live ? stop() : go();
 };
+
+addEventListener("pagehide", () => {
+  if (!live || !token) return;
+  fetch(`/api/room/${roomId}`, {
+    method: "POST", keepalive: true,
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ping: true, source: "phone", live: false }),
+  }).catch(() => {});
+});
 
 document.addEventListener("visibilitychange", async () => {
   if (live && document.visibilityState === "visible") {

@@ -48,6 +48,8 @@ Presenters are normally tethered to their MacBook's built-in microphone at the l
 
 StageType implements the **Appendage Architecture**: scan the **Phone lapel mic** QR code, slide your smartphone into your shirt pocket, and walk the stage freely. Your phone captures your voice, keeps the screen awake via the Screen Wake Lock API, and streams transcript tokens straight to the room relay.
 
+The handoff is automatic. When the phone goes live the console pauses the laptop mic, so one voice never lands in the transcript twice, and shows **Phone mic live**. Pause the phone and the laptop stays paused until you say otherwise (Space or Resume mic). If the phone drops out (battery, lock screen, wifi) the relay notices within 45 seconds and the laptop mic comes back on by itself, with a note saying so. Closing the mic tab hands back immediately.
+
 ### 3. It's a chat room, and anything can talk into it
 Under the hood a talk is a room: something sends lines in, everything else reads them out. The laptop mic is one source. The phone lapel mic is another. The **typing box** on the console is the third: a captioner, a colleague fixing a name, or a presenter who doesn't speak can type a line and it lands on every phone, words showing as they're typed and the line settling on Enter. Reading side, the audience phones are one display, the stage ticker another, and the **standalone ticker page** (`/ticker/:id`) is the bar on its own for any second screen or an OBS browser source.
 
@@ -177,8 +179,8 @@ A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR c
 | `GET` | `/j/:code` | none | Short link: 302 to `/live/:id`, or to `/join?nope=CODE` |
 | `GET` | `/join` | none | Type-the-code page (also served at `/live`) |
 | `GET` | `/ticker/:id` | none | The bar on its own; prefs in the query string |
-| `POST` | `/api/room/:id` | Bearer token | Push `{ text, final }`; `{ ping: true }` is a keepalive that broadcasts nothing |
-| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title }`, then `interim { text }`, `final { text, seq }`, `end` |
+| `POST` | `/api/room/:id` | Bearer token | Push `{ text, final, source }`; `source` is `mic` (default), `phone` or `typed`. `{ ping: true }` is a keepalive that broadcasts nothing. `{ ping: true, source: "phone", live: true\|false }` announces the phone mic and heartbeats it while live |
+| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, phone }`, then `interim { text, source }`, `final { text, seq, source }`, `source { source: "phone", live, lost }` on handoffs, `end` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 

@@ -1,4 +1,4 @@
-import { handler, newCode, rooms, sweep } from "./server.ts";
+import { checkPhones, handler, newCode, rooms, sweep } from "./server.ts";
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const base = "http://x";
@@ -74,6 +74,47 @@ Deno.test("join codes: four safe letters, resolvable, redirecting, released on e
   assert(gone.headers.get("location")!.endsWith(`/join?nope=${r.code}`));
   assertEquals((await handler(new Request(`${base}/join`))).status, 200);
   assertEquals((await handler(new Request(`${base}/live`))).status, 200);
+});
+
+Deno.test("phone handoff: source tags, live/paused announcements, lost detection", async () => {
+  const { id, token } = await mkRoom();
+  const s = await openStream(id);
+  assert((await s.read()).includes('"phone":false'));
+  // laptop words carry their source; an unknown source falls back to mic
+  await post(`/api/room/${id}`, { text: "from laptop", final: true, source: "bogus" }, token);
+  assert((await s.read()).includes('"source":"mic"'));
+  await post(`/api/room/${id}`, { text: "typed", final: true, source: "typed" }, token);
+  assert((await s.read()).includes('"source":"typed"'));
+  // phone goes live: one announcement, not one per heartbeat
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: true }, token);
+  const ann = await s.read();
+  assert(ann.includes("event: source") && ann.includes('"live":true') && ann.includes('"lost":false'));
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: true }, token);
+  await post(`/api/room/${id}`, { text: "from phone", final: true, source: "phone" }, token);
+  const words = await s.read();
+  assert(words.includes("event: final") && words.includes('"source":"phone"') && !words.includes("event: source"));
+  assertEquals(rooms.get(id)!.phone.live, true);
+  // presenter pauses the phone
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: false }, token);
+  const off = await s.read();
+  assert(off.includes("event: source") && off.includes('"live":false') && off.includes('"lost":false'));
+  // words from the phone imply live again; then it goes quiet for too long and is marked lost
+  await post(`/api/room/${id}`, { text: "back", final: true, source: "phone" }, token);
+  const back = await s.read();
+  assert(back.includes("event: source") && back.includes('"live":true'));
+  assert((await s.read()).includes('"text":"back"'));
+  checkPhones(Date.now() + 10_000);
+  assertEquals(rooms.get(id)!.phone.live, true);
+  checkPhones(Date.now() + 60_000);
+  assertEquals(rooms.get(id)!.phone.live, false);
+  const lost = (await s.read()) + "";
+  assert(lost.includes("event: source") && lost.includes('"lost":true'));
+  // a late-joining console learns the phone state from the backlog
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: true }, token);
+  const s2 = await openStream(id);
+  assert((await s2.read()).includes('"phone":true'));
+  await s.reader.cancel(); await s2.reader.cancel();
+  await del(`/api/room/${id}`, token);
 });
 
 Deno.test("ending a talk closes every listener and clears its keepalive timer", async () => {
