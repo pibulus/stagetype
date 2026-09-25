@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<script src="/deepgram.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1714">
 <title>StageType · Lapel Mic</title>
@@ -58,6 +59,15 @@
   #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
   #room b { color: var(--butter); font-weight: 900; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+
+  .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; flex: 1; border: 2px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button { flex: 1; height: 30px; border: none; border-radius: 999px; background: transparent; color: var(--ink); font: 800 13px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--spring); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); background: var(--mint); color: #1e1714; }
+  .seg button:disabled { opacity: .4; }
+  .seg button:active { transform: scale(.96); }
+  body.started .engine-row { display: none; }
 
   /* Live Transcription Echo */
   .echo-container {
@@ -175,6 +185,13 @@
     <span id="state"><span class="dot"></span><span id="stateText">Paired · Ready</span></span>
     <span id="room">0 in room</span>
   </div>
+  <div class="engine-row">
+    <span class="engine-label">Engine</span>
+    <div class="seg" id="engineSeg" role="radiogroup" aria-label="Speech engine">
+      <button data-v="browser" aria-pressed="true">Browser</button>
+      <button data-v="deepgram" aria-pressed="false">Deepgram</button>
+    </div>
+  </div>
   <div class="echo-container">
     <ol id="guide">
       <li><b>Tap Go live</b> and allow the microphone.</li>
@@ -209,7 +226,7 @@ const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">":
 const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
 
 if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
-if (!Rec) $("#err").textContent = "Speech recognition missing in this browser. Safari or Chrome recommended.";
+if (!Rec) $("#err").textContent = "This browser has no speech recognition. Use Safari or Chrome, or pick the Deepgram engine if the relay offers it.";
 if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
   $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
 }
@@ -305,6 +322,33 @@ function startRec() {
   rec.start();
 }
 
+// Engine: browser recognition, or Deepgram through the relay if the relay has a key.
+let engine = (() => { try { return localStorage.getItem("stm-engine") || "browser"; } catch { return "browser"; } })();
+let dg = null;
+const paintEngine = () => document.querySelectorAll("#engineSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === engine)));
+document.querySelectorAll("#engineSeg button").forEach((b) => b.onclick = () => { if (b.disabled) return; engine = b.dataset.v; try { localStorage.setItem("stm-engine", engine); } catch {} paintEngine(); });
+paintEngine();
+fetch("/api/engines").then((r) => r.json()).then((e) => {
+  const b = document.querySelector('#engineSeg [data-v="deepgram"]');
+  b.disabled = !e.deepgram;
+  b.title = e.deepgram ? "" : "The relay has no Deepgram key";
+  if (!e.deepgram && engine === "deepgram") { engine = "browser"; paintEngine(); }
+}).catch(() => {});
+
+async function startDeepgram() {
+  try {
+    dg = await StageTypeDeepgram.start({
+      roomId, token, source: "phone", lang: $("#lang").value,
+      onInterim: (i) => render(i),
+      onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); render(""); },
+      onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
+    });
+  } catch (err) {
+    $("#err").textContent = `Couldn't start the Deepgram link: ${err.message}.`;
+    stop();
+  }
+}
+
 let heartbeat = null;
 async function go() {
   live = true;
@@ -314,7 +358,7 @@ async function go() {
   push({ ping: true, source: "phone", live: true });
   clearInterval(heartbeat);
   heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
-  startRec();
+  if (engine === "deepgram") startDeepgram(); else startRec();
   try {
     wake = await navigator.wakeLock?.request("screen");
   } catch {}
@@ -337,6 +381,7 @@ function stop(announce = true) {
   clearInterval(heartbeat);
   if (announce) push({ ping: true, source: "phone", live: false });
   rec?.stop();
+  dg?.stop(); dg = null;
   wake?.release?.();
   wake = null;
 
@@ -383,7 +428,8 @@ $("#end").onclick = async () => {
 if (token) push({ ping: true });
 
 $("#go").onclick = () => {
-  if (!Rec || !token) return;
+  if (!token) return;
+  if (engine === "browser" && !Rec) return;
   live ? stop() : go();
 };
 

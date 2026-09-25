@@ -29,6 +29,9 @@ The console's text field. A third source alongside the two mics: words show as i
 #### 📺 Standalone Ticker (`ticker.html` / `/ticker/:id`)
 The bar on its own, full-bleed, styled by query string. For a second display in any browser, and as an OBS browser source so livestreams get captions.
 
+#### 🎧 Engine
+Where speech becomes text. **Browser** is the device's own recogniser (free, zero setup). **Deepgram** streams PCM from the page to the relay, which holds the key and forwards to Deepgram; results come back as ordinary room pushes. Chosen per device: console or phone.
+
 #### ⚡ SSE Fan-Out Relay (`server.ts`)
 A zero-dependency Deno server running an in-memory Server-Sent Events (SSE) broadcast. It handles room creation, token authorization, backlog delivery for late joiners, keep-alive heartbeats, and instant fan-out of text tokens to hundreds of phones under 50ms latency.
 

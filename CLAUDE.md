@@ -18,7 +18,8 @@ deno task check    # TypeScript type-checking
 - Standalone Ticker: `GET /ticker/:roomId?style=ink|paper&face=…&weight=…&size=NNpx&depth=1-3&flow=live|settled&ring=…` (second screens, OBS)
 - Join by code: `GET /join` (also `/live`), `GET /j/:code` (302), `GET /api/join/:code` -> `{ id }`
 - Network Discovery: `GET /api/info` (returns LAN IP and port for QR encoding)
-- Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (favicon)
+- Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (favicon), `GET /deepgram.js` (client capture script)
+- Engines: `GET /api/engines` -> `{ browser, deepgram }`; `WS /api/room/:id/audio?source=&lang=` with subprotocol `["bearer", token]` streams PCM16 @ 16 kHz to Deepgram via the relay. Env: `DEEPGRAM_API_KEY` (off without it), `DEEPGRAM_MODEL` (nova-3), `DEEPGRAM_URL` (tests point it at a mock).
 - Room Lifecycle API:
   - `POST /api/room` (optional `{ title }`) -> `{ id, token, title, code }`; codes are 4 letters from ABCDEFGHJKLMNPRSTUVWXYZ, blocklisted words skipped, unique among open rooms, released on end (capped at 1000 open rooms; title ≤ 80 chars)
   - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live }` announces/heartbeats the phone (lost after 45 s of silence, checked every 5 s)
@@ -57,7 +58,7 @@ deno task check    # TypeScript type-checking
 - **Handoff rule.** Phone live ⇒ console pauses the laptop recogniser (`pausedByPhone`). Phone paused ⇒ laptop stays paused, notice explains. Phone lost ⇒ laptop resumes only if it was paused by the phone. The presenter can always override with Space / Resume mic. The mic page heartbeats every 20 s while live and sends `live:false` on pause, End talk (via stop), and `pagehide` (keepalive fetch, not sendBeacon, so the token stays in a header).
 
 ## 🧠 Mental Model
-- **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box; later Deepgram via a relay proxy or a native app). Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and never sees audio. New capability should be a new source or a new display, not a new server feature.
+- **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box, Deepgram through the relay; later a native app). `pushChunk()` in server.ts is the single entry point for words; the Deepgram session and HTTP pushes both call it. Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and never sees audio. New capability should be a new source or a new display, not a new server feature.
 - The typing box sends interim on input (250 ms debounce) and final on Enter. Space in the box types a space; the global Space shortcut ignores inputs.
 
 ## 💾 Persistence (client side only)
@@ -67,6 +68,10 @@ deno task check    # TypeScript type-checking
 
 ## 🚀 Hosting
 - One process, one machine (in-memory rooms). `Dockerfile` + `fly.toml` (never scale to zero). Not Deno Deploy / multi-isolate until rooms move to KV.
+
+## 🎛️ Console layout (keep it this lean)
+- Header pills: Live state · mic source · reading count. Left column, top to bottom: **This Talk** (title, language, engine: everything set before Start), **Voice** (Start / Pause / End, notice, the typing box), **Stage Ticker** (Float, Second screen, Size, Style; face/weight/lines/flow/ring under a disclosure), **Transcript** (stat, Copy/.txt/.md, Previous talks). Right column: the QR card, with a ghost empty state before a talk.
+- Gone on purpose: the quickstart strip, the VU meter and Test mic button (the ghost is the meter), the Screen Overlay blurb. Don't bring them back; add guidance to empty states instead.
 
 ## 🧭 Presenter Rules
 - Space toggles mic pause/resume, never ends the talk. Ending is a deliberate click.

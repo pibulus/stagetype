@@ -2,7 +2,7 @@
 FROM denoland/deno:2.9.7
 WORKDIR /app
 COPY deno.json deno.lock server.ts ./
-COPY *.html ghost.svg ./
+COPY *.html ghost.svg deepgram.js ./
 COPY vendor ./vendor
 RUN deno cache server.ts
 ENV PORT=8787

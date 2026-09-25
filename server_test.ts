@@ -1,4 +1,28 @@
 import { checkPhones, handler, newCode, rooms, sweep } from "./server.ts";
+
+// A stand-in for Deepgram's streaming endpoint: same subprotocol auth, same message shapes.
+// First audio chunk gets an interim then a speech_final result; the eighth gets an is_final segment
+// followed by an UtteranceEnd, which is the other way an utterance closes.
+function mockDeepgram() {
+  const seen: string[] = [];
+  const srv = Deno.serve({ port: 0, onListen() {} }, (req) => {
+    if (req.headers.get("upgrade") !== "websocket") return new Response("mock");
+    const key = (req.headers.get("sec-websocket-protocol") ?? "").split(",")[1]?.trim();
+    if (key !== "test-key") return new Response("bad key", { status: 401 });
+    const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "token" });
+    const results = (transcript: string, is_final: boolean, speech_final: boolean) =>
+      socket.send(JSON.stringify({ type: "Results", is_final, speech_final, channel: { alternatives: [{ transcript }] } }));
+    let chunks = 0;
+    socket.onmessage = (e) => {
+      if (typeof e.data === "string") { const m = JSON.parse(e.data); seen.push(m.type); if (m.type === "CloseStream") socket.close(); return; }
+      chunks++;
+      if (chunks === 1) { results("Hello from", false, false); results("Hello from the relay.", true, true); }
+      if (chunks === 8) { results("Second", false, false); results("Second line", true, false); socket.send(JSON.stringify({ type: "UtteranceEnd" })); }
+    };
+    return response;
+  });
+  return { url: `ws://localhost:${srv.addr.port}/listen`, seen, close: () => srv.shutdown() };
+}
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const base = "http://x";
@@ -117,6 +141,65 @@ Deno.test("phone handoff: source tags, live/paused announcements, lost detection
   await del(`/api/room/${id}`, token);
 });
 
+Deno.test("engines: Deepgram is offered only when the relay has a key", async () => {
+  Deno.env.delete("DEEPGRAM_API_KEY");
+  assertEquals(await (await handler(new Request(`${base}/api/engines`))).json(), { browser: true, deepgram: false });
+  Deno.env.set("DEEPGRAM_API_KEY", "x");
+  assertEquals(await (await handler(new Request(`${base}/api/engines`))).json(), { browser: true, deepgram: true });
+  Deno.env.delete("DEEPGRAM_API_KEY");
+});
+
+Deno.test({
+  name: "deepgram session: audio in, ordinary room pushes out, clean close",
+  sanitizeOps: false, sanitizeResources: false, // real sockets on both sides; everything is closed below
+  async fn() {
+    const dg = mockDeepgram();
+    Deno.env.set("DEEPGRAM_URL", dg.url);
+    Deno.env.set("DEEPGRAM_API_KEY", "test-key");
+    const relay = Deno.serve({ port: 0, onListen() {} }, handler);
+    const origin = `ws://localhost:${relay.addr.port}`;
+    const { id, token } = await mkRoom();
+    const s = await openStream(id);
+    await s.read();
+    let sse = "";
+    const until = async (needle: string) => { while (!sse.includes(needle)) sse += await s.read(); };
+
+    // wrong token: the handshake is refused
+    const bad = new WebSocket(`${origin}/api/room/${id}/audio`, ["bearer", "nope"]);
+    await new Promise<void>((r) => { bad.onclose = () => r(); bad.onerror = () => {}; });
+
+    const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token]);
+    ws.binaryType = "arraybuffer";
+    const got: string[] = [];
+    ws.onmessage = (e) => got.push(String(e.data));
+    await new Promise<void>((r) => { ws.onopen = () => r(); });
+    while (!got.some((g) => g.includes("ready"))) await new Promise((r) => setTimeout(r, 10));
+    const chunk = new Int16Array(1600).buffer;
+    ws.send(chunk);
+    await until('"text":"Hello from the relay."');
+    assert(sse.includes('event: interim\ndata: {"text":"Hello from","source":"mic"}'));
+    assert(sse.includes('event: final\ndata: {"text":"Hello from the relay.","seq":1,"source":"mic"}'));
+    assertEquals(rooms.get(id)!.lines, ["Hello from the relay."]);
+    for (let i = 0; i < 7; i++) ws.send(chunk);
+    await until('"text":"Second line","seq":2');
+    assert(sse.includes('event: interim\ndata: {"text":"Second","source":"mic"}'));
+    assert(sse.includes('event: interim\ndata: {"text":"Second line","source":"mic"}'), "finalised-but-open segment shows as interim");
+    assertEquals(rooms.get(id)!.lines, ["Hello from the relay.", "Second line"]);
+    while (!got.some((g) => g.includes('"final":"Second line"'))) await new Promise((r) => setTimeout(r, 10)); // its own socket, its own timing
+
+    ws.send(JSON.stringify({ type: "stop" }));
+    await new Promise<void>((r) => { ws.onclose = () => r(); });
+    await new Promise((r) => setTimeout(r, 50));
+    assert(dg.seen.includes("CloseStream"), "upstream told to close: " + dg.seen.join(","));
+
+    await s.reader.cancel();
+    await del(`/api/room/${id}`, token);
+    Deno.env.delete("DEEPGRAM_API_KEY"); Deno.env.delete("DEEPGRAM_URL");
+    await relay.shutdown();
+    await dg.close();
+  },
+});
+
 Deno.test("ending a talk closes every listener and clears its keepalive timer", async () => {
   const { id, token } = await mkRoom();
   const a = await openStream(id);
@@ -202,6 +285,9 @@ Deno.test("pages and the vendored QR encoder are served", async () => {
     assert(r.headers.get("content-type")!.startsWith("text/html"));
     assert((await r.text()).includes("<!doctype html>"));
   }
+  const dgjs = await handler(new Request(`${base}/deepgram.js`));
+  assertEquals(dgjs.status, 200);
+  assert((await dgjs.text()).includes("StageTypeDeepgram"));
   const js = await handler(new Request(`${base}/vendor/qrcode.js`));
   assertEquals(js.status, 200);
   assert(js.headers.get("content-type")!.startsWith("text/javascript"));

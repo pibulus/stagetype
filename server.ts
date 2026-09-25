@@ -26,6 +26,11 @@ const MAX_CHUNK = 2_000; // chars kept per final line
 const MAX_TITLE = 80;
 const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
+const DEEPGRAM_KEEPALIVE_MS = 5_000; // Deepgram drops a silent socket after ~10 s
+const DEEPGRAM_DEFAULT_URL = "wss://api.deepgram.com/v1/listen";
+const deepgramKey = () => Deno.env.get("DEEPGRAM_API_KEY") ?? "";
+const deepgramUrl = () => Deno.env.get("DEEPGRAM_URL") ?? DEEPGRAM_DEFAULT_URL;
+const deepgramModel = () => Deno.env.get("DEEPGRAM_MODEL") ?? "nova-3";
 const PHONE_LOST_MS = 45_000; // a live phone that goes this long without a push is treated as dropped
 
 export const rooms = new Map<string, Room>();
@@ -72,6 +77,22 @@ function send(room: Room, event: string, data: unknown) {
   const f = frame(event, data);
   for (const l of room.listeners) {
     try { l.ctrl.enqueue(f); } catch { drop(room, l); }
+  }
+}
+
+// The one way words enter a room. HTTP pushes and relay-side speech engines both come through here.
+function pushChunk(room: Room, chunk: { text: string; final: boolean; source: Source }) {
+  const text = chunk.text.trim().slice(0, MAX_CHUNK);
+  room.touched = Date.now();
+  if (chunk.source === "phone") { room.phone.seen = room.touched; setPhone(room, true, false); }
+  if (chunk.final) {
+    if (text) {
+      room.lines.push(text);
+      if (room.lines.length > MAX_BACKLOG) { room.lines.shift(); room.offset++; }
+    }
+    send(room, "final", { text, seq: room.offset + room.lines.length, source: chunk.source });
+  } else {
+    send(room, "interim", { text, source: chunk.source });
   }
 }
 
@@ -147,6 +168,7 @@ export async function handler(req: Request): Promise<Response> {
     return file(path.slice(1), head, type, true);
   }
   if (get && (path === "/ghost.svg" || path === "/favicon.ico")) return file("ghost.svg", head, "image/svg+xml");
+  if (get && path === "/deepgram.js") return file("deepgram.js", head, "text/javascript; charset=utf-8");
   // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
   if (get && path === "/api/info") {
     return isLoopbackHost(req) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
@@ -169,6 +191,26 @@ export async function handler(req: Request): Promise<Response> {
     return json({ id: roomId, token, title, code });
   }
 
+  // Which speech engines this relay offers. Browser recognition is always there; Deepgram needs a key.
+  if (get && path === "/api/engines") return json({ browser: true, deepgram: deepgramKey() !== "" });
+
+  // Relay-side speech: the page streams PCM over a WebSocket, the relay forwards it to Deepgram and
+  // turns the results into ordinary room pushes. The token rides in the WebSocket subprotocol
+  // ("bearer", <token>) because browsers can't set headers on a socket and a query string would be logged.
+  const audio = path.match(/^\/api\/room\/([a-z0-9]+)\/audio$/);
+  if (audio && req.method === "GET" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+    const r = rooms.get(audio[1]);
+    if (!r) return json({ error: "room gone" }, 404);
+    const offered = (req.headers.get("sec-websocket-protocol") ?? "").split(",").map((p) => p.trim());
+    if (offered[0] !== "bearer" || !tokenOk(`Bearer ${offered[1] ?? ""}`, r.token)) return json({ error: "nope" }, 403);
+    if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
+    const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "bearer" });
+    const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
+    const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
+    deepgramSession(r, socket, source, lang);
+    return response;
+  }
+
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
   const room = m ? rooms.get(m[1]) : undefined;
   if (m && !room) return json({ error: "room gone" }, 404);
@@ -184,25 +226,14 @@ export async function handler(req: Request): Promise<Response> {
     const now = Date.now();
     room.touched = now;
     const source: Source = typeof body.source === "string" && SOURCES.has(body.source) ? body.source as Source : "mic";
-    const text = typeof body.text === "string" ? body.text.trim().slice(0, MAX_CHUNK) : "";
-    if (source === "phone") {
+    const text = typeof body.text === "string" ? body.text : "";
+    if (source === "phone" && body.ping) {
       // The phone says live:true when it starts and heartbeats it; live:false when the presenter pauses it.
-      // Any words from it also count as live. The console pauses the laptop mic on the change.
+      // Words from it (via pushChunk) also count as live. The console pauses the laptop mic on the change.
       room.phone.seen = now;
-      const wants = typeof body.live === "boolean" ? body.live : (body.ping ? room.phone.live : true);
-      setPhone(room, wants, false);
+      setPhone(room, typeof body.live === "boolean" ? body.live : room.phone.live, false);
     }
-    if (body.ping) {
-      // keepalive only
-    } else if (body.final) {
-      if (text) {
-        room.lines.push(text);
-        if (room.lines.length > MAX_BACKLOG) { room.lines.shift(); room.offset++; }
-      }
-      send(room, "final", { text, seq: room.offset + room.lines.length, source });
-    } else {
-      send(room, "interim", { text, source });
-    }
+    if (!body.ping) pushChunk(room, { text, final: !!body.final, source });
     return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title });
   }
 
@@ -236,6 +267,70 @@ export async function handler(req: Request): Promise<Response> {
 
   return new Response("not here", { status: 404 });
 }
+
+// One client socket in, one Deepgram socket out. Deepgram sends interim results, then is_final
+// segments, then speech_final at the end of an utterance; we show interims as they come, gather the
+// finalised segments, and push one clean final line per utterance (or on UtteranceEnd).
+function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string) {
+  const params = new URLSearchParams({
+    model: deepgramModel(), language: lang, encoding: "linear16", sample_rate: "16000", channels: "1",
+    interim_results: "true", smart_format: "true", punctuate: "true", endpointing: "300", utterance_end_ms: "1200", vad_events: "false",
+  });
+  const up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);
+  up.binaryType = "arraybuffer";
+  const pending: string[] = [];
+  const queue: ArrayBuffer[] = []; // audio that arrived before Deepgram answered
+  let keepalive: ReturnType<typeof setInterval> | undefined;
+  let closed = false;
+  const tell = (msg: unknown) => { try { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(msg)); } catch { /* gone */ } };
+  const finish = (code = 1000, reason = "") => {
+    if (closed) return;
+    closed = true;
+    clearInterval(keepalive);
+    try { if (up.readyState === WebSocket.OPEN) up.send(JSON.stringify({ type: "CloseStream" })); } catch { /* gone */ }
+    try { up.close(); } catch { /* gone */ }
+    try { client.close(code, reason.slice(0, 120)); } catch { /* gone */ }
+    if (!rooms.has(roomKey(room))) return;
+    if (pending.length) flush(); else pushChunk(room, { text: "", final: false, source });
+  };
+  const flush = () => {
+    const text = pending.join(" ").trim();
+    pending.length = 0;
+    if (text) { pushChunk(room, { text, final: true, source }); tell({ final: text }); }
+    else { pushChunk(room, { text: "", final: false, source }); tell({ interim: "" }); }
+  };
+  up.onopen = () => {
+    for (const buf of queue.splice(0)) up.send(buf);
+    keepalive = setInterval(() => { try { up.send(JSON.stringify({ type: "KeepAlive" })); } catch { /* gone */ } }, DEEPGRAM_KEEPALIVE_MS);
+    tell({ ready: true });
+  };
+  up.onmessage = (e) => {
+    if (typeof e.data !== "string" || !rooms.has(roomKey(room))) return;
+    let msg: { type?: string; is_final?: boolean; speech_final?: boolean; channel?: { alternatives?: { transcript?: string }[] } };
+    try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === "UtteranceEnd") { flush(); return; }
+    if (msg.type !== "Results") return;
+    const t = (msg.channel?.alternatives?.[0]?.transcript ?? "").trim();
+    if (msg.is_final) {
+      if (t) pending.push(t);
+      if (msg.speech_final) flush();
+      else { const i = pending.join(" "); pushChunk(room, { text: i, final: false, source }); tell({ interim: i }); }
+    } else {
+      const i = [...pending, t].join(" ").trim();
+      pushChunk(room, { text: i, final: false, source }); tell({ interim: i });
+    }
+  };
+  up.onerror = () => { tell({ error: "The relay couldn't reach Deepgram." }); finish(1011, "upstream error"); };
+  up.onclose = (e) => { if (!closed) { tell({ error: e.reason || "Deepgram closed the stream." }); finish(1011, e.reason); } };
+  client.onmessage = (e) => {
+    if (typeof e.data === "string") { try { if (JSON.parse(e.data)?.type === "stop") finish(); } catch { /* ignore */ } return; }
+    const buf = e.data as ArrayBuffer;
+    if (up.readyState === WebSocket.OPEN) up.send(buf); else if (queue.length < 200) queue.push(buf);
+  };
+  client.onclose = () => finish();
+  client.onerror = () => finish(1011, "client error");
+}
+const roomKey = (room: Room) => { for (const [k, r] of rooms) if (r === room) return k; return ""; };
 
 // Read a request body up to MAX_BODY bytes; null when it is larger.
 async function readBody(req: Request): Promise<string | null> {

@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StageType · Presenter Console</title>
 <script src="/vendor/qrcode.js"></script>
+<script src="/deepgram.js"></script>
 <link rel="stylesheet" href="/vendor/fonts.css">
 <style>
   :root {
@@ -66,26 +67,6 @@
   h1 { margin: 0; font-size: 2.2rem; letter-spacing: -0.04em; font-weight: 900; line-height: 1; }
   h1::after { content: "."; color: var(--pink); }
   .sub { margin: 2px 0 0; color: var(--muted); font-size: 0.96rem; }
-
-  /* Quickstart Checklist Bar */
-  .quickstart-strip {
-    background: var(--paper); border: 2.5px solid var(--line); border-radius: 16px;
-    padding: 12px 18px; display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; font-size: 13px; font-weight: 700; flex-wrap: wrap;
-  }
-  .step-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  .step-num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 7px; background: var(--butter); color: var(--ink);
-    border: 2px solid var(--line); box-shadow: 1.5px 1.5px 0 var(--line);
-    font-size: 11px; font-weight: 900; transform: rotate(-6deg);
-    transition: transform .25s var(--spring);
-  }
-  .step-pill:nth-child(2) .step-num { background: var(--mint); transform: rotate(5deg); }
-  .step-pill:nth-child(3) .step-num { background: var(--lilac); transform: rotate(-4deg); }
-  .step-pill:hover .step-num { transform: rotate(0) scale(1.18); }
 
   /* Stage Console Card (Split Layout) */
   .stage-deck {
@@ -158,21 +139,23 @@
   #pastList small { display: block; color: var(--muted); font-weight: 600; font-size: 0.75rem; }
   .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
   .text-input:disabled { opacity: .7; }
-  /* Audio Meter */
-  .meter-box {
-    background: var(--ground); border: 2.5px solid var(--line); border-radius: 16px;
-    padding: 12px 16px; display: flex; align-items: center; gap: 14px;
-  }
-  .meter-label { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--muted); }
-  .meter-bar-track {
-    flex: 1; height: 14px; background: rgba(30, 23, 20, 0.08);
-    border: 2px solid var(--line); border-radius: 999px; overflow: hidden; position: relative;
-  }
-  .meter-bar-fill {
-    width: 0%; height: 100%; background: var(--mint);
-    background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(30, 23, 20, 0.12) 6px 8px);
-    transition: width 0.06s ease, background-color 0.1s ease;
-  }
+  /* Setup fields */
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field .opt-select { width: 100%; justify-self: stretch; }
+  .more { margin-top: 2px; }
+  .more summary { cursor: pointer; list-style: none; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary::before { content: "▸ "; }
+  .more[open] summary::before { content: "▾ "; }
+  .more[open] summary { margin-bottom: 10px; }
+  #qrEmpty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 8px 6px; }
+  #qrEmpty[hidden] { display: none; }
+  #qrEmpty svg { width: 88px; height: 88px; color: var(--line); opacity: .35; }
+  #qrEmpty p { margin: 0; font-size: 0.85rem; color: var(--muted); font-weight: 600; line-height: 1.4; max-width: 24em; }
+  #qrGraphic:empty { display: none; }
+  .url-pill[hidden] { display: none; }
 
   /* Status Badges */
   .status-pills { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -197,7 +180,7 @@
   /* Stage ticker options */
   .opt-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; }
   .opt-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  .opt-select { font: 800 12px var(--swiss); padding: 7px 12px; box-shadow: none; border-width: 2px; justify-self: start; }
+  .opt-select { font: 800 12px var(--swiss); padding: 7px 12px; box-shadow: none; border-width: 2px; justify-self: start; border-radius: 12px; }
   .ring-row { display: flex; gap: 8px; }
   .ring {
     width: 26px; height: 26px; padding: 0; border-radius: 50%; background: var(--c); box-shadow: none; border-width: 2px;
@@ -353,114 +336,21 @@
     </div>
     <div class="status-pills">
       <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
+      <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
       <span class="pill-badge" id="countBadge">0 reading</span>
     </div>
   </header>
 
-  <!-- Quickstart Checklist Strip -->
-  <div class="quickstart-strip">
-    <div class="step-pill"><span class="step-num">1</span> Float ticker over slides</div>
-    <div class="step-pill"><span class="step-num">2</span> Project audience QR code</div>
-    <div class="step-pill"><span class="step-num">3</span> Speak via Mac or phone lapel mic</div>
-  </div>
-
-  <!-- The Unified Stage Console -->
+  <!-- The console: set up on the left, share on the right -->
   <section class="stage-deck">
-    <!-- Left Column: Presenter Controls -->
     <div class="deck-col">
       <div class="panel-section">
         <span class="section-label">This Talk</span>
         <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
-               placeholder="Title, e.g. COMP1010 Week 3 or Mesa Cosa live" aria-label="Talk title">
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Broadcast Voice</span>
-        <div class="btn-row">
-          <button id="startBtn" class="mint">Start captions</button>
-          <button id="pauseBtn" class="ground" hidden>Pause mic</button>
-          <button id="floatBtn" class="lilac" hidden>Float ticker</button>
-          <button id="stopBtn" class="butter" hidden>End talk</button>
-        </div>
-        <p id="notice" class="notice" hidden></p>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Type Captions</span>
-        <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
-               placeholder="Type a caption and press Enter" aria-label="Type a caption">
-        <p class="hint">Words show on the phones as you type; Enter sends the line. For a captioner, a correction, or a talk with no mic. Pause the mic to caption by hand only.</p>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Audio Input & Level</span>
-        <div class="meter-box">
-          <span class="meter-label">Mic</span>
-          <div class="meter-bar-track">
-            <div id="meterFill" class="meter-bar-fill"></div>
-          </div>
-          <span id="micSource" style="font-size:12px;font-weight:700;color:var(--muted)">Laptop mic</span>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Stage Ticker</span>
-        <div class="opt-grid">
-          <span class="opt-label">Size</span>
-          <div class="segmented-control" data-pref="size">
-            <button class="seg-btn" data-v="28px">Compact</button>
-            <button class="seg-btn" data-v="38px">Standard</button>
-            <button class="seg-btn" data-v="50px">Jumbotron</button>
-          </div>
-          <span class="opt-label">Style</span>
-          <div class="segmented-control" data-pref="style">
-            <button class="seg-btn" data-v="ink">Ink</button>
-            <button class="seg-btn" data-v="paper">Paper</button>
-          </div>
-          <span class="opt-label">Face</span>
-          <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
-            <option value="system">System (Helvetica)</option>
-            <option value="inter">Inter</option>
-            <option value="atkinson">Atkinson Hyperlegible</option>
-            <option value="fraunces">Fraunces</option>
-            <option value="mono">JetBrains Mono</option>
-          </select>
-          <span class="opt-label">Weight</span>
-          <div class="segmented-control" data-pref="weight">
-            <button class="seg-btn" data-v="400">Regular</button>
-            <button class="seg-btn" data-v="500">Medium</button>
-            <button class="seg-btn" data-v="700">Bold</button>
-          </div>
-          <span class="opt-label">Lines</span>
-          <div class="segmented-control" data-pref="depth">
-            <button class="seg-btn" data-v="1">1</button>
-            <button class="seg-btn" data-v="2">2</button>
-            <button class="seg-btn" data-v="3">3</button>
-          </div>
-          <span class="opt-label">Flow</span>
-          <div class="segmented-control" data-pref="flow">
-            <button class="seg-btn" data-v="live">Live words</button>
-            <button class="seg-btn" data-v="settled">Settled sentences</button>
-          </div>
-          <span class="opt-label">Ring</span>
-          <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
-            <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
-            <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
-            <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
-            <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
-            <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button id="screenBtn" class="ground" style="padding:8px 16px;font-size:0.85rem" disabled>Open on a second screen</button>
-          <span class="hint">Any browser, any display. Also an OBS browser source for livestreams.</span>
-        </div>
-      </div>
-
-      <div class="panel-section">
-        <span class="section-label">Language</span>
-        <div class="btn-row">
-          <select id="lang" aria-label="Language selection">
+               placeholder="Title, e.g. COMP1010 Week 3" aria-label="Talk title">
+        <div class="field-row">
+          <label class="field"><span class="opt-label">Language</span>
+            <select id="lang" class="opt-select" aria-label="Language">
             <option value="en-AU">English (Australia)</option>
             <option value="en-GB">English (UK)</option>
             <option value="en-US">English (US)</option>
@@ -485,9 +375,87 @@
             <option value="yue-Hant-HK">粵語 (香港)</option>
             <option value="ja-JP">日本語</option>
             <option value="ko-KR">한국어</option>
-          </select>
-          <button id="testAudioBtn" class="ghost" style="padding:10px 16px;font-size:0.85rem">Test mic level</button>
+            </select>
+          </label>
+          <label class="field"><span class="opt-label">Engine</span>
+            <select id="engine" class="opt-select" aria-label="Speech engine">
+              <option value="browser">Browser, free</option>
+              <option value="deepgram">Deepgram, via the relay</option>
+            </select>
+          </label>
         </div>
+        <p id="engineHint" class="hint" hidden></p>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Voice</span>
+        <div class="btn-row">
+          <button id="startBtn" class="mint">Start captions</button>
+          <button id="pauseBtn" class="ground" hidden>Pause mic</button>
+          <button id="stopBtn" class="butter" hidden>End talk</button>
+        </div>
+        <p id="notice" class="notice" hidden></p>
+        <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
+               placeholder="Or type a caption and press Enter" aria-label="Type a caption">
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">Stage Ticker</span>
+        <div class="btn-row">
+          <button id="floatBtn" class="lilac" disabled>Float over slides</button>
+          <button id="screenBtn" class="ground" disabled>Second screen</button>
+        </div>
+        <div class="opt-grid">
+          <span class="opt-label">Size</span>
+          <div class="segmented-control" data-pref="size">
+            <button class="seg-btn" data-v="28px">Compact</button>
+            <button class="seg-btn" data-v="38px">Standard</button>
+            <button class="seg-btn" data-v="50px">Jumbotron</button>
+          </div>
+          <span class="opt-label">Style</span>
+          <div class="segmented-control" data-pref="style">
+            <button class="seg-btn" data-v="ink">Ink</button>
+            <button class="seg-btn" data-v="paper">Paper</button>
+          </div>
+        </div>
+        <details class="more" id="moreTicker">
+          <summary>Face, weight, lines, flow, ring</summary>
+          <div class="opt-grid">
+            <span class="opt-label">Face</span>
+            <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
+              <option value="system">System (Helvetica)</option>
+              <option value="inter">Inter</option>
+              <option value="atkinson">Atkinson Hyperlegible</option>
+              <option value="fraunces">Fraunces</option>
+              <option value="mono">JetBrains Mono</option>
+            </select>
+            <span class="opt-label">Weight</span>
+            <div class="segmented-control" data-pref="weight">
+              <button class="seg-btn" data-v="400">Regular</button>
+              <button class="seg-btn" data-v="500">Medium</button>
+              <button class="seg-btn" data-v="700">Bold</button>
+            </div>
+            <span class="opt-label">Lines</span>
+            <div class="segmented-control" data-pref="depth">
+              <button class="seg-btn" data-v="1">1</button>
+              <button class="seg-btn" data-v="2">2</button>
+              <button class="seg-btn" data-v="3">3</button>
+            </div>
+            <span class="opt-label">Flow</span>
+            <div class="segmented-control" data-pref="flow">
+              <button class="seg-btn" data-v="live">Live words</button>
+              <button class="seg-btn" data-v="settled">Settled sentences</button>
+            </div>
+            <span class="opt-label">Ring</span>
+            <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
+              <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
+              <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
+              <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
+              <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
+              <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="panel-section" style="margin-top:auto">
@@ -507,7 +475,6 @@
       </div>
     </div>
 
-    <!-- Right Column: QR Anchor & Multi-Channel Links -->
     <div class="deck-col">
       <div class="qr-card">
         <div class="tab-bar">
@@ -515,6 +482,12 @@
           <button class="tab-btn" id="tabMic">Phone lapel mic</button>
         </div>
 
+        <div id="qrEmpty">
+          <svg viewBox="0 0 1024 1024" aria-hidden="true" focusable="false"><path fill="currentColor" d="M513.404419,867.481567 C500.638763,868.907959 488.331787,868.194336 476.009705,867.866089 C446.462891,867.078796 417.884583,859.610352 388.801971,855.681885 C370.149475,853.162231 352.112579,857.574646 334.511139,863.822144 C315.368408,870.616699 297.161530,879.791504 277.721497,885.828918 C254.681473,892.984314 231.232208,897.413452 207.021820,896.261047 C189.047836,895.405457 171.990540,891.317932 158.356384,878.565979 C147.208923,868.139954 141.529053,854.882935 139.624680,839.847839 C137.264587,821.214722 142.483505,803.992310 148.934418,786.895508 C156.505127,766.830994 164.596375,746.925598 168.849991,725.765869 C174.432098,697.997681 173.665695,670.337097 168.186920,642.630127 C163.947479,621.190674 156.486160,600.699402 150.462204,579.785400 C143.638535,556.094910 139.159988,532.038147 137.504852,507.372742 C131.064590,411.397430 157.581161,325.368225 215.925552,249.300003 C256.117920,196.897995 307.335602,158.445419 368.502960,133.354050 C400.531647,120.215607 433.768219,111.837654 468.098663,107.519447 C487.134308,105.125092 506.230377,104.015808 525.362000,104.827698 C596.538330,107.848198 662.704651,127.277710 722.209900,167.011292 C803.810486,221.498611 856.047241,296.743835 879.300354,392.061066 C884.184937,412.083374 887.114685,432.389526 888.554993,452.994354 C889.719971,469.660492 889.983215,486.340546 889.047058,502.913361 C886.752075,543.540771 877.620850,582.802795 862.444458,620.580078 C840.634644,674.869141 809.072632,722.769043 765.879944,762.294067 C714.632507,809.189697 656.007019,842.916016 587.328186,857.500854 C563.079834,862.650391 538.753174,867.051331 513.404419,867.481567 M231.830231,347.227020 C210.293030,395.676147 198.984055,446.071472 202.137405,499.390686 C203.379990,520.401123 207.011154,540.925964 212.771942,561.075439 C221.804901,592.669983 232.889542,623.721558 235.886505,656.807068 C237.528046,674.929260 238.041809,693.021240 236.125473,711.088745 C233.663315,734.302429 228.079376,756.867920 220.703934,778.997375 C216.070633,792.899231 211.026505,806.639221 204.976135,820.001709 C202.237274,826.050598 204.640930,829.986755 211.224380,830.599182 C212.216553,830.691467 213.222946,830.652954 214.222412,830.641785 C229.674545,830.469666 244.630646,827.182190 259.157257,822.373352 C278.265167,816.048035 297.069214,808.811035 316.070312,802.155701 C350.310822,790.162659 385.034760,785.834839 420.907745,794.570801 C442.249481,799.768066 464.089172,802.233215 486.075745,802.573059 C510.252686,802.946838 534.166016,800.326538 557.923584,795.787598 C608.719604,786.082764 654.687195,765.450806 695.782959,734.304016 C746.750122,695.675598 782.895020,645.900330 805.225037,585.981445 C818.084045,551.476379 824.147156,515.703613 824.386597,479.079163 C824.510071,460.195374 822.352417,441.325256 818.809448,422.629791 C806.773621,359.119690 777.563049,304.698578 731.504028,259.715424 C677.962280,207.424286 613.008545,178.958206 538.785400,171.496796 C511.977112,168.801819 485.289978,171.008865 458.802246,175.699249 C411.962860,183.993408 369.315247,202.284042 330.532043,229.690826 C287.560181,260.057526 255.228470,299.415741 231.830231,347.227020 z"/>
+        <path fill="currentColor" d="M580.705505,471.768982 C579.774292,452.215668 582.605713,433.818390 590.797302,416.428589 C595.017090,407.470551 600.340088,399.277374 607.772888,392.579346 C627.716553,374.607117 653.145935,376.202209 670.873657,396.487671 C682.259460,409.516235 688.856201,424.818604 691.954407,441.620636 C696.671631,467.203156 693.889832,491.915649 682.163452,515.365479 C678.942444,521.806519 674.902405,527.726013 669.904602,532.915588 C649.577148,554.023315 621.761536,553.062683 602.886780,530.571594 C591.909119,517.490662 585.759705,502.182648 582.712219,485.533203 C581.906189,481.129486 581.375549,476.675323 580.705505,471.768982 z"/>
+        <path fill="currentColor" d="M445.338440,471.851562 C443.176758,493.788635 436.942841,513.715637 422.903229,530.550293 C414.712860,540.371216 404.428955,546.983215 391.426178,547.988098 C380.129303,548.861206 370.128235,544.991821 361.551147,537.658081 C346.242279,524.568481 338.807251,507.057800 334.925110,487.966980 C330.108337,464.279877 331.868622,440.935730 341.490295,418.566833 C348.688934,401.831055 359.017548,387.645721 377.318176,381.896362 C395.780701,376.096130 410.714722,383.333527 422.873901,396.788544 C435.662811,410.940399 441.511841,428.347931 444.441101,446.954803 C445.723877,455.103149 445.097168,463.233063 445.338440,471.851562 z"/></svg>
+          <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
+        </div>
         <div id="qrGraphic"></div>
 
         <div>
@@ -523,12 +496,12 @@
           <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
         </div>
 
-        <div class="url-pill" id="urlDisplay">Opening room…</div>
+        <div class="url-pill" id="urlDisplay" hidden>Standby</div>
         <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
 
         <div class="btn-row">
-          <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem">Copy link</button>
-          <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem">Fullscreen QR</button>
+          <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Copy link</button>
+          <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Fullscreen QR</button>
         </div>
       </div>
     </div>
@@ -654,6 +627,9 @@ $("#copyTx").onclick = async () => {
 };
 $("#saveTxTxt").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.txt`, asText(rec), "text/plain"); };
 $("#saveTxMd").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown"); };
+
+const engine = () => $("#engine").value;
+let dg = null; // the relay-side audio link when the Deepgram engine is on
 
 const notice = (msg) => { const n = $("#notice"); n.textContent = msg || ""; n.hidden = !msg; };
 
@@ -808,13 +784,7 @@ async function initAudioMeter() {
       for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
       const avg = sum / dataArray.length;
       const pct = Math.min(100, Math.round((avg / 90) * 100));
-      $("#meterFill").style.width = pct + "%";
       document.documentElement.style.setProperty("--vu", (pct / 100).toFixed(2));
-      if (pct > 65) {
-        $("#meterFill").style.background = "var(--pink)";
-      } else {
-        $("#meterFill").style.background = "var(--mint)";
-      }
     }
     drawMeter();
   } catch (err) {
@@ -828,19 +798,8 @@ function stopAudioMeter() {
   meterStream = null;
   audioCtx?.close();
   audioCtx = null;
-  $("#meterFill").style.width = "0%";
   document.documentElement.style.setProperty("--vu", "0");
 }
-
-$("#testAudioBtn").onclick = async () => {
-  if (audioCtx) {
-    stopAudioMeter();
-    $("#testAudioBtn").textContent = "Test mic level";
-  } else {
-    await initAudioMeter();
-    $("#testAudioBtn").textContent = "Stop mic test";
-  }
-};
 
 // SSE Stream Connection
 function listenToRoomStream(roomId) {
@@ -935,7 +894,21 @@ function pushInterim() {
 // Local Speech Recognition
 const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
 
+async function startDeepgram() {
+  try {
+    dg = await StageTypeDeepgram.start({
+      roomId: room.id, token: room.token, source: "mic", lang: $("#lang").value,
+      onError: (msg) => { dg = null; notice(`Deepgram: ${msg}`); setPaused(true, false); },
+    });
+    updateMicLabel(true);
+  } catch (err) {
+    notice(`Couldn't start the Deepgram link: ${err.message}.`);
+    setPaused(true, false);
+  }
+}
+
 function startLocalRec() {
+  if (engine() === "deepgram") { startDeepgram(); initAudioMeter(); return; }
   if (!Rec) {
     notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
     $("#micSource").textContent = "Phone mic only";
@@ -1014,10 +987,11 @@ function onPhone(live, lost) {
   }
   updateMicLabel();
 }
-function updateMicLabel() {
+function updateMicLabel(force = false) {
   if (phoneLive) return;
   const label = $("#micSource");
-  if (!label.textContent.startsWith("Phone")) label.textContent = paused ? "Laptop mic paused" : "Laptop mic";
+  if (!force && label.textContent.startsWith("Phone")) return;
+  label.textContent = paused ? "Laptop mic paused" : (engine() === "deepgram" ? "Laptop mic · Deepgram" : "Laptop mic");
 }
 
 // Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
@@ -1028,6 +1002,7 @@ function setPaused(on, restart = true) {
   $("#pauseBtn").classList.toggle("butter", on);
   if (on) {
     rec?.stop();
+    dg?.stop(); dg = null;
     interim = "";
     renderTicker();
     $("#liveText").textContent = phoneLive ? "Live · Phone mic" : "Live · Mic paused";
@@ -1037,7 +1012,7 @@ function setPaused(on, restart = true) {
     lastWordTime = Date.now();
     startLocalRec();
   }
-  if (!phoneLive) $("#micSource").textContent = on ? "Laptop mic paused" : "Laptop mic";
+  updateMicLabel(true);
 }
 
 // Room Lifecycle
@@ -1100,7 +1075,7 @@ function attachRoom(r) {
   paused = false;
   phoneLive = false;
   pausedByPhone = false;
-  $("#micSource").textContent = "Laptop mic";
+  updateMicLabel(true);
   applyRoomStyle();
   renderTicker();
   updateQR();
@@ -1116,8 +1091,14 @@ function attachRoom(r) {
   $("#pauseBtn").hidden = false;
   $("#pauseBtn").textContent = "Pause mic";
   $("#pauseBtn").classList.remove("butter");
-  $("#floatBtn").hidden = !("documentPictureInPicture" in window);
+  $("#floatBtn").disabled = !("documentPictureInPicture" in window);
+  $("#floatBtn").title = "documentPictureInPicture" in window ? "" : "Floating needs Chrome or Edge. Use Second screen elsewhere.";
   $("#lang").disabled = true;
+  $("#engine").disabled = true;
+  $("#qrEmpty").hidden = true;
+  $("#urlDisplay").hidden = false;
+  $("#copyUrlBtn").disabled = false;
+  $("#fsQrBtn").disabled = false;
 
   $("#liveDot").classList.add("active");
   $("#liveText").textContent = "Live";
@@ -1150,8 +1131,9 @@ function handleTalkEnded(callServer = true) {
   paused = false;
   phoneLive = false;
   pausedByPhone = false;
-  $("#micSource").textContent = "Laptop mic";
   rec?.stop();
+  dg?.stop(); dg = null;
+  updateMicLabel(true);
   stopAudioMeter();
   clearInterval(silenceInterval);
   clearInterval(keepaliveInterval);
@@ -1177,7 +1159,12 @@ function handleTalkEnded(callServer = true) {
   $("#startBtn").hidden = false;
   $("#stopBtn").hidden = true;
   $("#pauseBtn").hidden = true;
-  $("#floatBtn").hidden = true;
+  $("#floatBtn").disabled = true;
+  $("#engine").disabled = false;
+  $("#qrEmpty").hidden = false;
+  $("#urlDisplay").hidden = true;
+  $("#copyUrlBtn").disabled = true;
+  $("#fsQrBtn").disabled = true;
   interim = "";
   renderTicker();
   $("#lang").disabled = false;
@@ -1185,7 +1172,7 @@ function handleTalkEnded(callServer = true) {
   $("#typed").disabled = true;
   $("#typed").value = "";
   $("#screenBtn").disabled = true;
-  $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
+  $("#urlDisplay").textContent = "Standby";
   $("#qrGraphic").innerHTML = "";
   $("#joinLine").hidden = true;
   $("#fsCode").hidden = true;
@@ -1266,6 +1253,18 @@ const floatTickerWindow = async () => {
 };
 $("#floatBtn").onclick = floatTickerWindow;
 
+// Engine: browser recognition is always there; Deepgram only if the relay has a key.
+$("#engine").value = store.get("st-engine") || "browser";
+$("#engine").onchange = () => { store.set("st-engine", engine()); updateMicLabel(true); };
+fetch("/api/engines").then((r) => r.json()).then((e) => {
+  const opt = $('#engine option[value="deepgram"]');
+  opt.disabled = !e.deepgram;
+  if (!e.deepgram) {
+    if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
+    $("#engineHint").textContent = "Deepgram needs a key on the relay (DEEPGRAM_API_KEY). Browser recognition is on.";
+    $("#engineHint").hidden = false;
+  }
+}).catch(() => {});
 applyPrefs();
 renderPastTalks();
 updateTranscriptStat();

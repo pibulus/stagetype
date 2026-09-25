@@ -79,7 +79,7 @@ cd stagetype
 deno task dev
 ```
 
-* **Stage Console:** Open [`http://localhost:8787`](http://localhost:8787) in Chrome or Edge.
+* **Stage Console:** Open [`http://localhost:8787`](http://localhost:8787) in Chrome or Edge. Give the talk a title, pick a language and an engine, hit **Start captions**. The QR card fills in with the audience link and a four-letter code.
 * **Audience Reader:** Scan the generated QR code or navigate to `http://<your-lan-ip>:8787/live/<roomId>`.
 * **Phone Lapel Mic:** Toggle the tab to **Phone lapel mic** and scan with your phone.
 * **Second screen or OBS:** Under Stage Ticker, **Open on a second screen** opens `/ticker/<roomId>?…` with your current bar prefs. In OBS add it as a browser source and size it as a strip, for example 1920 × 180.
@@ -92,7 +92,7 @@ deno task dev
 | Shortcut | Action |
 | :--- | :--- |
 | <kbd>Space</kbd> | Start captions, then pause / resume the laptop mic (never ends the talk) |
-| <kbd>⌥ + F</kbd> | Float ticker window over slides (Document Picture-in-Picture) |
+| <kbd>⌥ + F</kbd> | Float the ticker over slides (Document Picture-in-Picture, Chrome or Edge) |
 | <kbd>⌥ + Q</kbd> | Open Fullscreen QR Projector modal |
 | <kbd>Esc</kbd> | Dismiss Fullscreen modal |
 
@@ -123,6 +123,7 @@ stagetype/
 ├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
 ├── vendor/fonts/     # Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono as woff2 (Latin + Latin Ext)
+├── deepgram.js       # Browser side of the Deepgram source: AudioWorklet PCM capture + WebSocket to the relay
 ├── deno.json         # Task runner & compiler options
 ├── Dockerfile        # One process, one box; used by fly.toml or any Docker host
 ├── fly.toml          # A single never-sleeping Fly machine
@@ -185,6 +186,8 @@ A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR c
 | `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, phone }`, then `interim { text, source }`, `final { text, seq, source }`, `source { source: "phone", live, lost }` on handoffs, `end` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
+| `GET` | `/api/engines` | none | `{ browser: true, deepgram: bool }` |
+| `WS` | `/api/room/:id/audio?source=mic\|phone&lang=xx` | subprotocol `bearer, <token>` | 16 kHz mono PCM in; `{ ready }`, `{ interim }`, `{ final }`, `{ error }` JSON back; send `{ "type": "stop" }` to finish |
 
 `offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
 
@@ -200,6 +203,26 @@ fly deploy
 ```
 
 `fly.toml` pins one machine that never sleeps (a sleeping machine ends every talk). The `Dockerfile` runs the relay with the exact permissions it needs and nothing more. Any Docker host works the same way: `docker build -t stagetype . && docker run -p 8787:8787 stagetype`, then put https in front of it.
+
+## 🎧 Speech engines
+
+The relay is a chat room and the speech engine is just a source. Two ship:
+
+| Engine | Where it runs | Cost | Notes |
+| :--- | :--- | :--- | :--- |
+| **Browser** | Chrome / Edge / Safari's own recogniser | free | Zero setup. Chrome and Edge send the audio to Google, Safari to Apple. Accuracy is fine, punctuation patchy. |
+| **Deepgram** | The relay streams your mic to Deepgram | under a cent a minute | Punctuation, smart formatting, 30-plus languages, ~300 ms. Needs a key on the relay. |
+
+Pick the engine on the console (This Talk → Engine) or on the phone mic page. With Deepgram the page captures 16 kHz PCM in an AudioWorklet and streams it over a WebSocket to `/api/room/:id/audio`; the relay holds the key, forwards to Deepgram, and turns each finished utterance into an ordinary room push. The browser never sees the key and the relay never stores audio.
+
+To turn it on, give the relay a key:
+
+```bash
+DEEPGRAM_API_KEY=dg_… deno task start        # locally
+fly secrets set DEEPGRAM_API_KEY=dg_…         # on Fly
+```
+
+`DEEPGRAM_MODEL` (default `nova-3`) and `DEEPGRAM_URL` (for a proxy or a test double) are optional. Without a key the Deepgram option is greyed out with a note, and the browser engine carries on. The unit and browser suites exercise the whole path against a mock upstream, so the plumbing is proven; a real key is the only thing this repo hasn't run with.
 
 ## 💾 The transcript survives
 
