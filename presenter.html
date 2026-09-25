@@ -146,6 +146,16 @@
   }
   .text-input::placeholder { color: var(--muted); font-weight: 500; }
   .hint { margin: 0; font-size: 0.78rem; color: var(--muted); font-weight: 600; line-height: 1.4; }
+  .transcript-row { display: flex; flex-direction: column; gap: 8px; }
+  button.small { padding: 8px 14px; font-size: 0.82rem; }
+  #pastTalks[hidden] { display: none; }
+  #pastTalks summary { cursor: pointer; list-style: none; }
+  #pastTalks summary::-webkit-details-marker { display: none; }
+  #pastTalks summary::before { content: "▸ "; }
+  #pastTalks[open] summary::before { content: "▾ "; }
+  #pastList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #pastList li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.82rem; font-weight: 700; background: var(--ground); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  #pastList small { display: block; color: var(--muted); font-weight: 600; font-size: 0.75rem; }
   .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
   .text-input:disabled { opacity: .7; }
   /* Audio Meter */
@@ -481,10 +491,19 @@
       </div>
 
       <div class="panel-section" style="margin-top:auto">
-        <span class="section-label">Screen Overlay</span>
-        <p style="margin:0;font-size:0.85rem;color:var(--muted);line-height:1.4">
-          Click <strong>Float ticker</strong> to open an always-on-top caption pill pinned over Keynote, PowerPoint, VS Code, or browser tabs.
-        </p>
+        <span class="section-label">Transcript</span>
+        <div class="transcript-row">
+          <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
+          <div class="btn-row">
+            <button id="copyTx" class="ground small" disabled>Copy</button>
+            <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
+            <button id="saveTxMd" class="ground small" disabled>Save .md</button>
+          </div>
+        </div>
+        <details id="pastTalks" hidden>
+          <summary class="hint">Previous talks on this machine</summary>
+          <ul id="pastList"></ul>
+        </details>
       </div>
     </div>
 
@@ -547,6 +566,11 @@
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch {} },
+};
 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let room = null;
@@ -565,7 +589,71 @@ let silenceInterval = null;
 let keepaliveInterval = null;
 let paused = false;
 let phoneLive = false;
+let transcript = []; // every final line of this talk, in room order, for export. `finals` is just the ticker's tail.
+let saveTimer = null;
 let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
+
+const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+const fileStem = (title, roomId, when) => `${title ? slug(title) : "stagetype-" + roomId}-${new Date(when).toISOString().split("T")[0]}`;
+const words = (lines) => lines.reduce((n, l) => n + l.split(/\s+/).filter(Boolean).length, 0);
+function download(filename, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const asMarkdown = (t) => `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${new Date(t.startedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${t.lines.join("\n\n")}\n`;
+const asText = (t) => (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + t.lines.join("\n\n");
+
+// The transcript survives on this machine: saved under the room id as lines arrive, listed under
+// Previous talks, and the open room itself is remembered for this tab so a reload mid-talk resumes.
+const talkRecord = (ended) => ({ id: room.id, title: room.title || "", code: room.code || "", lines: transcript, startedAt: room.startedAt || Date.now(), updatedAt: Date.now(), ended });
+function persist(rec) {
+  store.set(`st-talk-${rec.id}`, JSON.stringify(rec));
+  let idx = []; try { idx = JSON.parse(localStorage.getItem("st-talks")) || []; } catch {}
+  idx = idx.filter((t) => t.id !== rec.id);
+  idx.unshift({ id: rec.id, title: rec.title, words: words(rec.lines), startedAt: rec.startedAt, updatedAt: rec.updatedAt, ended: rec.ended });
+  while (idx.length > 10) { const old = idx.pop(); store.del(`st-talk-${old.id}`); }
+  store.set("st-talks", JSON.stringify(idx));
+  renderPastTalks();
+  updateTranscriptStat();
+}
+function saveTalk() {
+  if (!room) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { if (room) persist(talkRecord(false)); }, 800);
+}
+function updateTranscriptStat() {
+  const n = words(transcript);
+  $("#transcriptStat").textContent = n ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}` : "Nothing captioned yet.";
+  for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
+}
+function renderPastTalks() {
+  let idx = []; try { idx = JSON.parse(localStorage.getItem("st-talks")) || []; } catch {}
+  const past = idx.filter((t) => !room || t.id !== room.id);
+  $("#pastTalks").hidden = past.length === 0;
+  const list = $("#pastList"); list.innerHTML = "";
+  for (const t of past) {
+    const li = document.createElement("li");
+    const span = document.createElement("span");
+    span.textContent = t.title || "Untitled talk";
+    const small = document.createElement("small");
+    small.textContent = `${new Date(t.startedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} · ${t.words} words`;
+    span.append(small);
+    const btn = document.createElement("button"); btn.className = "ground small"; btn.textContent = "Save .md";
+    btn.onclick = () => { try { const rec = JSON.parse(localStorage.getItem(`st-talk-${t.id}`)); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown"); } catch {} };
+    li.append(span, btn); list.append(li);
+  }
+}
+let exportRoom = null; // the last talk's identity, kept after End so the export buttons still know what to name
+const currentRecord = () => (room ? talkRecord(false) : exportRoom);
+$("#copyTx").onclick = async () => {
+  const rec = currentRecord(); if (!rec) return;
+  try { await navigator.clipboard.writeText(rec.lines.join("\n\n")); const b = $("#copyTx"); b.textContent = "Copied!"; setTimeout(() => (b.textContent = "Copy"), 1500); } catch {}
+};
+$("#saveTxTxt").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.txt`, asText(rec), "text/plain"); };
+$("#saveTxMd").onclick = () => { const rec = currentRecord(); if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown"); };
 
 const notice = (msg) => { const n = $("#notice"); n.textContent = msg || ""; n.hidden = !msg; };
 
@@ -593,10 +681,6 @@ function renderTicker() {
 }
 
 // Stage ticker preferences: size, face, weight, depth, flow, ring. Remembered on this machine.
-const store = {
-  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
-};
 const prefs = {
   size: store.get("st-size") || "38px",
   face: store.get("st-face") || "system",
@@ -764,9 +848,12 @@ function listenToRoomStream(roomId) {
   sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
   sseSource.addEventListener("backlog", (e) => {
-    const { lines, phone } = JSON.parse(e.data);
+    const { lines, offset = 0, phone } = JSON.parse(e.data);
     if (lines && lines.length > 0) {
-      finals = [...lines];
+      finals = lines.slice(-50);
+      // A resumed console may have missed lines while it was away: append what the relay has past our count.
+      const have = transcript.length;
+      if (have < offset + lines.length) { transcript.push(...lines.slice(Math.max(0, have - offset))); saveTalk(); }
       renderTicker();
     }
     if (phone && !phoneLive) onPhone(true, false);
@@ -780,6 +867,8 @@ function listenToRoomStream(roomId) {
       lastWordTime = Date.now();
       finals.push(text);
       if (finals.length > 50) finals.shift();
+      transcript.push(text);
+      saveTalk();
     }
     interim = "";
     renderTicker();
@@ -865,7 +954,7 @@ function startLocalRec() {
       if (e.results[i].isFinal) {
         if (t) {
           // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
-          push({ text: t, final: true, source: "mic" }).then((ok) => { if (!ok) { finals.push(t); renderTicker(); } });
+          push({ text: t, final: true, source: "mic" }).then((ok) => { if (!ok) { finals.push(t); transcript.push(t); saveTalk(); renderTicker(); } });
         }
       } else {
         freshInterim += t + " ";
@@ -906,7 +995,8 @@ function onPhone(live, lost) {
     label.textContent = "Phone mic live";
     if (localLive && !paused) { pausedByPhone = true; setPaused(true, false); }
     $("#liveText").textContent = "Live · Phone mic";
-    notice("");
+    // Clear only our own earlier phone notices; leave anything else (a resume note, a relay warning) alone.
+    if (/^(Phone mic|The phone mic)/.test($("#notice").textContent)) notice("");
   } else if (lost) {
     label.textContent = "Phone mic dropped";
     if (pausedByPhone && localLive) {
@@ -951,16 +1041,18 @@ function setPaused(on, restart = true) {
 }
 
 // Room Lifecycle
+async function lanBaseFor() {
+  const onLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  const infoRes = onLocalhost ? await fetch("/api/info").then((r) => r.json()).catch(() => ({})) : {};
+  return (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
+}
+
 async function openRoom() {
   if (room) return;
   notice("");
-  const onLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  const infoRes = onLocalhost
-    ? await fetch("/api/info").then((r) => r.json()).catch(() => ({}))
-    : {};
-  lanBase = (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
-
+  lanBase = await lanBaseFor();
   const title = $("#title").value.trim();
+  let created;
   try {
     const roomRes = await fetch("/api/room", {
       method: "POST",
@@ -968,11 +1060,39 @@ async function openRoom() {
       body: JSON.stringify({ title }),
     });
     if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
-    room = await roomRes.json();
+    created = await roomRes.json();
   } catch (err) {
     notice(`Couldn't open a room on the relay (${err.message}). Is the server running?`);
     return;
   }
+  created.startedAt = Date.now();
+  transcript = [];
+  attachRoom(created);
+}
+
+// A reload mid-talk shouldn't lose the room: this tab remembers it (sessionStorage, so the token
+// never leaves the tab) and picks it back up if the relay still has it.
+async function resumeRoom() {
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem("st-room")); } catch {}
+  if (!saved?.id || !saved?.token) return false;
+  const alive = await fetch(`/api/room/${saved.id}`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${saved.token}` },
+    body: JSON.stringify({ ping: true }),
+  }).then((r) => r.ok).catch(() => false);
+  if (!alive) { try { sessionStorage.removeItem("st-room"); } catch {} return false; }
+  lanBase = await lanBaseFor();
+  $("#title").value = saved.title || "";
+  try { const rec = JSON.parse(localStorage.getItem(`st-talk-${saved.id}`)); transcript = rec?.lines || []; } catch { transcript = []; }
+  attachRoom(saved);
+  notice("Picked the talk back up after a reload. Phones never noticed.");
+  return true;
+}
+
+function attachRoom(r) {
+  room = r;
+  try { sessionStorage.setItem("st-room", JSON.stringify(room)); } catch {}
+  exportRoom = null;
 
   // Fresh talk, fresh ticker
   finals = [];
@@ -987,6 +1107,8 @@ async function openRoom() {
   $("#title").disabled = true;
   $("#typed").disabled = false;
   $("#screenBtn").disabled = false;
+  updateTranscriptStat();
+  renderPastTalks();
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
@@ -1043,7 +1165,11 @@ function handleTalkEnded(callServer = true) {
       headers: { authorization: `Bearer ${room.token}` },
     }).catch(() => {});
   }
+  if (room) { clearTimeout(saveTimer); exportRoom = talkRecord(true); if (transcript.length) persist(exportRoom); }
+  try { sessionStorage.removeItem("st-room"); } catch {}
   room = null;
+  updateTranscriptStat();
+  renderPastTalks();
 
   $("#liveDot").classList.remove("active");
   $("#liveText").textContent = "Talk ended";
@@ -1141,6 +1267,9 @@ const floatTickerWindow = async () => {
 $("#floatBtn").onclick = floatTickerWindow;
 
 applyPrefs();
+renderPastTalks();
+updateTranscriptStat();
+resumeRoom();
 
 // Keyboard Shortcuts
 window.addEventListener("keydown", (e) => {

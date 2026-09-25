@@ -124,6 +124,8 @@ stagetype/
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
 ├── vendor/fonts/     # Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono as woff2 (Latin + Latin Ext)
 ├── deno.json         # Task runner & compiler options
+├── Dockerfile        # One process, one box; used by fly.toml or any Docker host
+├── fly.toml          # A single never-sleeping Fly machine
 ├── GLOSSARY.md       # Shared vocabulary and design primitives
 └── CLAUDE.md         # Assistant ops and instructions
 ```
@@ -185,6 +187,27 @@ A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR c
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 
 `offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
+
+## 🌍 On the open web, not just the wifi
+
+The relay isn't tied to a LAN. Put it on any box with an address and https and the whole thing works over the internet the way Jackbox does: the audience joins from cellular, the phone mic gets its https, and the join code works from anywhere. What it needs is **one process on one machine**, because rooms live in memory. That rules out multi-isolate serverless (Deno Deploy, Lambda) until rooms move to a shared store, and rules in any small VPS, a Raspberry Pi with a tunnel, or a Fly machine.
+
+Fly, from a clone:
+
+```bash
+fly launch --copy-config --no-deploy   # takes fly.toml as is; pick your own app name
+fly deploy
+```
+
+`fly.toml` pins one machine that never sleeps (a sleeping machine ends every talk). The `Dockerfile` runs the relay with the exact permissions it needs and nothing more. Any Docker host works the same way: `docker build -t stagetype . && docker run -p 8787:8787 stagetype`, then put https in front of it.
+
+## 💾 The transcript survives
+
+* **On every phone.** The reader stashes each finished line under the room id as it arrives. Close the tab, lock the phone, open the link a week later: the talk is there, with the export card. The join page lists **Saved talks** on that phone.
+* **On the console.** The presenter keeps the full transcript (not just the ticker's tail), can copy or save it as .txt or .md at any point, and finds the last ten talks under **Previous talks** on that machine.
+* **Through a reload.** If the console tab reloads mid-talk, it picks the same room back up, restores the transcript, and starts listening again. Phones never notice.
+
+Nothing is stored on the server beyond the last 400 lines of an open room. That's the sovereign part: the copies live with the people who were in the room.
 
 ## 🌐 Mobile Rehearsals (HTTPS Tunnel)
 

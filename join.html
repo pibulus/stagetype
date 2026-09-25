@@ -48,6 +48,19 @@
   button:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
   #err { min-height: 1.4em; color: var(--ink); font-weight: 700; background: var(--butter); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; }
   #err:empty { display: none; }
+  #saved { width: 100%; text-align: left; margin-top: 8px; }
+  #saved[hidden] { display: none; }
+  #saved h2 { margin: 0 0 10px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  #savedList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  #savedList a {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; color: var(--ink);
+    background: #fffef7; border: 2.5px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 3px 3px 0 var(--line);
+    transition: transform .22s var(--spring), box-shadow .22s var(--spring);
+  }
+  #savedList a:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--line); }
+  #savedList b { font-size: 15px; font-weight: 800; }
+  #savedList small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; margin-top: 2px; }
+  #savedList .live { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: var(--mint); border: 2px solid var(--line); border-radius: 999px; padding: 3px 8px; }
   footer { font-size: 13px; color: var(--muted); font-weight: 600; }
   footer a { color: inherit; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
@@ -66,6 +79,10 @@
     <p id="err" role="alert"></p>
     <button type="submit">Read along</button>
   </form>
+  <section id="saved" hidden>
+    <h2>Saved on this phone</h2>
+    <ul id="savedList"></ul>
+  </section>
   <footer>Or scan the QR code with your camera · <a href="https://talktype.app">StageType</a></footer>
 </main>
 <script>
@@ -91,6 +108,27 @@ async function go() {
 form.onsubmit = (e) => { e.preventDefault(); go(); };
 code.oninput = () => { code.value = code.value.replace(/[^A-Za-z]/g, "").toUpperCase(); err.textContent = ""; if (code.value.length === 4) go(); };
 if (code.value.length === 4 && !params.get("nope")) go();
+
+// Talks this phone has read along with, newest first. Each link reopens the reader, which restores
+// its saved copy even after the room is long gone.
+try {
+  const talks = JSON.parse(localStorage.getItem("stl-talks") || "[]");
+  if (talks.length) {
+    const list = document.querySelector("#savedList");
+    for (const t of talks) {
+      const li = document.createElement("li");
+      const a = document.createElement("a"); a.href = `/live/${t.id}`;
+      const text = document.createElement("span");
+      const b = document.createElement("b"); b.textContent = t.title || "Untitled talk";
+      const small = document.createElement("small");
+      small.textContent = `${new Date(t.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} · ${t.words} word${t.words === 1 ? "" : "s"}`;
+      text.append(b, small); a.append(text);
+      if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "In progress"; a.append(tag); }
+      li.append(a); list.append(li);
+    }
+    document.querySelector("#saved").hidden = false;
+  }
+} catch {}
 </script>
 </body>
 </html>

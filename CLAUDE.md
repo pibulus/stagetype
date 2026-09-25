@@ -60,6 +60,14 @@ deno task check    # TypeScript type-checking
 - **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box; later Deepgram via a relay proxy or a native app). Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and never sees audio. New capability should be a new source or a new display, not a new server feature.
 - The typing box sends interim on input (250 ms debounce) and final on Enter. Space in the box types a space; the global Space shortcut ignores inputs.
 
+## 💾 Persistence (client side only)
+- Reader: `stl-talk-<roomId>` = `{ id, title, lines, seen, startedAt, updatedAt, ended }`, index `stl-talks` (last 20). Restored on load; `seen` keeps the backlog offset logic exact. Room gone + saved copy ⇒ state "Saved on this phone" with the export card.
+- Console: `st-talk-<roomId>` same shape plus `code`, index `st-talks` (last 10, shown under Previous talks). `transcript[]` is every final in room order; `finals[]` is only the ticker tail. The open room is in `sessionStorage` `st-room` (tab-scoped, token never leaves the tab) and `resumeRoom()` picks it up on load if the relay still has it.
+- Server keeps nothing beyond the open room's last 400 lines. Keep it that way.
+
+## 🚀 Hosting
+- One process, one machine (in-memory rooms). `Dockerfile` + `fly.toml` (never scale to zero). Not Deno Deploy / multi-isolate until rooms move to KV.
+
 ## 🧭 Presenter Rules
 - Space toggles mic pause/resume, never ends the talk. Ending is a deliberate click.
 - Finals reach the ticker via the SSE echo (works for laptop and phone mic alike); local push only if the relay is unreachable.

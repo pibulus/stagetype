@@ -41,6 +41,7 @@
   }
   #bar[data-state="live"] .live-badge { background: var(--mint); color: #1e1714; }
   #bar[data-state="ended"] .live-badge { background: var(--pill); color: #1e1714; }
+  #bar[data-state="saved"] .live-badge { background: var(--mint); color: #1e1714; }
   .dot {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--muted); border: 2px solid var(--line);
@@ -263,7 +264,7 @@
 
 <section id="endCard" role="status" hidden>
   <h2>Talk ended</h2>
-  <p class="sub">The transcript above stays readable. Take it along with you.</p>
+  <p class="sub">The transcript stays on this phone. Reopen this link any time, or find it under Saved talks at <span id="joinHost"></span>. Take a copy along too.</p>
   <div class="actions">
     <button class="copy-btn">Copy transcript</button>
     <button id="saveTxt">Save .txt</button>
@@ -310,6 +311,7 @@ function applyPrefs() {
   $$("#flowSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === flow)));
 }
 applyPrefs();
+$("#joinHost").textContent = `${location.host}/join`;
 
 $("#bigger").onclick = () => { size = Math.min(56, size + 3); store.set("stl-size", size); applyPrefs(); };
 $("#smaller").onclick = () => { size = Math.max(14, size - 3); store.set("stl-size", size); applyPrefs(); };
@@ -336,6 +338,25 @@ const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight
 const linesArr = [];
 let totalWords = 0;
 let talkTitle = "";
+let startedAt = 0;
+
+// The transcript survives on this phone. Every finished line is stashed under the room id, and the
+// join page lists what's here, so closing the tab or reopening the link a week later still shows the talk.
+const TALK_KEY = `stl-talk-${roomId}`;
+function loadSaved() { try { return JSON.parse(localStorage.getItem(TALK_KEY)); } catch { return null; } }
+let saveTimer = null;
+function saveTalk(ended = false) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended };
+    store.set(TALK_KEY, JSON.stringify(rec));
+    let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
+    idx = idx.filter((t) => t.id !== roomId);
+    idx.unshift({ id: roomId, title: talkTitle, words: totalWords, updatedAt: rec.updatedAt, ended });
+    while (idx.length > 20) { const old = idx.pop(); try { localStorage.removeItem(`stl-talk-${old.id}`); } catch {} }
+    store.set("stl-talks", JSON.stringify(idx));
+  }, ended ? 0 : 800);
+}
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
 
@@ -363,6 +384,7 @@ function addLine(text, animate = true) {
   feed.insertBefore(p, interimEl);
   linesArr.push(text);
   updateStats();
+  if (animate) saveTalk();
 }
 
 const transcript = () => linesArr.join("\n\n");
@@ -372,7 +394,7 @@ async function copyTranscript(btn) {
   try {
     await navigator.clipboard.writeText(transcript());
     btn.textContent = "Copied!";
-    if (navigator.vibrate) navigator.vibrate(30);
+    if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(30);
   } catch {
     btn.textContent = "Blocked";
   }
@@ -409,8 +431,16 @@ const setState = (state, label) => {
   $("#bar").dataset.state = state;
 };
 
-const es = new EventSource(`/api/room/${roomId}/stream`);
 let seen = 0;
+const saved = loadSaved();
+if (saved?.lines?.length) {
+  applyRoom({ title: saved.title });
+  startedAt = saved.startedAt || 0;
+  saved.lines.forEach((t) => addLine(t, false));
+  seen = saved.seen || saved.lines.length;
+  setState("saved", "Saved on this phone");
+}
+const es = new EventSource(`/api/room/${roomId}/stream`);
 
 es.addEventListener("open", () => setState("live", "Live"));
 
@@ -419,8 +449,10 @@ es.addEventListener("open", () => setState("live", "Live"));
 es.addEventListener("backlog", (e) => {
   const { lines, offset = 0, ...info } = JSON.parse(e.data);
   applyRoom(info);
+  if (info.startedAt) startedAt = info.startedAt;
   lines.slice(Math.max(0, seen - offset)).forEach((t) => addLine(t, false));
   seen = Math.max(seen, offset + lines.length);
+  if (linesArr.length) saveTalk();
   follow();
 });
 
@@ -439,14 +471,15 @@ es.addEventListener("interim", (e) => {
   follow();
 });
 
-function talkOver(label) {
+function talkOver(label, state = "ended") {
   es.close();
   interimEl.textContent = "";
-  setState("ended", label);
+  setState(state, label);
   $("#jump").hidden = true;
   if (linesArr.length) {
     $("#endCard").hidden = false;
-    if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
+    saveTalk(true);
+    if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);
   }
 }
 
@@ -456,7 +489,7 @@ es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {
     // The room is gone (ended while this phone was asleep, or the relay restarted). Whatever we
     // caught is still worth keeping, so offer the export card the same as a clean ending.
-    talkOver("Room closed");
+    talkOver(linesArr.length ? "Saved on this phone" : "Room closed", linesArr.length ? "saved" : "ended");
   } else {
     setState("reconnecting", "Reconnecting");
   }

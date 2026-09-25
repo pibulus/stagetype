@@ -1,0 +1,20 @@
+# fly launch --copy-config --no-deploy && fly deploy
+# One machine, never scaled to zero: rooms live in memory and a sleeping machine ends every talk.
+app = "stagetype"
+primary_region = "syd"
+
+[build]
+
+[env]
+  PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
