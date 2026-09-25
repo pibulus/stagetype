@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StageType · Ticker</title>
+<link rel="stylesheet" href="/vendor/fonts.css">
+<style>
+  /* The stage bar on its own. Fill a second screen, or size it as a strip in an OBS browser source.
+     Options ride in the query string: style=ink|paper face=system|inter|atkinson|fraunces|mono
+     weight=400|500|700 size=<px> depth=1|2|3 flow=live|settled ring=mint|pink|lilac|butter|none */
+  :root {
+    --ground: #fffef7; --paper: #fbf1e4; --ink: #1e1714; --line: #3a2e28;
+    --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
+    --face: var(--face-system); --weight: 700; --depth: 2; --size: clamp(22px, 5.2vw, 64px); --ring: var(--mint);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--ink); color: var(--ground); overflow: hidden;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 4vh 4vw; box-shadow: inset 0 0 0 3px var(--ring);
+    font: var(--weight) var(--size)/1.25 var(--face); letter-spacing: -0.01em;
+  }
+  body[data-style="paper"] { background: var(--paper); color: var(--ink); }
+  body[data-ring="none"] { box-shadow: none; }
+  body[data-face="fraunces"] { font-variation-settings: "SOFT" 100, "WONK" 0; }
+  #ticker { max-height: calc(var(--depth) * 1.25em); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  .prev { opacity: .55; font-weight: max(300, calc(var(--weight) - 200)); }
+  .fresh-lead { animation: land .55s ease-out; }
+  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--ring); } 35% { opacity: 1; text-shadow: 0 0 18px var(--ring); } 100% { text-shadow: 0 0 0 transparent; } }
+  body[data-ring="none"] .fresh-lead { animation: none; }
+  .interim { color: var(--pink); opacity: .9; }
+  body[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, transparent); border-radius: .15em; padding: 0 .12em; }
+  .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: currentColor; border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  @keyframes caret { to { opacity: 0; } }
+  body[data-flow="settled"] .interim { display: none; }
+  #ticker:empty::before { content: "Captions appear here in real time"; opacity: .35; font-weight: 500; }
+  #ticker.over:empty::before { content: "Talk ended"; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</head>
+<body>
+<div id="ticker" aria-live="polite"></div>
+<script>
+const roomId = location.pathname.split("/").pop();
+const q = new URLSearchParams(location.search);
+const pick = (k, allowed, fallback) => (allowed.includes(q.get(k)) ? q.get(k) : fallback);
+const style = pick("style", ["ink", "paper"], "ink");
+const face = pick("face", ["system", "inter", "atkinson", "fraunces", "mono"], "system");
+const weight = pick("weight", ["400", "500", "700"], "700");
+const depth = pick("depth", ["1", "2", "3"], "2");
+const flow = pick("flow", ["live", "settled"], "live");
+const ring = pick("ring", ["mint", "pink", "lilac", "butter", "none"], "mint");
+const size = /^\d{2,3}px$/.test(q.get("size") || "") ? q.get("size") : null;
+const root = document.documentElement.style;
+root.setProperty("--face", `var(--face-${face})`);
+root.setProperty("--weight", weight);
+root.setProperty("--depth", depth);
+root.setProperty("--ring", ring === "none" ? "transparent" : `var(--${ring})`);
+if (size) root.setProperty("--size", size);
+Object.assign(document.body.dataset, { style, face, flow, ring });
+
+const el = document.querySelector("#ticker");
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+let finals = [], interim = "";
+function render() {
+  const tail = finals.slice(-Number(depth));
+  let html = "";
+  for (const line of tail.slice(0, -1)) html += `<span class="prev">${esc(line)}</span> `;
+  if (tail.length) html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
+  if (interim) html += ` <span class="interim">${esc(interim)}</span>`;
+  el.innerHTML = html ? `<div>${html}</div>` : "";
+}
+const es = new EventSource(`/api/room/${roomId}/stream`);
+es.addEventListener("backlog", (e) => { const { lines, title } = JSON.parse(e.data); finals = lines.slice(-3); if (title) document.title = `${title} · Ticker`; render(); });
+es.addEventListener("final", (e) => { const { text } = JSON.parse(e.data); if (text) finals.push(text); if (finals.length > 10) finals.shift(); interim = ""; render(); });
+es.addEventListener("interim", (e) => { interim = JSON.parse(e.data).text || ""; render(); });
+es.addEventListener("end", () => { es.close(); interim = ""; el.classList.add("over"); render(); });
+es.onerror = () => { if (es.readyState === EventSource.CLOSED) { el.classList.add("over"); interim = ""; render(); } };
+</script>
+</body>
+</html>

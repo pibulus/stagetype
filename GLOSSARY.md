@@ -20,6 +20,15 @@ The Wii U / Appendage pattern: transforms a presenter's phone into a wireless st
 #### 👥 Audience Reader (`audience.html` / `/live/:id`)
 The zero-install, zero-auth viewport for attendees. Opens instantly in any mobile browser when scanning the presenter's QR code. Provides client-side reading comfort controls: 4 themes (Cream, Espresso, Contrast, Night), dyslexic loose spacing, font scaling, jump-to-live auto-scroll, and post-talk Markdown/TXT/PDF export.
 
+#### 🔤 Join Code
+Four letters (no I, O, Q; nothing rude) shown beside the audience QR and large on the projector card. Typed at `/join` or used as `/j/CODE`. Released when the talk ends.
+
+#### 🧾 Typing Box
+The console's text field. A third source alongside the two mics: words show as interim while typed, Enter sends the line. For CART captioners, corrections, or talks with no mic.
+
+#### 📺 Standalone Ticker (`ticker.html` / `/ticker/:id`)
+The bar on its own, full-bleed, styled by query string. For a second display in any browser, and as an OBS browser source so livestreams get captions.
+
 #### ⚡ SSE Fan-Out Relay (`server.ts`)
 A zero-dependency Deno server running an in-memory Server-Sent Events (SSE) broadcast. It handles room creation, token authorization, backlog delivery for late joiners, keep-alive heartbeats, and instant fan-out of text tokens to hundreds of phones under 50ms latency.
 

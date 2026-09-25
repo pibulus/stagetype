@@ -48,7 +48,13 @@ Presenters are normally tethered to their MacBook's built-in microphone at the l
 
 StageType implements the **Appendage Architecture**: scan the **Phone lapel mic** QR code, slide your smartphone into your shirt pocket, and walk the stage freely. Your phone captures your voice, keeps the screen awake via the Screen Wake Lock API, and streams transcript tokens straight to the room relay.
 
-### 3. The Pocket Jumbotron & Post-Talk Export
+### 3. It's a chat room, and anything can talk into it
+Under the hood a talk is a room: something sends lines in, everything else reads them out. The laptop mic is one source. The phone lapel mic is another. The **typing box** on the console is the third: a captioner, a colleague fixing a name, or a presenter who doesn't speak can type a line and it lands on every phone, words showing as they're typed and the line settling on Enter. Reading side, the audience phones are one display, the stage ticker another, and the **standalone ticker page** (`/ticker/:id`) is the bar on its own for any second screen or an OBS browser source.
+
+### 4. Join by code, Jackbox-style
+Every talk gets a four-letter code (no I, O or Q, nothing rude). It's on the console, large on the projector card, and anyone can type it at `/join`. That's the back row, the overflow room on Zoom, and the screen-reader user who can't scan a projector.
+
+### 5. The Pocket Jumbotron & Post-Talk Export
 In large lecture halls or crowded meetups, attendees in the back or individuals with neurodivergent/hearing differences can point their camera at the screen to read along live in their palm:
 * **Client-Side Comfort Controls:** Attendees choose their own font size, loose dyslexic spacing, and theme (**Cream**, **Espresso**, **High-Contrast Black/Gold**, or **Night**).
 * **Smooth Backlog Replay:** Late joiners instantly receive previous sentences without jarring layout shifts.
@@ -74,6 +80,8 @@ deno task dev
 * **Stage Console:** Open [`http://localhost:8787`](http://localhost:8787) in Chrome or Edge.
 * **Audience Reader:** Scan the generated QR code or navigate to `http://<your-lan-ip>:8787/live/<roomId>`.
 * **Phone Lapel Mic:** Toggle the tab to **Phone lapel mic** and scan with your phone.
+* **Second screen or OBS:** Under Stage Ticker, **Open on a second screen** opens `/ticker/<roomId>?…` with your current bar prefs. In OBS add it as a browser source and size it as a strip, for example 1920 × 180.
+* **Floating over Keynote needs Chrome or Edge.** The float uses Document Picture-in-Picture, which Safari and Firefox don't have. In those, use the standalone ticker page on a second display instead.
 
 ---
 
@@ -107,6 +115,8 @@ stagetype/
 ├── presenter.html    # Stage Console: VU meter, QR controller, floating ticker
 ├── audience.html     # Mobile reader: themes, dyslexic spacing, transcript export
 ├── mic.html          # Appendage lapel mic: wake lock, haptics, pocket guard
+├── ticker.html       # The bar alone: second screens and OBS browser sources
+├── join.html         # Four-letter code entry for people who can't scan
 ├── ghost.svg         # Favicon / home-screen icon
 ├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
@@ -154,7 +164,7 @@ Five faces, all SIL Open Font License, vendored in `vendor/fonts/` so they load 
 | Fraunces | Warm soft serif at its softest setting, for rooms that want a friendlier voice |
 | JetBrains Mono | For the dev talk, where captions read like the code on screen |
 
-Weight is three stops (Regular, Medium, Bold). **Flow** is two: *Live words* streams the in-progress fragment as it's recognised; *Settled sentences* shows finished sentences only, which is calmer on a six-metre screen and for readers who find the flicker tiring. The stage ticker also chooses its **depth** (one to three lines) and **ring** colour (or none). Webfonts cover Latin and Latin Extended; other scripts fall through to the system stack.
+Weight is three stops (Regular, Medium, Bold). **Flow** is two: *Live words* streams the in-progress fragment as it's recognised; *Settled sentences* shows finished sentences only, which is calmer on a six-metre screen and for readers who find the flicker tiring. The stage ticker also chooses its **style** (Ink, a dark bar; Paper, a light one for bright rooms and light decks), **depth** (one to three lines) and **ring** colour (or none). The same options ride the standalone ticker's query string: `style`, `face`, `weight`, `size` (px), `depth`, `flow`, `ring`. Webfonts cover Latin and Latin Extended; other scripts fall through to the system stack.
 
 A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR card, and in the exported file name and Markdown header.
 
@@ -162,7 +172,11 @@ A **talk title** ("COMP1010 Week 3") shows on every phone, on the projector QR c
 
 | Method | Path | Auth | What |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/room` | none | Open a room; optional body `{ title }` → `{ id, token, title }` |
+| `POST` | `/api/room` | none | Open a room; optional body `{ title }` → `{ id, token, title, code }` |
+| `GET` | `/api/join/:code` | none | Resolve a four-letter join code → `{ id }` (404 when no open talk has it) |
+| `GET` | `/j/:code` | none | Short link: 302 to `/live/:id`, or to `/join?nope=CODE` |
+| `GET` | `/join` | none | Type-the-code page (also served at `/live`) |
+| `GET` | `/ticker/:id` | none | The bar on its own; prefs in the query string |
 | `POST` | `/api/room/:id` | Bearer token | Push `{ text, final }`; `{ ping: true }` is a keepalive that broadcasts nothing |
 | `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title }`, then `interim { text }`, `final { text, seq }`, `end` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |

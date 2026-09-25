@@ -145,6 +145,7 @@
     box-shadow: 3px 3px 0 var(--line); transition: box-shadow .2s var(--spring), transform .2s var(--spring);
   }
   .text-input::placeholder { color: var(--muted); font-weight: 500; }
+  .hint { margin: 0; font-size: 0.78rem; color: var(--muted); font-weight: 600; line-height: 1.4; }
   .text-input:focus { outline: none; box-shadow: 3px 3px 0 var(--pink); }
   .text-input:disabled { opacity: .7; }
   /* Audio Meter */
@@ -244,6 +245,13 @@
   #qrGraphic svg { width: 175px; height: 175px; }
   .qr-talk { margin: 0 0 4px; font-weight: 900; font-size: 1.15rem; letter-spacing: -0.02em; }
   .qr-talk[hidden] { display: none; }
+  .join-line { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+  .join-line[hidden] { display: none; }
+  .join-line b { font: 900 1.05rem ui-monospace, Menlo, monospace; letter-spacing: .14em; color: var(--ink); background: var(--butter); border: 2px solid var(--line); border-radius: 8px; padding: 2px 8px; }
+  .fs-code { display: flex; align-items: baseline; gap: 14px; }
+  .fs-code[hidden] { display: none; }
+  .fs-code span { font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .fs-code b { font: 900 clamp(48px, 9vw, 84px)/1 ui-monospace, Menlo, monospace; letter-spacing: .2em; text-indent: .2em; color: var(--ink); background: var(--butter); border: 3px solid var(--line); border-radius: 18px; padding: 8px 12px 8px 28px; box-shadow: 5px 5px 0 var(--line); }
   .qr-info-title { font-weight: 800; font-size: 1.05rem; margin: 0; }
   .qr-info-sub { font-size: 0.85rem; color: var(--muted); margin: 0; }
   .url-pill {
@@ -285,7 +293,7 @@
     background: rgba(30, 23, 20, 0.94); color: #fffef7; border-radius: 24px;
     font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.25 var(--ticker-face, var(--face-system)); letter-spacing: -0.01em;
     display: flex; flex-direction: column; justify-content: flex-end;
-    max-height: calc(var(--ticker-depth, 2) * 1.3em + 42px); overflow: hidden;
+    max-height: calc(var(--ticker-depth, 2) * 1.25em + 40px); overflow: hidden;
     box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.4);
     z-index: 50; transition: box-shadow 0.2s ease, font-size 0.15s ease;
   }
@@ -305,6 +313,15 @@
   #ticker[data-ring="butter"], body[data-live="1"] #ticker[data-ring="butter"] { box-shadow: 0 0 0 3px var(--butter), 0 18px 52px rgba(30, 23, 20, 0.4); }
   #ticker[data-ring="none"], body[data-live="1"] #ticker[data-ring="none"] { box-shadow: 0 0 0 3px var(--ground), 0 18px 52px rgba(30, 23, 20, 0.4); }
   #ticker[data-flow="settled"] .interim { display: none; }
+  #ticker[data-style="paper"] { background: var(--paper); color: var(--ink); box-shadow: 0 0 0 3px var(--line), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"] .fresh-lead { color: var(--ink); }
+  #ticker[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, transparent); border-radius: .15em; padding: 0 .12em; }
+  #ticker[data-style="paper"] .interim::after { background: var(--ink); }
+  #ticker[data-style="paper"][data-ring="pink"], body[data-live="1"] #ticker[data-style="paper"][data-ring="pink"] { box-shadow: 0 0 0 3px var(--pink), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="mint"], body[data-live="1"] #ticker[data-style="paper"][data-ring="mint"] { box-shadow: 0 0 0 3px var(--mint), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="lilac"], body[data-live="1"] #ticker[data-style="paper"][data-ring="lilac"] { box-shadow: 0 0 0 3px var(--lilac), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="butter"], body[data-live="1"] #ticker[data-style="paper"][data-ring="butter"] { box-shadow: 0 0 0 3px var(--butter), 0 18px 52px rgba(30, 23, 20, 0.25); }
+  #ticker[data-style="paper"][data-ring="none"], body[data-live="1"] #ticker[data-style="paper"][data-ring="none"] { box-shadow: 0 0 0 3px var(--line), 0 18px 52px rgba(30, 23, 20, 0.25); }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
@@ -359,6 +376,13 @@
       </div>
 
       <div class="panel-section">
+        <span class="section-label">Type Captions</span>
+        <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
+               placeholder="Type a caption and press Enter" aria-label="Type a caption">
+        <p class="hint">Words show on the phones as you type; Enter sends the line. For a captioner, a correction, or a talk with no mic. Pause the mic to caption by hand only.</p>
+      </div>
+
+      <div class="panel-section">
         <span class="section-label">Audio Input & Level</span>
         <div class="meter-box">
           <span class="meter-label">Mic</span>
@@ -377,6 +401,11 @@
             <button class="seg-btn" data-v="28px">Compact</button>
             <button class="seg-btn" data-v="38px">Standard</button>
             <button class="seg-btn" data-v="50px">Jumbotron</button>
+          </div>
+          <span class="opt-label">Style</span>
+          <div class="segmented-control" data-pref="style">
+            <button class="seg-btn" data-v="ink">Ink</button>
+            <button class="seg-btn" data-v="paper">Paper</button>
           </div>
           <span class="opt-label">Face</span>
           <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
@@ -411,6 +440,10 @@
             <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
             <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
           </div>
+        </div>
+        <div class="btn-row">
+          <button id="screenBtn" class="ground" style="padding:8px 16px;font-size:0.85rem" disabled>Open on a second screen</button>
+          <span class="hint">Any browser, any display. Also an OBS browser source for livestreams.</span>
         </div>
       </div>
 
@@ -472,6 +505,7 @@
         </div>
 
         <div class="url-pill" id="urlDisplay">Opening room…</div>
+        <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
 
         <div class="btn-row">
           <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem">Copy link</button>
@@ -504,6 +538,7 @@
       <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
     </div>
     <div id="fsQr" style="background:#fffef7;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+    <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
     <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
     <p id="fsNote" style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
   </div>
@@ -567,6 +602,12 @@ const prefs = {
   depth: store.get("st-depth") || "2",
   flow: store.get("st-flow") || "live",
   ring: store.get("st-ring") || "mint",
+  style: store.get("st-style") || "ink",
+};
+const tickerUrl = () => {
+  if (!room) return "";
+  const q = new URLSearchParams({ style: prefs.style, face: prefs.face, weight: prefs.weight, depth: prefs.depth, flow: prefs.flow, ring: prefs.ring });
+  return `${location.origin}/ticker/${room.id}?${q}`;
 };
 function applyPrefs() {
   for (const el of tickerEls) {
@@ -577,6 +618,7 @@ function applyPrefs() {
     el.dataset.face = prefs.face;
     el.dataset.flow = prefs.flow;
     el.dataset.ring = prefs.ring;
+    el.dataset.style = prefs.style;
   }
   $$("[data-pref]").forEach((group) => {
     const v = prefs[group.dataset.pref];
@@ -588,6 +630,23 @@ function applyPrefs() {
   });
   renderTicker();
 }
+// Typed captions: the room is a chat room, and this is the simplest way in.
+let typedTimer = null;
+$("#typed").addEventListener("input", () => {
+  if (!room) return;
+  clearTimeout(typedTimer);
+  typedTimer = setTimeout(() => push({ text: $("#typed").value.trim(), final: false }), 250);
+});
+$("#typed").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !room) return;
+  e.preventDefault();
+  clearTimeout(typedTimer);
+  const text = $("#typed").value.trim();
+  $("#typed").value = "";
+  if (text) push({ text, final: true });
+  else push({ text: "", final: false });
+});
+$("#screenBtn").onclick = () => { if (room) window.open(tickerUrl(), "_blank", "noopener"); };
 $$("[data-pref]").forEach((group) => {
   const key = group.dataset.pref;
   if (group.tagName === "SELECT") {
@@ -622,6 +681,10 @@ function updateQR() {
   $(".qr-card").dataset.tab = activeTab;
   $("#urlDisplay").textContent = targetUrl;
 
+  const showCode = !isMic && !!room.code;
+  $("#joinLine").hidden = !showCode; $("#fsCode").hidden = !showCode;
+  $("#joinCode").textContent = room.code || ""; $("#fsCodeText").textContent = room.code || "";
+  $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
   if (isMic) {
     $("#qrTitle").textContent = "Phone lapel mic";
     $("#qrSub").textContent = "Scan with your phone to speak untethered on stage";
@@ -876,6 +939,8 @@ async function openRoom() {
   renderTicker();
   updateQR();
   $("#title").disabled = true;
+  $("#typed").disabled = false;
+  $("#screenBtn").disabled = false;
   listenToRoomStream(room.id);
 
   $("#startBtn").hidden = true;
@@ -942,8 +1007,13 @@ function handleTalkEnded(callServer = true) {
   renderTicker();
   $("#lang").disabled = false;
   $("#title").disabled = false;
+  $("#typed").disabled = true;
+  $("#typed").value = "";
+  $("#screenBtn").disabled = true;
   $("#urlDisplay").textContent = "Standby (start a talk to generate link)";
   $("#qrGraphic").innerHTML = "";
+  $("#joinLine").hidden = true;
+  $("#fsCode").hidden = true;
 }
 
 $("#startBtn").onclick = () => openRoom();

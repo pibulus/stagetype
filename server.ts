@@ -6,6 +6,7 @@ type Chunk = { text?: unknown; final?: unknown; ping?: unknown };
 type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
 type Room = {
   token: string;
+  code: string; // four-letter join code people can type instead of scanning
   title: string; // shown on every phone and in the export; "" when the presenter left it blank
   lines: string[]; // finalized sentences, the backlog late joiners get
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
@@ -24,10 +25,23 @@ const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
 
 export const rooms = new Map<string, Room>();
+const codes = new Map<string, string>(); // join code -> room id, only while the room is open
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 const id = (n: number) => crypto.randomUUID().replaceAll("-", "").slice(0, n);
+
+// Join codes: four letters from an alphabet without I, O and Q (nothing that reads as a digit or
+// each other on a projector), skipping the words nobody wants on a lecture screen.
+const CODE_ALPHABET = "ABCDEFGHJKLMNPRSTUVWXYZ";
+const CODE_BLOCKLIST = new Set(["FUCK","SHIT","CUNT","DAMN","DICK","COCK","TWAT","ANAL","ARSE","BUTT","CRAP","JERK","NAZI","RAPE","SLUT","SUCK","TITS","WANK","PISS","CUMS","KIKE","SPIC","DAGO","PAKI","HOMO","FAGS","DYKE","JIZZ","MUFF","PUBE","POOP","PORN","SCUM","SEXY","TURD","HELL","KILL","DEAD","GOOK","COON","CHNK","FART","BUMS","NUTS","DUMB","LAME","HATE"]);
+export function newCode(): string {
+  for (;;) {
+    const bytes = crypto.getRandomValues(new Uint8Array(4));
+    const c = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+    if (!CODE_BLOCKLIST.has(c) && !codes.has(c)) return c;
+  }
+}
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -63,6 +77,7 @@ function endRoom(key: string, room: Room) {
     try { l.ctrl.close(); } catch { /* already gone */ }
     drop(room, l);
   }
+  codes.delete(room.code);
   rooms.delete(key);
 }
 
@@ -95,6 +110,19 @@ export async function handler(req: Request): Promise<Response> {
   if (get && /^\/live\/[a-z0-9]+$/.test(path)) return file("audience.html", head);
   // Phone as the mic: the write token rides in the URL #fragment, which browsers never send to the server
   if (get && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", head);
+  // The bar on its own: any second screen, or an OBS browser source for a livestream
+  if (get && /^\/ticker\/[a-z0-9]+$/.test(path)) return file("ticker.html", head);
+  // Type-the-code entry for people who can't scan the projector
+  if (get && (path === "/join" || path === "/live" || path === "/live/")) return file("join.html", head);
+  if (get && /^\/j\/[A-Za-z]{4}$/.test(path)) {
+    const code = path.slice(3).toUpperCase();
+    const roomId = codes.get(code);
+    return Response.redirect(new URL(roomId ? `/live/${roomId}` : `/join?nope=${code}`, url), 302);
+  }
+  if (get && /^\/api\/join\/[A-Za-z]{4}$/.test(path)) {
+    const roomId = codes.get(path.slice(10).toUpperCase());
+    return roomId ? json({ id: roomId }) : json({ error: "no talk with that code" }, 404);
+  }
   // Vendored assets: the QR encoder, the curated fonts and their stylesheet. Strict allowlist of names, long cache.
   if (get && /^\/vendor\/(fonts\/)?[a-z0-9-]+\.(js|css|woff2)$/.test(path)) {
     const type = path.endsWith(".js") ? "text/javascript; charset=utf-8" : path.endsWith(".css") ? "text/css; charset=utf-8" : "font/woff2";
@@ -116,9 +144,11 @@ export async function handler(req: Request): Promise<Response> {
     const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
     const roomId = id(8);
     const token = id(32);
+    const code = newCode();
     const now = Date.now();
-    rooms.set(roomId, { token, title, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
-    return json({ id: roomId, token, title });
+    rooms.set(roomId, { token, code, title, lines: [], offset: 0, listeners: new Set(), touched: now, startedAt: now });
+    codes.set(code, roomId);
+    return json({ id: roomId, token, title, code });
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);

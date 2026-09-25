@@ -1,4 +1,4 @@
-import { handler, rooms, sweep } from "./server.ts";
+import { handler, newCode, rooms, sweep } from "./server.ts";
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const base = "http://x";
@@ -57,6 +57,23 @@ Deno.test("room carries a trimmed title", async () => {
   const d = await mkRoom() as { id: string; token: string; title: string };
   assertEquals(d.title, "");
   await del(`/api/room/${d.id}`, d.token);
+});
+
+Deno.test("join codes: four safe letters, resolvable, redirecting, released on end", async () => {
+  for (let i = 0; i < 200; i++) assert(/^[ABCDEFGHJKLMNPRSTUVWXYZ]{4}$/.test(newCode()));
+  const r = await mkRoom() as { id: string; token: string; code: string };
+  assert(/^[A-Z]{4}$/.test(r.code));
+  assertEquals((await (await handler(new Request(`${base}/api/join/${r.code.toLowerCase()}`))).json()).id, r.id);
+  const redir = await handler(new Request(`${base}/j/${r.code}`));
+  assertEquals(redir.status, 302);
+  assertEquals(new URL(redir.headers.get("location")!).pathname, `/live/${r.id}`);
+  await del(`/api/room/${r.id}`, r.token);
+  assertEquals((await handler(new Request(`${base}/api/join/${r.code}`))).status, 404);
+  const gone = await handler(new Request(`${base}/j/${r.code}`));
+  assertEquals(gone.status, 302);
+  assert(gone.headers.get("location")!.endsWith(`/join?nope=${r.code}`));
+  assertEquals((await handler(new Request(`${base}/join`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/live`))).status, 200);
 });
 
 Deno.test("ending a talk closes every listener and clears its keepalive timer", async () => {
@@ -138,7 +155,7 @@ Deno.test("LAN info only answers to a browser on this machine", async () => {
 });
 
 Deno.test("pages and the vendored QR encoder are served", async () => {
-  for (const p of ["/", "/live/abc123", "/mic/abc123"]) {
+  for (const p of ["/", "/live/abc123", "/mic/abc123", "/ticker/abc123", "/join"]) {
     const r = await handler(new Request(base + p));
     assertEquals(r.status, 200);
     assert(r.headers.get("content-type")!.startsWith("text/html"));
