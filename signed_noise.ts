@@ -18,8 +18,7 @@ const key = (secret: string) => {
   }
   return k;
 };
-const hmac = async (secret: string, msg: string) =>
-  new Uint8Array(await crypto.subtle.sign("HMAC", await key(secret), enc.encode(msg)));
+const hmac = async (secret: string, msg: string) => new Uint8Array(await crypto.subtle.sign("HMAC", await key(secret), enc.encode(msg)));
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 function same(a: string, b: string) {

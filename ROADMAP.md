@@ -55,7 +55,7 @@ Translation cost scales with the number of languages, not listeners: each line i
 
 ## Open decision: the licence
 
-StageType is MIT today. MIT lets anyone host it and sell it back to our customers. If a hosted service is part of the plan, relicense the relay and pages to **AGPL-3.0** while Pablo is the only author (Plausible and Cal.com do this). Vendored fonts and the QR encoder keep their own licences. **Pablo's call; not changed in code.**
+StageType is MIT today. MIT lets anyone host it and sell it back to our customers. If a hosted service is part of the plan, relicense the relay and pages to **AGPL-3.0** while Pablo is the only author (Plausible and Cal.com do this). Vendored fonts and the QR encoder keep their own licences. **Decided September 2026: Pablo is fine with AGPL, deferred until a hosted service is close.** Still MIT in code until then.
 
 ## Build order
 

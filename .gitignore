@@ -2,3 +2,5 @@
 *.log
 .env
 .env.local
+e2e/screenshots/
+node_modules/

@@ -42,7 +42,7 @@ const DEMO_TTL_MS = 10 * 60_000;
 const DEMO_MAX_ROOMS = 200;
 const DEMO_MAX_LISTENERS = 3; // a live phone that goes this long without a push is treated as dropped
 
-export const rooms = new Map<string, Room>();
+export const rooms: Map<string, Room> = new Map();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -52,7 +52,55 @@ const id = (n: number) => crypto.randomUUID().replaceAll("-", "").slice(0, n);
 // Join codes: four letters from an alphabet without I, O and Q (nothing that reads as a digit or
 // each other on a projector), skipping the words nobody wants on a lecture screen.
 const CODE_ALPHABET = "ABCDEFGHJKLMNPRSTUVWXYZ";
-const CODE_BLOCKLIST = new Set(["FUCK","SHIT","CUNT","DAMN","DICK","COCK","TWAT","ANAL","ARSE","BUTT","CRAP","JERK","NAZI","RAPE","SLUT","SUCK","TITS","WANK","PISS","CUMS","KIKE","SPIC","DAGO","PAKI","HOMO","FAGS","DYKE","JIZZ","MUFF","PUBE","POOP","PORN","SCUM","SEXY","TURD","HELL","KILL","DEAD","GOOK","COON","CHNK","FART","BUMS","NUTS","DUMB","LAME","HATE"]);
+const CODE_BLOCKLIST = new Set([
+  "FUCK",
+  "SHIT",
+  "CUNT",
+  "DAMN",
+  "DICK",
+  "COCK",
+  "TWAT",
+  "ANAL",
+  "ARSE",
+  "BUTT",
+  "CRAP",
+  "JERK",
+  "NAZI",
+  "RAPE",
+  "SLUT",
+  "SUCK",
+  "TITS",
+  "WANK",
+  "PISS",
+  "CUMS",
+  "KIKE",
+  "SPIC",
+  "DAGO",
+  "PAKI",
+  "HOMO",
+  "FAGS",
+  "DYKE",
+  "JIZZ",
+  "MUFF",
+  "PUBE",
+  "POOP",
+  "PORN",
+  "SCUM",
+  "SEXY",
+  "TURD",
+  "HELL",
+  "KILL",
+  "DEAD",
+  "GOOK",
+  "COON",
+  "CHNK",
+  "FART",
+  "BUMS",
+  "NUTS",
+  "DUMB",
+  "LAME",
+  "HATE",
+]);
 export function newCode(): string {
   for (;;) {
     const bytes = crypto.getRandomValues(new Uint8Array(4));
@@ -85,7 +133,11 @@ function drop(room: Room, l: Listener) {
 function send(room: Room, event: string, data: unknown) {
   const f = frame(event, data);
   for (const l of room.listeners) {
-    try { l.ctrl.enqueue(f); } catch { drop(room, l); }
+    try {
+      l.ctrl.enqueue(f);
+    } catch {
+      drop(room, l);
+    }
   }
 }
 
@@ -93,11 +145,17 @@ function send(room: Room, event: string, data: unknown) {
 function pushChunk(room: Room, chunk: { text: string; final: boolean; source: Source }) {
   const text = chunk.text.trim().slice(0, MAX_CHUNK);
   room.touched = Date.now();
-  if (chunk.source === "phone") { room.phone.seen = room.touched; setPhone(room, true, false); }
+  if (chunk.source === "phone") {
+    room.phone.seen = room.touched;
+    setPhone(room, true, false);
+  }
   if (chunk.final) {
     if (text) {
       room.lines.push(text);
-      if (room.lines.length > MAX_BACKLOG) { room.lines.shift(); room.offset++; }
+      if (room.lines.length > MAX_BACKLOG) {
+        room.lines.shift();
+        room.offset++;
+      }
     }
     send(room, "final", { text, seq: room.offset + room.lines.length, source: chunk.source });
   } else {
@@ -113,7 +171,7 @@ function setPhone(room: Room, live: boolean, lost: boolean) {
 
 // Runs every few seconds: a phone that stopped heartbeating (battery, lock screen, walked out of wifi)
 // is marked lost so the console can bring the laptop mic back.
-export function checkPhones(now = Date.now()) {
+export function checkPhones(now: number = Date.now()): void {
   for (const r of rooms.values()) {
     if (r.phone.live && now - r.phone.seen > PHONE_LOST_MS) setPhone(r, false, true);
   }
@@ -122,7 +180,9 @@ export function checkPhones(now = Date.now()) {
 function endRoom(key: string, room: Room) {
   send(room, "end", { lines: room.lines, startedAt: room.startedAt, endedAt: Date.now() });
   for (const l of room.listeners) {
-    try { l.ctrl.close(); } catch { /* already gone */ }
+    try {
+      l.ctrl.close();
+    } catch { /* already gone */ }
     drop(room, l);
   }
   if (room.code) codes.delete(room.code);
@@ -135,14 +195,15 @@ export function lanIp(): string {
   try {
     const rfc1918 = (a: string) => /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a);
     const physical = (n: string) => /^(en|eth|wl|wlan|wlp|enp)/.test(n);
+    const score = (i: Deno.NetworkInterfaceInfo) =>
+      (rfc1918(i.address) ? 2 : 0) + (physical(i.name) ? 1 : 0) - (/^(docker|br-|veth|utun|tun|tap|vmnet|virbr)/.test(i.name) ? 4 : 0);
     const candidates = Deno.networkInterfaces()
       .filter((i) => i.family === "IPv4" && !i.address.startsWith("127.") && !i.address.startsWith("169.254."))
       .sort((a, b) => score(b) - score(a));
-    function score(i: Deno.NetworkInterfaceInfo) {
-      return (rfc1918(i.address) ? 2 : 0) + (physical(i.name) ? 1 : 0) - (/^(docker|br-|veth|utun|tun|tap|vmnet|virbr)/.test(i.name) ? 4 : 0);
-    }
     return candidates[0]?.address ?? "localhost";
-  } catch { return "localhost"; }
+  } catch {
+    return "localhost";
+  }
 }
 
 const isLoopbackHost = (req: Request) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.get("host") ?? "");
@@ -201,13 +262,29 @@ export async function handler(req: Request): Promise<Response> {
     const raw = await readBody(req);
     if (raw === null) return json({ error: "too big" }, 413);
     let opts: { title?: unknown } = {};
-    if (raw.trim()) { try { opts = JSON.parse(raw) ?? {}; } catch { return json({ error: "bad json" }, 400); } }
+    if (raw.trim()) {
+      try {
+        opts = JSON.parse(raw) ?? {};
+      } catch {
+        return json({ error: "bad json" }, 400);
+      }
+    }
     const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
     const roomId = id(8);
     const token = id(32);
     const code = newCode();
     const now = Date.now();
-    rooms.set(roomId, { token, code, title, lines: [], offset: 0, phone: { live: false, seen: 0 }, listeners: new Set(), touched: now, startedAt: now });
+    rooms.set(roomId, {
+      token,
+      code,
+      title,
+      lines: [],
+      offset: 0,
+      phone: { live: false, seen: 0 },
+      listeners: new Set(),
+      touched: now,
+      startedAt: now,
+    });
     codes.set(code, roomId);
     return json({ id: roomId, token, title, code });
   }
@@ -244,7 +321,9 @@ export async function handler(req: Request): Promise<Response> {
     const raw = await readBody(req);
     if (raw === null) return json({ error: "too big" }, 413);
     let body: Chunk | null = null;
-    try { body = JSON.parse(raw); } catch { /* fallthrough */ }
+    try {
+      body = JSON.parse(raw);
+    } catch { /* fallthrough */ }
     if (!body || typeof body !== "object") return json({ error: "bad json" }, 400);
     const now = Date.now();
     room.touched = now;
@@ -273,15 +352,27 @@ export async function handler(req: Request): Promise<Response> {
     let me: Listener;
     const stream = new ReadableStream<Uint8Array>({
       start(c) {
-        const hello = frame("backlog", { lines: room.lines, offset: room.offset, startedAt: room.startedAt, title: room.title, phone: room.phone.live });
+        const hello = frame("backlog", {
+          lines: room.lines,
+          offset: room.offset,
+          startedAt: room.startedAt,
+          title: room.title,
+          phone: room.phone.live,
+        });
         c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
         const ping = setInterval(() => {
-          try { c.enqueue(enc.encode(": ping\n\n")); } catch { drop(room, me); }
+          try {
+            c.enqueue(enc.encode(": ping\n\n"));
+          } catch {
+            drop(room, me);
+          }
         }, PING_MS);
         me = { ctrl: c, ping };
         room.listeners.add(me);
       },
-      cancel() { drop(room, me); },
+      cancel() {
+        drop(room, me);
+      },
     });
     return new Response(stream, {
       headers: { "content-type": "text/event-stream", "cache-control": "no-cache", "x-accel-buffering": "no" },
@@ -296,8 +387,17 @@ export async function handler(req: Request): Promise<Response> {
 // finalised segments, and push one clean final line per utterance (or on UtteranceEnd).
 function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string) {
   const params = new URLSearchParams({
-    model: deepgramModel(), language: lang, encoding: "linear16", sample_rate: "16000", channels: "1",
-    interim_results: "true", smart_format: "true", punctuate: "true", endpointing: "300", utterance_end_ms: "1200", vad_events: "false",
+    model: deepgramModel(),
+    language: lang,
+    encoding: "linear16",
+    sample_rate: "16000",
+    channels: "1",
+    interim_results: "true",
+    smart_format: "true",
+    punctuate: "true",
+    endpointing: "300",
+    utterance_end_ms: "1200",
+    vad_events: "false",
   });
   const up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);
   up.binaryType = "arraybuffer";
@@ -305,55 +405,104 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
   const queue: ArrayBuffer[] = []; // audio that arrived before Deepgram answered
   let keepalive: ReturnType<typeof setInterval> | undefined;
   let closed = false;
-  const tell = (msg: unknown) => { try { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(msg)); } catch { /* gone */ } };
+  const tell = (msg: unknown) => {
+    try {
+      if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(msg));
+    } catch { /* gone */ }
+  };
   const finish = (code = 1000, reason = "") => {
     if (closed) return;
     closed = true;
     clearInterval(keepalive);
-    try { if (up.readyState === WebSocket.OPEN) up.send(JSON.stringify({ type: "CloseStream" })); } catch { /* gone */ }
-    try { up.close(); } catch { /* gone */ }
-    try { client.close(code, reason.slice(0, 120)); } catch { /* gone */ }
+    try {
+      if (up.readyState === WebSocket.OPEN) up.send(JSON.stringify({ type: "CloseStream" }));
+    } catch { /* gone */ }
+    try {
+      up.close();
+    } catch { /* gone */ }
+    try {
+      client.close(code, reason.slice(0, 120));
+    } catch { /* gone */ }
     if (!rooms.has(roomKey(room))) return;
-    if (pending.length) flush(); else pushChunk(room, { text: "", final: false, source });
+    if (pending.length) flush();
+    else pushChunk(room, { text: "", final: false, source });
   };
   const flush = () => {
     const text = pending.join(" ").trim();
     pending.length = 0;
-    if (text) { pushChunk(room, { text, final: true, source }); tell({ final: text }); }
-    else { pushChunk(room, { text: "", final: false, source }); tell({ interim: "" }); }
+    if (text) {
+      pushChunk(room, { text, final: true, source });
+      tell({ final: text });
+    } else {
+      pushChunk(room, { text: "", final: false, source });
+      tell({ interim: "" });
+    }
   };
   up.onopen = () => {
     for (const buf of queue.splice(0)) up.send(buf);
-    keepalive = setInterval(() => { try { up.send(JSON.stringify({ type: "KeepAlive" })); } catch { /* gone */ } }, DEEPGRAM_KEEPALIVE_MS);
+    keepalive = setInterval(() => {
+      try {
+        up.send(JSON.stringify({ type: "KeepAlive" }));
+      } catch { /* gone */ }
+    }, DEEPGRAM_KEEPALIVE_MS);
     tell({ ready: true });
   };
   up.onmessage = (e) => {
     if (typeof e.data !== "string" || !rooms.has(roomKey(room))) return;
     let msg: { type?: string; is_final?: boolean; speech_final?: boolean; channel?: { alternatives?: { transcript?: string }[] } };
-    try { msg = JSON.parse(e.data); } catch { return; }
-    if (msg.type === "UtteranceEnd") { flush(); return; }
+    try {
+      msg = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+    if (msg.type === "UtteranceEnd") {
+      flush();
+      return;
+    }
     if (msg.type !== "Results") return;
     const t = (msg.channel?.alternatives?.[0]?.transcript ?? "").trim();
     if (msg.is_final) {
       if (t) pending.push(t);
       if (msg.speech_final) flush();
-      else { const i = pending.join(" "); pushChunk(room, { text: i, final: false, source }); tell({ interim: i }); }
+      else {
+        const i = pending.join(" ");
+        pushChunk(room, { text: i, final: false, source });
+        tell({ interim: i });
+      }
     } else {
       const i = [...pending, t].join(" ").trim();
-      pushChunk(room, { text: i, final: false, source }); tell({ interim: i });
+      pushChunk(room, { text: i, final: false, source });
+      tell({ interim: i });
     }
   };
-  up.onerror = () => { tell({ error: "The relay couldn't reach Deepgram." }); finish(1011, "upstream error"); };
-  up.onclose = (e) => { if (!closed) { tell({ error: e.reason || "Deepgram closed the stream." }); finish(1011, e.reason); } };
+  up.onerror = () => {
+    tell({ error: "The relay couldn't reach Deepgram." });
+    finish(1011, "upstream error");
+  };
+  up.onclose = (e) => {
+    if (!closed) {
+      tell({ error: e.reason || "Deepgram closed the stream." });
+      finish(1011, e.reason);
+    }
+  };
   client.onmessage = (e) => {
-    if (typeof e.data === "string") { try { if (JSON.parse(e.data)?.type === "stop") finish(); } catch { /* ignore */ } return; }
+    if (typeof e.data === "string") {
+      try {
+        if (JSON.parse(e.data)?.type === "stop") finish();
+      } catch { /* ignore */ }
+      return;
+    }
     const buf = e.data as ArrayBuffer;
-    if (up.readyState === WebSocket.OPEN) up.send(buf); else if (queue.length < 200) queue.push(buf);
+    if (up.readyState === WebSocket.OPEN) up.send(buf);
+    else if (queue.length < 200) queue.push(buf);
   };
   client.onclose = () => finish();
   client.onerror = () => finish(1011, "client error");
 }
-const roomKey = (room: Room) => { for (const [k, r] of rooms) if (r === room) return k; return ""; };
+const roomKey = (room: Room) => {
+  for (const [k, r] of rooms) if (r === room) return k;
+  return "";
+};
 
 // The first scan of a signed demo link turns noise into a room. The write token is derived from the
 // id, so the page that minted it can type into the room without the server ever having stored it.
@@ -365,8 +514,16 @@ async function materialiseDemo(id: string, sig: string | null) {
   if (demos >= DEMO_MAX_ROOMS || rooms.size >= MAX_ROOMS) return;
   const now = Date.now();
   rooms.set(id, {
-    token: await noise.derive(SECRET, id, "write"), code: "", title: "StageType demo",
-    lines: [], offset: 0, phone: { live: false, seen: 0 }, listeners: new Set(), touched: now, startedAt: now, demo: exp,
+    token: await noise.derive(SECRET, id, "write"),
+    code: "",
+    title: "StageType demo",
+    lines: [],
+    offset: 0,
+    phone: { live: false, seen: 0 },
+    listeners: new Set(),
+    touched: now,
+    startedAt: now,
+    demo: exp,
   });
 }
 
@@ -379,19 +536,29 @@ async function readBody(req: Request): Promise<string | null> {
   let size = 0;
   for await (const chunk of req.body) {
     size += chunk.byteLength;
-    if (size > MAX_BODY) { await req.body.cancel().catch(() => {}); return null; }
+    if (size > MAX_BODY) {
+      await req.body.cancel().catch(() => {});
+      return null;
+    }
     parts.push(chunk);
   }
   const out = new Uint8Array(size);
   let at = 0;
-  for (const p of parts) { out.set(p, at); at += p.byteLength; }
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.byteLength;
+  }
   return dec.decode(out);
 }
 
 async function file(name: string, isHead = false, type = "text/html; charset=utf-8", immutable = false) {
   let body: Uint8Array<ArrayBuffer> | null = null;
   if (!isHead) {
-    try { body = await Deno.readFile(new URL(name, import.meta.url)); } catch { return new Response("not here", { status: 404 }); }
+    try {
+      body = await Deno.readFile(new URL(name, import.meta.url));
+    } catch {
+      return new Response("not here", { status: 404 });
+    }
   }
   return new Response(body, {
     headers: {
@@ -403,7 +570,7 @@ async function file(name: string, isHead = false, type = "text/html; charset=utf
   });
 }
 
-export function sweep(now = Date.now()) {
+export function sweep(now: number = Date.now()): void {
   for (const [k, r] of rooms) {
     if (now - r.touched > ROOM_TTL_MS || (r.demo && now > r.demo)) endRoom(k, r);
   }

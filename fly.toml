@@ -1,4 +1,8 @@
-# fly launch --copy-config --no-deploy && fly deploy
+# fly launch --copy-config --no-deploy
+# fly secrets set STAGETYPE_SECRET=$(openssl rand -hex 32)   # required: signs /demo room ids
+# fly secrets set DEEPGRAM_API_KEY=dg_...                     # optional: the Deepgram engine
+# fly deploy
+# Full checklist: docs/DEPLOY.md
 # One machine, never scaled to zero: rooms live in memory and a sleeping machine ends every talk.
 app = "stagetype"
 primary_region = "syd"

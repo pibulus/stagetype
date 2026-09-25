@@ -6,9 +6,17 @@
 ```bash
 deno task dev      # Start development server with auto-reload (port 8787)
 deno task start    # Start production server
-deno task test     # Run room lifecycle and SSE unit test suite
+deno task test     # Unit tests (server_test.ts)
 deno task check    # TypeScript type-checking
+deno task ci       # fmt --check + lint + check + test: run before every commit
+deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMIUM_PATH or Playwright's install
 ```
+
+## 📁 Where things live
+- Docs: README.md is the front door only. Depth goes in `docs/ARCHITECTURE.md` (API, engines, persistence, security, file map), `docs/DEPLOY.md` (env vars, launch checklist), `docs/ACCESSIBILITY.md` (contrast table, typefaces), `docs/GLOSSARY.md`. Product and business in `ROADMAP.md`. Update the doc that owns a fact; don't duplicate it into the README.
+- Tests: `server_test.ts` (unit), `e2e/browser_test.js` (browser, plain JS because most of it runs in the page), `e2e/mock_deepgram.ts` (shared by both). New behaviour gets a test in the right one.
+- Config: every env var is in `.env.example` and the DEPLOY table. Add to both or neither.
+- CI: `.github/workflows/ci.yml` runs `deno task ci` then `deno task e2e`.
 
 ## 🌐 Routes & Ports
 - Default port: `8787` (`http://localhost:8787`)
@@ -47,7 +55,7 @@ deno task check    # TypeScript type-checking
   - Landing animations on inline caption text must be wrap-safe (opacity/text-shadow only, never `inline-block` + transform).
   - Everything respects `prefers-reduced-motion`.
 - **Choices are curated, not exhaustive.** Faces: System, Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono (all OFL, vendored, Latin + Latin Ext). Weights: 400 / 500 / 700. Flow: live / settled. Ticker depth 1–3, ring mint/pink/lilac/butter/none. Readers choose on their phone (`stl-*` in localStorage); the presenter chooses the ticker (`st-*`). Add a face only if it brings a new voice and an open licence.
-- **Contrast floor.** Caption text ≥ 7:1 on every reader theme, secondary UI ≥ 4.5:1. The README table has the numbers; recompute if you touch a theme colour or `--muted`.
+- **Contrast floor.** Caption text ≥ 7:1 on every reader theme, secondary UI ≥ 4.5:1. The table in docs/ACCESSIBILITY.md has the numbers; recompute if you touch a theme colour or `--muted`.
 
 ## 📱 Appendage Pattern (Phone as Lapel Mic)
 - Phone connects via `/mic/:id#token`.
@@ -75,7 +83,7 @@ deno task check    # TypeScript type-checking
 - Gone on purpose: the quickstart strip, the VU meter and Test mic button (the ghost is the meter), the Screen Overlay blurb. Don't bring them back; add guidance to empty states instead.
 
 ## 🗺️ Strategy
-- ROADMAP.md holds the position, pricing model, numbers, guardrails and build order. Read it before proposing product work; update it when a decision changes. Licence change (MIT to AGPL) is Pablo's open decision: don't change it in code.
+- ROADMAP.md holds the position, pricing model, numbers, guardrails and build order. Read it before proposing product work; update it when a decision changes. Licence: Pablo has OK'd moving to AGPL, deferred until a hosted service is close. Stay MIT until asked.
 - `signed_noise.ts` stays dependency-free and product-agnostic so it can be lifted into QR Buddy.
 
 ## 🧭 Presenter Rules

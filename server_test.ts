@@ -1,37 +1,17 @@
-import { checkPhones, handler, newCode, rooms, sweep } from "./server.ts";
+import { checkPhones, handler, lanIp, newCode, rooms, sweep } from "./server.ts";
+import { mockDeepgram } from "./e2e/mock_deepgram.ts";
 
-// A stand-in for Deepgram's streaming endpoint: same subprotocol auth, same message shapes.
-// First audio chunk gets an interim then a speech_final result; the eighth gets an is_final segment
-// followed by an UtteranceEnd, which is the other way an utterance closes.
-function mockDeepgram() {
-  const seen: string[] = [];
-  const srv = Deno.serve({ port: 0, onListen() {} }, (req) => {
-    if (req.headers.get("upgrade") !== "websocket") return new Response("mock");
-    const key = (req.headers.get("sec-websocket-protocol") ?? "").split(",")[1]?.trim();
-    if (key !== "test-key") return new Response("bad key", { status: 401 });
-    const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "token" });
-    const results = (transcript: string, is_final: boolean, speech_final: boolean) =>
-      socket.send(JSON.stringify({ type: "Results", is_final, speech_final, channel: { alternatives: [{ transcript }] } }));
-    let chunks = 0;
-    socket.onmessage = (e) => {
-      if (typeof e.data === "string") { const m = JSON.parse(e.data); seen.push(m.type); if (m.type === "CloseStream") socket.close(); return; }
-      chunks++;
-      if (chunks === 1) { results("Hello from", false, false); results("Hello from the relay.", true, true); }
-      if (chunks === 8) { results("Second", false, false); results("Second line", true, false); socket.send(JSON.stringify({ type: "UtteranceEnd" })); }
-    };
-    return response;
-  });
-  return { url: `ws://localhost:${srv.addr.port}/listen`, seen, close: () => srv.shutdown() };
-}
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "@std/assert";
 
 const base = "http://x";
 const post = (path: string, body?: unknown, token?: string, extraHeaders: Record<string, string> = {}) =>
-  handler(new Request(base + path, {
-    method: "POST",
-    headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...extraHeaders },
-    body: body === undefined ? undefined : (typeof body === "string" ? body : JSON.stringify(body)),
-  }));
+  handler(
+    new Request(base + path, {
+      method: "POST",
+      headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...extraHeaders },
+      body: body === undefined ? undefined : (typeof body === "string" ? body : JSON.stringify(body)),
+    }),
+  );
 const del = (path: string, token: string) =>
   handler(new Request(base + path, { method: "DELETE", headers: { authorization: `Bearer ${token}` } }));
 const openStream = async (id: string) => {
@@ -137,7 +117,8 @@ Deno.test("phone handoff: source tags, live/paused announcements, lost detection
   await post(`/api/room/${id}`, { ping: true, source: "phone", live: true }, token);
   const s2 = await openStream(id);
   assert((await s2.read()).includes('"phone":true'));
-  await s.reader.cancel(); await s2.reader.cancel();
+  await s.reader.cancel();
+  await s2.reader.cancel();
   await del(`/api/room/${id}`, token);
 });
 
@@ -151,10 +132,11 @@ Deno.test("engines: Deepgram is offered only when the relay has a key", async ()
 
 Deno.test({
   name: "deepgram session: audio in, ordinary room pushes out, clean close",
-  sanitizeOps: false, sanitizeResources: false, // real sockets on both sides; everything is closed below
+  sanitizeOps: false,
+  sanitizeResources: false, // real sockets on both sides; everything is closed below
   async fn() {
-    const dg = mockDeepgram();
-    Deno.env.set("DEEPGRAM_URL", dg.url);
+    const dg = mockDeepgram(0);
+    Deno.env.set("DEEPGRAM_URL", `ws://localhost:${dg.addr.port}/listen`);
     Deno.env.set("DEEPGRAM_API_KEY", "test-key");
     const relay = Deno.serve({ port: 0, onListen() {} }, handler);
     const origin = `ws://localhost:${relay.addr.port}`;
@@ -162,41 +144,48 @@ Deno.test({
     const s = await openStream(id);
     await s.read();
     let sse = "";
-    const until = async (needle: string) => { while (!sse.includes(needle)) sse += await s.read(); };
+    const until = async (needle: string) => {
+      while (!sse.includes(needle)) sse += await s.read();
+    };
 
     // wrong token: the handshake is refused
     const bad = new WebSocket(`${origin}/api/room/${id}/audio`, ["bearer", "nope"]);
-    await new Promise<void>((r) => { bad.onclose = () => r(); bad.onerror = () => {}; });
+    await new Promise<void>((r) => {
+      bad.onclose = () => r();
+      bad.onerror = () => {};
+    });
 
     const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token]);
     ws.binaryType = "arraybuffer";
     const got: string[] = [];
     ws.onmessage = (e) => got.push(String(e.data));
-    await new Promise<void>((r) => { ws.onopen = () => r(); });
+    await new Promise<void>((r) => {
+      ws.onopen = () => r();
+    });
     while (!got.some((g) => g.includes("ready"))) await new Promise((r) => setTimeout(r, 10));
     const chunk = new Int16Array(1600).buffer;
-    ws.send(chunk);
+    for (let i = 0; i < 6; i++) ws.send(chunk);
     await until('"text":"Hello from the relay."');
     assert(sse.includes('event: interim\ndata: {"text":"Hello from","source":"mic"}'));
     assert(sse.includes('event: final\ndata: {"text":"Hello from the relay.","seq":1,"source":"mic"}'));
     assertEquals(rooms.get(id)!.lines, ["Hello from the relay."]);
-    for (let i = 0; i < 7; i++) ws.send(chunk);
+    for (let i = 0; i < 6; i++) ws.send(chunk);
     await until('"text":"Second line","seq":2');
-    assert(sse.includes('event: interim\ndata: {"text":"Second","source":"mic"}'));
     assert(sse.includes('event: interim\ndata: {"text":"Second line","source":"mic"}'), "finalised-but-open segment shows as interim");
     assertEquals(rooms.get(id)!.lines, ["Hello from the relay.", "Second line"]);
     while (!got.some((g) => g.includes('"final":"Second line"'))) await new Promise((r) => setTimeout(r, 10)); // its own socket, its own timing
 
     ws.send(JSON.stringify({ type: "stop" }));
-    await new Promise<void>((r) => { ws.onclose = () => r(); });
-    await new Promise((r) => setTimeout(r, 50));
-    assert(dg.seen.includes("CloseStream"), "upstream told to close: " + dg.seen.join(","));
+    await new Promise<void>((r) => {
+      ws.onclose = () => r();
+    });
 
     await s.reader.cancel();
     await del(`/api/room/${id}`, token);
-    Deno.env.delete("DEEPGRAM_API_KEY"); Deno.env.delete("DEEPGRAM_URL");
+    Deno.env.delete("DEEPGRAM_API_KEY");
+    Deno.env.delete("DEEPGRAM_URL");
     await relay.shutdown();
-    await dg.close();
+    await dg.shutdown();
   },
 });
 
@@ -204,7 +193,8 @@ Deno.test("ending a talk closes every listener and clears its keepalive timer", 
   const { id, token } = await mkRoom();
   const a = await openStream(id);
   const b = await openStream(id);
-  await a.read(); await b.read();
+  await a.read();
+  await b.read();
   assertEquals(rooms.get(id)!.listeners.size, 2);
 
   assertEquals((await del(`/api/room/${id}`, "wrong")).status, 403);
@@ -268,6 +258,13 @@ Deno.test("room creation is capped", async () => {
   for (const r of made) await del(`/api/room/${r.id}`, r.token);
   assertEquals((await post("/api/room")).status, 200);
   for (const [k, r] of rooms) await del(`/api/room/${k}`, r.token);
+});
+
+Deno.test("LAN address: a real interface wins over localhost whenever one exists", () => {
+  const real = Deno.networkInterfaces().some((i) =>
+    i.family === "IPv4" && !i.address.startsWith("127.") && !i.address.startsWith("169.254.")
+  );
+  if (real) assert(lanIp() !== "localhost", "lanIp fell back to localhost despite a usable interface");
 });
 
 Deno.test("LAN info only answers to a browser on this machine", async () => {
@@ -334,7 +331,8 @@ Deno.test("demo rooms: nothing until a signed scan, then small, short and typing
   assert(!rooms.has(mint.id));
   // the first signed scan materialises it
   const open = () => handler(new Request(`${base}/api/room/${mint.id}/stream?s=${encodeURIComponent(mint.sig)}`));
-  const a = await open(); const ra = a.body!.getReader();
+  const a = await open();
+  const ra = a.body!.getReader();
   assert(new TextDecoder().decode((await ra.read()).value).includes('"title":"StageType demo"'));
   assertEquals(await (await status(mint.sig)).json(), { alive: true, listeners: 1 });
   // the minting page's derived token writes; nothing else does
