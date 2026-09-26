@@ -24,6 +24,8 @@
     font: var(--weight) var(--size)/1.25 var(--face); letter-spacing: -0.01em;
   }
   body[data-style="paper"] { background: var(--paper); color: var(--ink); }
+  body[data-style="brut"] { background: #ffe853; color: var(--ink); --ring: var(--ink); }
+  body[data-style="hemingway"] { background: #f4ede2; color: #2c221e; --face: var(--face-fraunces); }
   body[data-ring="none"] { box-shadow: none; }
   body[data-face="fraunces"] { font-variation-settings: "SOFT" 100, "WONK" 0; }
   #ticker { max-height: calc(var(--depth) * 1.25em); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
@@ -33,6 +35,8 @@
   body[data-ring="none"] .fresh-lead { animation: none; }
   .interim { color: var(--pink); opacity: .9; }
   body[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, transparent); border-radius: .15em; padding: 0 .12em; }
+  body[data-style="brut"] .interim { color: var(--ink); background: rgba(30, 23, 20, 0.14); border-radius: .15em; padding: 0 .12em; }
+  body[data-style="hemingway"] .interim { color: #8c6239; background: rgba(140, 98, 57, 0.12); border-radius: .15em; padding: 0 .12em; }
   .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: currentColor; border-radius: 2px; animation: caret 1s steps(2) infinite; }
   @keyframes caret { to { opacity: 0; } }
   body[data-flow="settled"] .interim { display: none; }
@@ -47,7 +51,7 @@
 const roomId = location.pathname.split("/").pop();
 const q = new URLSearchParams(location.search);
 const pick = (k, allowed, fallback) => (allowed.includes(q.get(k)) ? q.get(k) : fallback);
-const style = pick("style", ["ink", "paper"], "ink");
+const style = pick("style", ["ink", "paper", "brut", "hemingway"], "ink");
 const face = pick("face", ["system", "inter", "atkinson", "fraunces", "mono"], "system");
 const weight = pick("weight", ["400", "500", "700"], "700");
 const depth = pick("depth", ["1", "2", "3"], "2");

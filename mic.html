@@ -69,13 +69,16 @@
   .seg button:active { transform: scale(.96); }
   body.started .engine-row { display: none; }
 
+  .mic-stage { display: flex; flex-direction: column; min-height: 0; }
+
   /* Live Transcription Echo */
   .echo-container {
     display: flex; flex-direction: column; justify-content: flex-end;
     background: rgba(251,241,228,0.04); border: 2px solid rgba(251,241,228,0.15);
-    border-radius: 24px; padding: 20px; min-height: 140px; margin-bottom: 16px;
+    border-radius: 24px; padding: 20px; min-height: 160px; margin-bottom: 16px;
+    flex: 1;
   }
-  #guide { margin: 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 10px; color: var(--muted); font-size: 15px; line-height: 1.4; font-weight: 500; }
+  #guide { margin: auto 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 12px; color: var(--muted); font-size: 15px; line-height: 1.45; font-weight: 500; }
   #guide li::marker { color: var(--pink); font-weight: 900; }
   #guide b { color: var(--ink); font-weight: 800; }
   body.started #guide { display: none; }
@@ -179,7 +182,7 @@
   </select>
 </header>
 
-<div>
+<div class="mic-stage">
   <p id="talk" hidden></p>
   <div class="status-row">
     <span id="state"><span class="dot"></span><span id="stateText">Paired · Ready</span></span>
@@ -223,7 +226,7 @@ const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported"]);
+const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
 if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
 if (!Rec) $("#err").textContent = "This browser has no speech recognition. Use Safari or Chrome, or pick the Deepgram engine if the relay offers it.";
@@ -303,14 +306,23 @@ function startRec() {
     }
   };
 
-  rec.onerror = (e) => {
+  rec.onerror = async (e) => {
+    if (e.error === "no-speech" || e.error === "aborted") return;
+    if (e.error === "network") {
+      stop();
+      const isBrave = await (navigator.brave?.isBrave?.() ?? false);
+      $("#err").textContent = isBrave
+        ? "Brave blocks speech recognition. Enable Google Speech in settings, or open this link in Safari/Chrome."
+        : "Speech recognition error: network. Check internet connection or pick Deepgram engine.";
+      return;
+    }
     if (FATAL_REC.has(e.error)) {
       // A blocked mic would otherwise restart every 150ms forever.
       stop();
       $("#err").textContent = e.error === "not-allowed"
         ? "Microphone blocked. Allow the mic for this site in your browser settings, then tap Go live."
         : `Mic issue: ${e.error}. Check the browser's mic permission and tap Go live again.`;
-    } else if (e.error !== "no-speech" && e.error !== "aborted") {
+    } else {
       $("#err").textContent = `Mic issue: ${e.error}`;
     }
   };
@@ -319,7 +331,12 @@ function startRec() {
     if (live) setTimeout(() => live && startRec(), 150);
   };
 
-  rec.start();
+  try {
+    rec.start();
+  } catch (err) {
+    stop();
+    $("#err").textContent = `Mic start failed: ${err.message}`;
+  }
 }
 
 // Engine: browser recognition, or Deepgram through the relay if the relay has a key.

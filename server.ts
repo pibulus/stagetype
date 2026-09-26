@@ -249,7 +249,7 @@ export async function handler(req: Request): Promise<Response> {
     const type = path.endsWith(".js") ? "text/javascript; charset=utf-8" : path.endsWith(".css") ? "text/css; charset=utf-8" : "font/woff2";
     return file(path.slice(1), head, type, true);
   }
-  if (get && (path === "/ghost.svg" || path === "/favicon.ico")) return file("ghost.svg", head, "image/svg+xml");
+  if (get && (path === "/ghost.svg" || path === "/mascot.svg" || path === "/favicon.ico")) return file("ghost.svg", head, "image/svg+xml");
   if (get && path === "/deepgram.js") return file("deepgram.js", head, "text/javascript; charset=utf-8");
   // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
   if (get && path === "/api/info") {

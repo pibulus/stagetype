@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
+    "npm:playwright-core@*": "1.56.1",
     "npm:playwright-core@1.56.1": "1.56.1"
   },
   "jsr": {
