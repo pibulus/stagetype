@@ -912,10 +912,13 @@
       min-height: calc(var(--ticker-depth, 2) * 1.35em + 44px);
       max-height: calc(var(--ticker-depth, 2) * 1.35em + 44px);
       overflow: hidden;
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
-      mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
       box-shadow: 0 0 0 3px var(--pink), 0 8px 24px rgba(30, 23, 20, 0.16);
       transition: box-shadow 0.2s ease, font-size 0.15s ease, background 0.2s ease;
+    }
+    #ticker > div {
+      width: 100%;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
     }
     #ticker .prev {
       opacity: 0.55;
@@ -1788,6 +1791,10 @@
       return `${location.origin}/ticker/${room.id}?${q}`;
     };
     function applyPrefs() {
+      if (prefs.style === "hemingway" && prefs.face !== "fraunces") {
+        prefs.face = "fraunces";
+        store.set("st-face", "fraunces");
+      }
       for (const el of tickerEls) {
         el.style.setProperty("--ticker-size", prefs.size);
         el.style.setProperty("--ticker-face", `var(--face-${prefs.face})`);
@@ -1947,6 +1954,10 @@
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         function drawMeter() {
           animMeterId = requestAnimationFrame(drawMeter);
+          if (phoneLive) {
+            document.documentElement.style.setProperty("--vu", "0");
+            return;
+          }
           analyser.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
@@ -2178,6 +2189,7 @@
       phoneLive = live;
       const label = $("#micSource");
       if (live) {
+        document.documentElement.style.setProperty("--vu", "0");
         label.textContent = "Phone mic live";
         if (localLive && !paused) {
           pausedByPhone = true;
@@ -2572,18 +2584,21 @@
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
       if (e.key === "Escape") {
         closeFullscreenQR();
-      } else if (e.altKey && (e.key === "f" || e.key === "F")) {
+      } else if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
         e.preventDefault();
         floatTickerWindow();
-      } else if (e.altKey && (e.key === "r" || e.key === "R")) {
+      } else if (e.altKey && (e.code === "KeyR" || e.key.toLowerCase() === "r")) {
         e.preventDefault();
         shuffleTicker();
-      } else if (e.altKey && (e.key === "q" || e.key === "Q")) {
+      } else if (e.altKey && (e.code === "KeyQ" || e.key.toLowerCase() === "q")) {
         e.preventDefault();
         openFullscreenQR();
-      } else if (e.code === "Space" && e.target === document.body) {
+      } else if (e.code === "Space") {
         // Space never ends the talk: that's a deliberate click on "End talk".
         e.preventDefault();
+        if (document.activeElement && typeof document.activeElement.blur === "function") {
+          document.activeElement.blur();
+        }
         if (room) setPaused(!paused);
         else openRoom();
       }
