@@ -18,6 +18,7 @@
       --mint: #b8f0d8;
       --lilac: #d9c8ff;
       --butter: #fff0a8;
+      --volt: #ffe135; /* high-voltage yellow brut — the hero CTA lives here, not in a pastel */
       --muted: rgba(30, 23, 20, 0.58);
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
       --spring: cubic-bezier(.2, .9, .3, 1.35); /* juicy overshoot */
@@ -43,10 +44,19 @@
     }
     main {
       max-width: 980px;
+      min-height: 100dvh;
       margin: 0 auto;
       padding: 24px 20px 48px;
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 20px;
+    }
+    /* The chassis centers in whatever canvas is left below the header, rather than
+       pinning to the top and leaving a void — an instrument sitting in its frame. */
+    #screen1 {
+      flex: 1;
+      justify-content: center;
+      min-height: 0;
     }
 
     /* Header & Mascot */
@@ -325,6 +335,9 @@
     button.butter {
       background: var(--butter);
     }
+    button.volt {
+      background: var(--volt);
+    }
     button.ground {
       background: var(--ground);
     }
@@ -473,22 +486,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 12px;
-      padding: 18px 8px 6px;
+      gap: 10px;
+      padding: 10px 8px 4px;
     }
     #qrEmpty[hidden] {
       display: none;
     }
-    #qrEmpty svg {
-      width: 92px;
-      height: 92px;
+    .qr-slot-icon {
+      width: 44px;
+      height: 44px;
       color: var(--line);
-      filter: drop-shadow(2px 2px 0 rgba(58, 46, 40, 0.08));
-    }
-    #qrEmpty .mascot-fill .capsule-fill,
-    #qrEmpty .mascot-fill .tally-fill {
-      fill: url(#mascotGrad);
-      opacity: .88;
+      opacity: .55;
     }
     #qrEmpty p {
       margin: 0;
@@ -1178,34 +1186,6 @@
       box-shadow: 1px 1px 0 var(--line);
     }
 
-    /* ProMapper-Style Cue to Screen 2 */
-    .deck-cue {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 18px;
-      font-size: 0.84rem;
-      font-weight: 800;
-      color: var(--ink);
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      box-shadow: 2px 2px 0 var(--line);
-      text-decoration: none;
-      width: fit-content;
-      margin: 8px auto 0;
-      transition: transform .2s var(--spring), box-shadow .2s var(--spring), background .15s;
-    }
-    .deck-cue:hover {
-      transform: translateY(-2px);
-      box-shadow: 3px 4px 0 var(--line);
-      background: var(--butter);
-    }
-    .deck-cue:active {
-      transform: translate(1px, 1px) scale(0.97);
-    }
-
     /* On-Air Flow Cockpit */
     .onair-card {
       background: var(--paper);
@@ -1268,22 +1248,6 @@
       border-radius: 50%;
       background: #51cf66;
     }
-    .backstage-link-chip {
-      font: 800 0.82rem var(--swiss);
-      color: var(--muted);
-      background: transparent;
-      border: 2px solid transparent;
-      border-radius: 999px;
-      padding: 6px 12px;
-      text-decoration: none;
-      transition: color .2s, background .2s;
-    }
-    .backstage-link-chip:hover {
-      color: var(--ink);
-      background: var(--ground);
-      border-color: var(--line);
-    }
-
     /* Hero Monitor */
     .hero-monitor #ticker {
       min-height: calc(var(--ticker-depth, 2) * 1.5em + 52px);
@@ -1460,21 +1424,75 @@
     }
 
     /* Screen 2: Backstage & Rehearsal Membrane */
+    /* Backstage: a corner-latch drawer, never a scroll section.
+       It's fixed + translated off-canvas; opening it never changes page height. */
+    .latch-pill {
+      cursor: pointer;
+      border: 2px solid var(--line);
+      transition: transform .18s var(--spring), box-shadow .18s var(--spring), background .15s;
+    }
+    .latch-pill:hover {
+      transform: translateY(-1px);
+      background: var(--butter);
+    }
+    body[data-backstage="open"] .latch-pill {
+      background: var(--ink);
+      color: var(--ground);
+    }
+    #backstageBackdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(30, 23, 20, 0.4);
+      z-index: 65;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s var(--snap);
+    }
+    body[data-backstage="open"] #backstageBackdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
     .backstage-deck {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 70;
+      height: 100dvh;
+      width: min(440px, 100vw);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--ground);
+      border-left: 3px solid var(--line);
+      box-shadow: -8px 0 0 rgba(30, 23, 20, 0.1);
+      padding: 20px 20px 32px;
       display: flex;
       flex-direction: column;
       gap: 20px;
-      width: 100%;
+      transform: translateX(100%);
+      transition: transform .32s var(--snap);
+    }
+    body[data-backstage="open"] .backstage-deck {
+      transform: translateX(0);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .backstage-deck,
+      #backstageBackdrop {
+        transition: none;
+      }
     }
     .membrane-divider {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 24px 4px 16px;
-      border-top: 3px solid var(--line);
-      margin-top: 24px;
       flex-wrap: wrap;
       gap: 12px;
+      position: sticky;
+      top: -20px;
+      margin: -20px -20px 0;
+      padding: 16px 20px;
+      background: var(--ground);
+      border-bottom: 3px solid var(--line);
+      z-index: 1;
     }
     .membrane-title {
       font-size: 0.82rem;
@@ -1497,33 +1515,25 @@
       font-size: 0.82rem;
       font-weight: 800;
       color: var(--ink);
-      text-decoration: none;
       background: var(--ground);
       border: 2px solid var(--line);
       border-radius: 999px;
       padding: 5px 14px;
       box-shadow: 2px 2px 0 var(--line);
-      transition: transform .15s;
     }
     .back-to-stage:hover {
-      transform: translateY(-1px);
       background: var(--mint);
     }
     .backstage-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    @media (max-width: 840px) {
-      .backstage-grid {
-        grid-template-columns: 1fr;
-      }
+      grid-template-columns: 1fr;
+      gap: 16px;
     }
     .backstage-card {
       background: var(--paper);
       border: 2.5px solid var(--line);
       border-radius: 20px;
-      padding: 20px;
+      padding: 18px;
       box-shadow: 4px 4px 0 var(--line);
     }
     #backstageQrSlot:empty {
@@ -1654,6 +1664,9 @@
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
           <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
           <span class="pill-badge" id="countBadge">0 reading</span>
+          <button id="backstageLatch" class="pill-badge latch-pill" type="button" title="Backstage: ticker style, size, language, engine, transcript" aria-expanded="false" aria-controls="backstage">
+            <span aria-hidden="true">⚙</span> Backstage
+          </button>
         </div>
       </header>
 
@@ -1683,7 +1696,7 @@
                     <span class="telemetry-detail">Voice reactive (Lumen blinks)</span>
                   </div>
                   <div id="lobbyCtaWrap">
-                    <button id="startBtn" class="mint hero-start-btn">GO LIVE (Space)</button>
+                    <button id="startBtn" class="volt hero-start-btn">GO LIVE (Space)</button>
                   </div>
                 </div>
                 <p id="noticeLobby" class="hint">Press Space or click Go Live when you step up to speak.</p>
@@ -1701,74 +1714,16 @@
 
                   <div class="qr-body">
                     <div id="qrEmpty">
-                      <svg class="mascot-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
-                        <!-- Stage Lights Conical Beam & Ray Accents -->
-                        <g class="mascot-aura">
-                          <polygon points="512,180 180,940 844,940" fill="url(#mascotGrad)" class="mascot-beam" opacity="0.18" />
-                          <path d="M512 40 L512 85 M195 135 L235 175 M829 135 L789 175 M115 365 L165 375 M909 365 L859 375"
-                            stroke="currentColor" stroke-width="18" stroke-linecap="round" />
-                        </g>
-
-                        <!-- Base Plate & Studio Yoke Mount -->
-                        <g class="mascot-yoke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                          <path
-                            d="M340 915 C340 890 380 880 512 880 C644 880 684 890 684 915 L684 935 C684 955 644 960 512 960 C380 960 340 955 340 935 Z"
-                            fill="currentColor" />
-                          <rect x="472" y="840" width="80" height="46" rx="8" fill="currentColor" />
-                          <path d="M190 515 C190 755 260 850 472 850 L552 850 C764 850 834 755 834 515"
-                            fill="none" stroke="currentColor" stroke-width="40" />
-                          <rect x="156" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                          <circle cx="190" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-                          <rect x="800" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                          <circle cx="834" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-                        </g>
-
-                        <!-- SOLID SILHOUETTE (#mascot-background) -->
-                        <g id="mascot-background" class="mascot-fill">
-                          <path class="tally-fill" d="M462 145 C462 110 484 90 512 90 C540 90 562 110 562 145 Z" fill="url(#mascotGrad)" />
-                          <path class="capsule-fill"
-                            d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                            fill="url(#mascotGrad)" />
-                          <path
-                            d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                            fill="url(#lensGlow)" />
-                        </g>
-
-                        <!-- CHASSIS OUTLINE (#mascot-body-path) -->
-                        <g id="mascot-body-path" class="mascot-outline" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M458 150 C458 105 482 82 512 82 C542 82 566 105 566 150 Z"
-                            fill="none" stroke-width="24" />
-                          <rect x="444" y="146" width="136" height="24" rx="10" fill="currentColor" stroke="none" />
-                          <path
-                            d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                            fill="none" stroke-width="28" />
-                          <path
-                            d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                            fill="none" stroke-width="20" stroke-opacity="0.9" />
-                          <g fill="currentColor" stroke="none">
-                            <rect x="360" y="680" width="304" height="18" rx="9" />
-                            <rect x="390" y="718" width="244" height="18" rx="9" />
-                            <rect x="424" y="755" width="176" height="18" rx="9" />
-                          </g>
-                          <circle cx="340" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                          <circle cx="684" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                          <path d="M472 525 C488 545 536 545 552 525"
-                            fill="none" stroke-width="16" stroke-linecap="round" />
-                        </g>
-
-                        <!-- LEFT EYE (#mascot-eye-left-path) -->
-                        <g id="mascot-eye-left-path" class="eye left">
-                          <ellipse class="eye-lid" cx="414" cy="425" rx="38" ry="58" fill="currentColor" />
-                          <circle cx="426" cy="406" r="14" fill="#ffffff" />
-                          <circle cx="400" cy="445" r="7" fill="#ffffff" />
-                        </g>
-
-                        <!-- RIGHT EYE (#mascot-eye-right-path) -->
-                        <g id="mascot-eye-right-path" class="eye right">
-                          <ellipse class="eye-lid" cx="610" cy="425" rx="38" ry="58" fill="currentColor" />
-                          <circle cx="622" cy="406" r="14" fill="#ffffff" />
-                          <circle cx="596" cy="445" r="7" fill="#ffffff" />
-                        </g>
+                      <svg class="qr-slot-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                        <path d="M4 18V8a4 4 0 0 1 4-4h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+                        <path d="M60 18V8a4 4 0 0 0-4-4H46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+                        <path d="M4 46v10a4 4 0 0 0 4 4h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+                        <path d="M60 46v10a4 4 0 0 1-4 4H46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+                        <rect x="15" y="15" width="10" height="10" rx="2" fill="currentColor" opacity=".85" />
+                        <rect x="39" y="15" width="10" height="10" rx="2" fill="currentColor" opacity=".35" />
+                        <rect x="15" y="39" width="10" height="10" rx="2" fill="currentColor" opacity=".35" />
+                        <rect x="30" y="30" width="6" height="6" rx="1.5" fill="currentColor" opacity=".85" />
+                        <rect x="39" y="39" width="10" height="10" rx="2" fill="currentColor" opacity=".6" />
                       </svg>
                       <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
                     </div>
@@ -1792,11 +1747,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Drop down cue to Screen 2 -->
-          <a href="#backstage" id="deckCue" class="deck-cue">
-            <span>▾ Rehearsal, Styles & Backstage Deck</span>
-          </a>
         </div>
 
         <!-- 1B: ON-AIR HERO COCKPIT (Active while Live) -->
@@ -1811,9 +1761,6 @@
                 <span class="chip-dot"></span>
                 <span id="liveCodeText">JOIN / ⛶</span>
               </button>
-              <a href="#backstage" class="backstage-link-chip" title="Jump to backstage settings">
-                <span>⚙ Backstage</span>
-              </a>
             </div>
           </div>
 
@@ -1898,14 +1845,17 @@
 
       </section>
 
-      <!-- SCREEN 2: BACKSTAGE REHEARSAL & DECK SETTINGS (Below the membrane) -->
-      <section id="backstage" class="backstage-deck">
+      <!-- Backstage drawer backdrop -->
+      <div id="backstageBackdrop"></div>
+
+      <!-- BACKSTAGE: ticker style/size, engine & language, transcript. Tucked behind the header latch, never a scroll section. -->
+      <section id="backstage" class="backstage-deck" aria-hidden="true">
         <div class="membrane-divider">
           <div class="membrane-title">
             <span class="membrane-dot"></span>
-            <span>BACKSTAGE REHEARSAL & DECK SETTINGS</span>
+            <span>BACKSTAGE</span>
           </div>
-          <a href="#screen1" class="back-to-stage">▴ Back to Stage</a>
+          <button type="button" id="backstageClose" class="back-to-stage">✕ Close</button>
         </div>
 
         <div id="backstageQrSlot">
@@ -3296,11 +3246,23 @@
     setUIState("lobby");
     resumeRoom();
 
+    // Backstage: a drawer, not a scroll section. Opening/closing never touches page height.
+    function toggleBackstage(open) {
+      const willOpen = open ?? document.body.dataset.backstage !== "open";
+      document.body.dataset.backstage = willOpen ? "open" : "";
+      $("#backstage").setAttribute("aria-hidden", willOpen ? "false" : "true");
+      $("#backstageLatch")?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    }
+    $("#backstageLatch")?.addEventListener("click", () => toggleBackstage());
+    $("#backstageClose")?.addEventListener("click", () => toggleBackstage(false));
+    $("#backstageBackdrop")?.addEventListener("click", () => toggleBackstage(false));
+
     // Keyboard Shortcuts
     window.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
       if (e.key === "Escape") {
-        closeFullscreenQR();
+        if (document.body.dataset.backstage === "open") toggleBackstage(false);
+        else closeFullscreenQR();
       } else if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
         e.preventDefault();
         floatTickerWindow();
