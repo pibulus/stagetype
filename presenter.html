@@ -1884,6 +1884,7 @@
                 <button id="copyTx" class="ground small" disabled>Copy</button>
                 <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
                 <button id="saveTxMd" class="ground small" disabled>Save .md</button>
+                <button id="mapInProMapper" class="mint small" disabled title="Map transcript into topics & action items in ProMapper">🗺️ Map in ProMapper</button>
               </div>
             </div>
           </div>
@@ -2157,7 +2158,7 @@
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
         : "Nothing captioned yet.";
-      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
+      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd", "#mapInProMapper"]) $(b).disabled = transcript.length === 0;
     }
     function renderPastTalks() {
       let idx = [];
@@ -2209,6 +2210,18 @@
     $("#saveTxMd").onclick = () => {
       const rec = currentRecord();
       if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown");
+    };
+    $("#mapInProMapper").onclick = () => {
+      const rec = currentRecord();
+      if (!rec) return;
+      const text = asMarkdown(rec);
+      const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
+        title: rec.title || "StageType Session",
+        transcript: text,
+        timestamp: new Date().toISOString(),
+      }))));
+      const url = `https://promapper.app/#import=${payload}`;
+      window.open(url, "_blank");
     };
 
     const engine = () => $("#engine").value;
