@@ -4,3 +4,4 @@
 .env.local
 e2e/screenshots/
 node_modules/
+.playwright-mcp/
