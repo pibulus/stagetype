@@ -1042,7 +1042,7 @@
     }
 
     #ticker[data-style="brut"] {
-      background: #ffe853;
+      background: var(--volt);
       color: var(--ink);
       box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
     }
@@ -1146,11 +1146,11 @@
       background: var(--ground);
       border: 2.5px solid var(--line);
       border-radius: 20px;
-      padding: 18px 20px;
+      padding: 16px 20px;
       box-shadow: 3px 3px 0 var(--line);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
     .telemetry-info {
       display: flex;
@@ -1469,7 +1469,7 @@
       flex-direction: column;
       gap: 20px;
       transform: translateX(100%);
-      transition: transform .32s var(--snap);
+      transition: transform .36s var(--spring);
     }
     body[data-backstage="open"] .backstage-deck {
       transform: translateX(0);
@@ -1664,7 +1664,8 @@
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
           <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
           <span class="pill-badge" id="countBadge">0 reading</span>
-          <button id="backstageLatch" class="pill-badge latch-pill" type="button" title="Backstage: ticker style, size, language, engine, transcript" aria-expanded="false" aria-controls="backstage">
+          <button id="backstageLatch" class="pill-badge latch-pill" type="button"
+            title="Backstage: ticker style, size, language, engine, transcript" aria-expanded="false" aria-controls="backstage">
             <span aria-hidden="true">⚙</span> Backstage
           </button>
         </div>
@@ -1672,7 +1673,6 @@
 
       <!-- SCREEN 1: THE LIVE STAGE COCKPIT -->
       <section id="screen1" class="stage-screen">
-        
         <!-- 1A: LOBBY / WALK-IN CARD (Active before talk starts) -->
         <div id="lobbyCard" class="stage-deck lobby-card">
           <div class="lobby-header-row">
@@ -1693,7 +1693,7 @@
                 <div class="lobby-action-box">
                   <div class="telemetry-info">
                     <span class="telemetry-title">Mic & Readiness</span>
-                    <span class="telemetry-detail">Voice reactive (Lumen blinks)</span>
+                    <span class="telemetry-detail">Voice reactive — glows with mic level</span>
                   </div>
                   <div id="lobbyCtaWrap">
                     <button id="startBtn" class="volt hero-start-btn">GO LIVE (Space)</button>
@@ -1831,18 +1831,18 @@
                 <button id="copyTx" class="ground small" disabled>Copy</button>
                 <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
                 <button id="saveTxMd" class="ground small" disabled>Save .md</button>
-                <button id="mapInProMapper" class="mint small" disabled title="Map transcript into topics & action items in ProMapper">🗺️ Map in ProMapper</button>
+                <button id="mapInProMapper" class="mint small" disabled
+                  title="Map transcript into topics & action items in ProMapper">🗺️ Map in ProMapper</button>
               </div>
             </div>
           </div>
 
-          <div class="receipt-actions-row" style="margin-top: 14px;">
+          <div class="receipt-actions-row" style="margin-top: 16px;">
             <div id="receiptActions">
               <button id="newTalkBtn" class="butter small">✦ Dismiss Receipt</button>
             </div>
           </div>
         </div>
-
       </section>
 
       <!-- Backstage drawer backdrop -->
@@ -1967,7 +1967,7 @@
               </label>
             </div>
             <p id="engineHint" class="hint" hidden></p>
-            <div id="backstageTxSlot" style="margin-top: 14px;"></div>
+            <div id="backstageTxSlot" style="margin-top: 16px;"></div>
 
             <div style="margin-top: 14px;">
               <details id="pastTalks" hidden>
@@ -2786,13 +2786,17 @@
       if ("wakeLock" in navigator && !wakeLock) {
         try {
           wakeLock = await navigator.wakeLock.request("screen");
-          wakeLock.addEventListener("release", () => { wakeLock = null; });
+          wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+          });
         } catch {}
       }
     }
     function releaseWakeLock() {
       if (wakeLock) {
-        try { wakeLock.release(); } catch {}
+        try {
+          wakeLock.release();
+        } catch {}
         wakeLock = null;
       }
     }
@@ -2853,7 +2857,15 @@
         if ($("#receiptDuration")) $("#receiptDuration").textContent = `${mins}m ${secs.toString().padStart(2, "0")}s`;
         if ($("#receiptWords")) $("#receiptWords").textContent = words(transcript).toLocaleString();
         if ($("#receiptReaders")) $("#receiptReaders").textContent = $("#countBadge")?.textContent?.replace(" reading", "") || "0";
-        if ($("#receiptTimestamp")) $("#receiptTimestamp").textContent = new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+        if ($("#receiptTimestamp")) {
+          $("#receiptTimestamp").textContent = new Date().toLocaleDateString(undefined, {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
       } else { // "lobby"
         releaseWakeLock();
         if (lobby) lobby.hidden = false;
@@ -3160,7 +3172,7 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "#ffe853", hemingway: "#f4ede2" };
+          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "var(--volt)", hemingway: "#f4ede2" };
           pip.document.body.style.cssText = `margin:0;background:${
             bgMap[prefs.style] || "#1e1714"
           };display:flex;align-items:center;justify-content:center;overflow:hidden;`;
