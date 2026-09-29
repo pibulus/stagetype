@@ -16,6 +16,8 @@ type Room = {
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
   phone: { live: boolean; seen: number }; // the lapel mic: live while it heartbeats, lost after PHONE_LOST_MS
   demo?: number; // demo rooms only: when they expire. Small, short, typing and browser speech only.
+  closed: boolean;
+  audioSessions: Set<() => void>;
   listeners: Set<Listener>;
   touched: number;
   startedAt: number;
@@ -30,6 +32,12 @@ const MAX_TITLE = 80;
 const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
 const DEEPGRAM_KEEPALIVE_MS = 5_000; // Deepgram drops a silent socket after ~10 s
+const MAX_DEEPGRAM_SESSIONS = 8;
+const MAX_DEEPGRAM_SESSIONS_PER_ROOM = 2; // brief handoff overlap between laptop and phone is allowed
+const DEEPGRAM_SESSION_MAX_MS = 4 * 60 * 60_000;
+const ROOM_CREATE_WINDOW_MS = 60_000;
+const ROOM_CREATE_LIMIT = 10;
+const MAX_ROOM_CREATE_BUCKETS = 10_000;
 const DEEPGRAM_DEFAULT_URL = "wss://api.deepgram.com/v1/listen";
 const deepgramKey = () => Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 const deepgramUrl = () => Deno.env.get("DEEPGRAM_URL") ?? DEEPGRAM_DEFAULT_URL;
@@ -44,10 +52,12 @@ const DEMO_MAX_LISTENERS = 3; // a live phone that goes this long without a push
 
 export const rooms: Map<string, Room> = new Map();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
+const roomCreateBuckets = new Map<string, { count: number; resetAt: number }>();
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-const id = (n: number) => crypto.randomUUID().replaceAll("-", "").slice(0, n);
+const id = (n: number) =>
+  Array.from(crypto.getRandomValues(new Uint8Array(Math.ceil(n / 2))), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, n);
 
 // Join codes: four letters from an alphabet without I, O and Q (nothing that reads as a digit or
 // each other on a projector), skipping the words nobody wants on a lecture screen.
@@ -107,6 +117,28 @@ export function newCode(): string {
     const c = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
     if (!CODE_BLOCKLIST.has(c) && !codes.has(c)) return c;
   }
+}
+function roomCreateClientKey(req: Request, info?: Deno.ServeHandlerInfo): string | null {
+  if (Deno.env.get("FLY_APP_NAME")) {
+    const flyIp = req.headers.get("fly-client-ip") ?? "";
+    if (/^[0-9a-fA-F:.]+$/.test(flyIp)) return flyIp;
+  }
+  const addr = info?.remoteAddr;
+  return addr?.transport === "tcp" ? addr.hostname : null;
+}
+function takeRoomCreateSlot(key: string, now = Date.now()): number | null {
+  let bucket = roomCreateBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    if (roomCreateBuckets.size >= MAX_ROOM_CREATE_BUCKETS) {
+      for (const [ip, old] of roomCreateBuckets) if (old.resetAt <= now) roomCreateBuckets.delete(ip);
+      if (roomCreateBuckets.size >= MAX_ROOM_CREATE_BUCKETS) return ROOM_CREATE_WINDOW_MS;
+    }
+    bucket = { count: 0, resetAt: now + ROOM_CREATE_WINDOW_MS };
+    roomCreateBuckets.set(key, bucket);
+  }
+  if (bucket.count >= ROOM_CREATE_LIMIT) return Math.max(1, bucket.resetAt - now);
+  bucket.count++;
+  return null;
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -178,7 +210,9 @@ export function checkPhones(now: number = Date.now()): void {
 }
 
 function endRoom(key: string, room: Room) {
+  room.closed = true;
   send(room, "end", { lines: room.lines, startedAt: room.startedAt, endedAt: Date.now() });
+  for (const close of [...room.audioSessions]) close();
   for (const l of room.listeners) {
     try {
       l.ctrl.close();
@@ -208,7 +242,7 @@ export function lanIp(): string {
 
 const isLoopbackHost = (req: Request) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.get("host") ?? "");
 
-export async function handler(req: Request): Promise<Response> {
+export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
   const get = req.method === "GET" || req.method === "HEAD";
@@ -258,6 +292,16 @@ export async function handler(req: Request): Promise<Response> {
 
   // Presenter opens a room, optionally with a title
   if (req.method === "POST" && path === "/api/room") {
+    const clientKey = roomCreateClientKey(req, info);
+    if (clientKey) {
+      const wait = takeRoomCreateSlot(clientKey);
+      if (wait !== null) {
+        return new Response(JSON.stringify({ error: "too many rooms from this address" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": String(Math.ceil(wait / 1000)) },
+        });
+      }
+    }
     if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
     const raw = await readBody(req);
     if (raw === null) return json({ error: "too big" }, 413);
@@ -270,7 +314,7 @@ export async function handler(req: Request): Promise<Response> {
       }
     }
     const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
-    const roomId = id(8);
+    const roomId = id(32);
     const token = id(32);
     const code = newCode();
     const now = Date.now();
@@ -281,6 +325,8 @@ export async function handler(req: Request): Promise<Response> {
       lines: [],
       offset: 0,
       phone: { live: false, seen: 0 },
+      closed: false,
+      audioSessions: new Set(),
       listeners: new Set(),
       touched: now,
       startedAt: now,
@@ -303,6 +349,10 @@ export async function handler(req: Request): Promise<Response> {
     if (offered[0] !== "bearer" || !tokenOk(`Bearer ${offered[1] ?? ""}`, r.token)) return json({ error: "nope" }, 403);
     if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
     if (r.demo) return json({ error: "not in the demo" }, 403);
+    const activeSessions = [...rooms.values()].reduce((n, room) => n + room.audioSessions.size, 0);
+    if (activeSessions >= MAX_DEEPGRAM_SESSIONS || r.audioSessions.size >= MAX_DEEPGRAM_SESSIONS_PER_ROOM) {
+      return json({ error: "speech relay is at capacity; try again shortly" }, 503);
+    }
     const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "bearer" });
     const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
     const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
@@ -399,7 +449,13 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     utterance_end_ms: "1200",
     vad_events: "false",
   });
-  const up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);
+  let up: WebSocket;
+  try {
+    up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);
+  } catch {
+    client.close(1011, "upstream unavailable");
+    return;
+  }
   up.binaryType = "arraybuffer";
   const pending: string[] = [];
   const queue: ArrayBuffer[] = []; // audio that arrived before Deepgram answered
@@ -414,6 +470,8 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     if (closed) return;
     closed = true;
     clearInterval(keepalive);
+    clearTimeout(sessionTimeout);
+    room.audioSessions.delete(closeSession);
     try {
       if (up.readyState === WebSocket.OPEN) up.send(JSON.stringify({ type: "CloseStream" }));
     } catch { /* gone */ }
@@ -423,10 +481,13 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     try {
       client.close(code, reason.slice(0, 120));
     } catch { /* gone */ }
-    if (!rooms.has(roomKey(room))) return;
+    if (room.closed) return;
     if (pending.length) flush();
     else pushChunk(room, { text: "", final: false, source });
   };
+  const closeSession = () => finish(1001, "room ended");
+  room.audioSessions.add(closeSession);
+  const sessionTimeout = setTimeout(() => finish(1000, "session time limit"), DEEPGRAM_SESSION_MAX_MS);
   const flush = () => {
     const text = pending.join(" ").trim();
     pending.length = 0;
@@ -439,6 +500,12 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     }
   };
   up.onopen = () => {
+    if (closed || room.closed) {
+      try {
+        up.close();
+      } catch { /* already gone */ }
+      return;
+    }
     for (const buf of queue.splice(0)) up.send(buf);
     keepalive = setInterval(() => {
       try {
@@ -448,7 +515,7 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     tell({ ready: true });
   };
   up.onmessage = (e) => {
-    if (typeof e.data !== "string" || !rooms.has(roomKey(room))) return;
+    if (typeof e.data !== "string" || closed || room.closed) return;
     let msg: { type?: string; is_final?: boolean; speech_final?: boolean; channel?: { alternatives?: { transcript?: string }[] } };
     try {
       msg = JSON.parse(e.data);
@@ -486,6 +553,7 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     }
   };
   client.onmessage = (e) => {
+    if (closed || room.closed) return;
     if (typeof e.data === "string") {
       try {
         if (JSON.parse(e.data)?.type === "stop") finish();
@@ -499,11 +567,6 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
   client.onclose = () => finish();
   client.onerror = () => finish(1011, "client error");
 }
-const roomKey = (room: Room) => {
-  for (const [k, r] of rooms) if (r === room) return k;
-  return "";
-};
-
 // The first scan of a signed demo link turns noise into a room. The write token is derived from the
 // id, so the page that minted it can type into the room without the server ever having stored it.
 async function materialiseDemo(id: string, sig: string | null) {
@@ -520,6 +583,8 @@ async function materialiseDemo(id: string, sig: string | null) {
     lines: [],
     offset: 0,
     phone: { live: false, seen: 0 },
+    closed: false,
+    audioSessions: new Set(),
     listeners: new Set(),
     touched: now,
     startedAt: now,

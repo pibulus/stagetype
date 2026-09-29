@@ -7,7 +7,7 @@ Please email **pibulus@gmail.com** with "StageType security" in the subject, rat
 ## What StageType protects
 
 - **Write access to a room.** Only holders of the room's token can add captions or end a talk. Tokens are 32 hex characters, compared in constant time, sent in an `Authorization` header or WebSocket subprotocol, and never in a URL the server sees. The phone mic link carries its token in the `#fragment`.
-- **The relay's resources.** Rooms, listeners per room, backlog length, request body size and demo rooms are all capped. Demo ids are HMAC-signed and stored nowhere until used.
+- **The relay's resources.** Room creation is rate-limited per client IP; listeners per room, backlog length, request body size, demo rooms and concurrent Deepgram sessions are capped. Demo ids are HMAC-signed and stored nowhere until used.
 - **Keys.** The Deepgram key lives only on the relay. Browsers never see it.
 
 ## What it deliberately doesn't do

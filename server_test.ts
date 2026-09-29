@@ -4,14 +4,25 @@ import { mockDeepgram } from "./e2e/mock_deepgram.ts";
 import { assert, assertEquals } from "@std/assert";
 
 const base = "http://x";
-const post = (path: string, body?: unknown, token?: string, extraHeaders: Record<string, string> = {}) =>
+const post = (
+  path: string,
+  body?: unknown,
+  token?: string,
+  extraHeaders: Record<string, string> = {},
+  info?: Deno.ServeHandlerInfo,
+) =>
   handler(
     new Request(base + path, {
       method: "POST",
       headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...extraHeaders },
       body: body === undefined ? undefined : (typeof body === "string" ? body : JSON.stringify(body)),
     }),
+    info,
   );
+const fromAddr = (hostname: string): Deno.ServeHandlerInfo => ({
+  remoteAddr: { transport: "tcp", hostname, port: 4321 },
+  completed: Promise.resolve(),
+});
 const del = (path: string, token: string) =>
   handler(new Request(base + path, { method: "DELETE", headers: { authorization: `Bearer ${token}` } }));
 const openStream = async (id: string) => {
@@ -189,6 +200,59 @@ Deno.test({
   },
 });
 
+Deno.test({
+  name: "deepgram sessions are capped per room, and a closed slot frees up",
+  sanitizeOps: false,
+  sanitizeResources: false, // real sockets on both sides; everything is closed below
+  async fn() {
+    const dg = mockDeepgram(0);
+    Deno.env.set("DEEPGRAM_URL", `ws://localhost:${dg.addr.port}/listen`);
+    Deno.env.set("DEEPGRAM_API_KEY", "test-key");
+    const relay = Deno.serve({ port: 0, onListen() {} }, handler);
+    const origin = `ws://localhost:${relay.addr.port}`;
+    const { id, token } = await mkRoom();
+
+    const openSession = async () => {
+      const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic`, ["bearer", token]);
+      const got: string[] = [];
+      ws.onmessage = (e) => got.push(String(e.data));
+      await new Promise<void>((r) => {
+        ws.onopen = () => r();
+        ws.onerror = () => r();
+      });
+      while (ws.readyState === WebSocket.OPEN && !got.some((g) => g.includes("ready"))) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      return { ws, ready: got.some((g) => g.includes("ready")) };
+    };
+    const closeSession = (ws: WebSocket) =>
+      new Promise<void>((r) => {
+        ws.onclose = () => r();
+        ws.close();
+      });
+
+    const first = await openSession();
+    const second = await openSession();
+    assert(first.ready && second.ready, "the per-room budget allows two concurrent sessions");
+
+    const third = await openSession();
+    assert(!third.ready, "a third session on the same room is refused at capacity");
+    assertEquals(third.ws.readyState, WebSocket.CLOSED);
+
+    await closeSession(first.ws);
+    const fourth = await openSession();
+    assert(fourth.ready, "closing a session frees its slot for the next one");
+
+    await closeSession(second.ws);
+    await closeSession(fourth.ws);
+    await del(`/api/room/${id}`, token);
+    Deno.env.delete("DEEPGRAM_API_KEY");
+    Deno.env.delete("DEEPGRAM_URL");
+    await relay.shutdown();
+    await dg.shutdown();
+  },
+});
+
 Deno.test("ending a talk closes every listener and clears its keepalive timer", async () => {
   const { id, token } = await mkRoom();
   const a = await openStream(id);
@@ -257,6 +321,24 @@ Deno.test("room creation is capped", async () => {
   assertEquals((await post("/api/room")).status, 503);
   for (const r of made) await del(`/api/room/${r.id}`, r.token);
   assertEquals((await post("/api/room")).status, 200);
+  for (const [k, r] of rooms) await del(`/api/room/${k}`, r.token);
+});
+
+Deno.test("room creation is rate-limited per client address", async () => {
+  const addr = fromAddr("203.0.113.9");
+  for (let i = 0; i < 10; i++) {
+    assertEquals((await post("/api/room", undefined, undefined, {}, addr)).status, 200);
+  }
+  const limited = await post("/api/room", undefined, undefined, {}, addr);
+  assertEquals(limited.status, 429);
+  assert(Number(limited.headers.get("retry-after")) > 0);
+
+  // a different address has its own bucket
+  assertEquals((await post("/api/room", undefined, undefined, {}, fromAddr("203.0.113.10"))).status, 200);
+
+  // no resolvable address (the existing test suite's shape): rate limiting is skipped, not denied
+  assertEquals((await post("/api/room")).status, 200);
+
   for (const [k, r] of rooms) await del(`/api/room/${k}`, r.token);
 });
 
