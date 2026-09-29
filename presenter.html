@@ -18,6 +18,7 @@
       --mint: #b8f0d8;
       --lilac: #d9c8ff;
       --butter: #fff0a8;
+      --volt: #ffe853;
       --muted: rgba(30, 23, 20, 0.58);
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
       --spring: cubic-bezier(.2, .9, .3, 1.35); /* juicy overshoot */
@@ -1034,7 +1035,7 @@
     }
 
     #ticker[data-style="brut"] {
-      background: #ffe853;
+      background: var(--volt);
       color: var(--ink);
       box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
     }
@@ -2494,7 +2495,7 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "#ffe853", hemingway: "#f4ede2" };
+          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "var(--volt)", hemingway: "#f4ede2" };
           pip.document.body.style.cssText = `margin:0;background:${
             bgMap[prefs.style] || "#1e1714"
           };display:flex;align-items:center;justify-content:center;overflow:hidden;`;
