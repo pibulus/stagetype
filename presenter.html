@@ -18,7 +18,6 @@
       --mint: #b8f0d8;
       --lilac: #d9c8ff;
       --butter: #fff0a8;
-      --volt: #ffe135; /* high-voltage yellow brut — the hero CTA lives here, not in a pastel */
       --muted: rgba(30, 23, 20, 0.58);
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
       --spring: cubic-bezier(.2, .9, .3, 1.35); /* juicy overshoot */
@@ -44,19 +43,10 @@
     }
     main {
       max-width: 980px;
-      min-height: 100dvh;
       margin: 0 auto;
       padding: 24px 20px 48px;
-      display: flex;
-      flex-direction: column;
+      display: grid;
       gap: 20px;
-    }
-    /* The chassis centers in whatever canvas is left below the header, rather than
-       pinning to the top and leaving a void — an instrument sitting in its frame. */
-    #screen1 {
-      flex: 1;
-      justify-content: center;
-      min-height: 0;
     }
 
     /* Header & Mascot */
@@ -335,9 +325,6 @@
     button.butter {
       background: var(--butter);
     }
-    button.volt {
-      background: var(--volt);
-    }
     button.ground {
       background: var(--ground);
     }
@@ -486,17 +473,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding: 10px 8px 4px;
+      gap: 12px;
+      padding: 18px 8px 6px;
     }
     #qrEmpty[hidden] {
       display: none;
     }
-    .qr-slot-icon {
-      width: 44px;
-      height: 44px;
+    #qrEmpty svg {
+      width: 92px;
+      height: 92px;
       color: var(--line);
-      opacity: .55;
+      filter: drop-shadow(2px 2px 0 rgba(58, 46, 40, 0.08));
+    }
+    #qrEmpty .mascot-fill .capsule-fill,
+    #qrEmpty .mascot-fill .tally-fill {
+      fill: url(#mascotGrad);
+      opacity: .88;
     }
     #qrEmpty p {
       margin: 0;
@@ -1042,7 +1034,7 @@
     }
 
     #ticker[data-style="brut"] {
-      background: var(--volt);
+      background: #ffe853;
       color: var(--ink);
       box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
     }
@@ -1085,464 +1077,6 @@
     body[data-live="1"] #ticker[data-style="hemingway"][data-ring="none"] {
       box-shadow: 0 0 0 3px #8c6239, 0 8px 24px rgba(30, 23, 20, 0.14);
     }
-    /* =========================================================
-       3-STATE COCKPIT & PROMAPPER MEMBRANE ARCHITECTURE
-       ========================================================= */
-    :root {
-      --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    /* Screen 1 / Screen 2 Layout */
-    .stage-screen {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-    }
-
-    /* State switching on Screen 1 */
-    body:not([data-state]) #onAirDeck,
-    body[data-state="lobby"] #onAirDeck,
-    body[data-state="wrap"] #onAirDeck {
-      display: none !important;
-    }
-    body:not([data-state]) #receiptCard,
-    body[data-state="lobby"] #receiptCard,
-    body[data-state="on-air"] #receiptCard {
-      display: none !important;
-    }
-    body[data-state="on-air"] #lobbyCard,
-    body[data-state="wrap"] #lobbyCard {
-      display: none !important;
-    }
-    body[data-state="lobby"] #lobbyCard {
-      display: flex !important;
-    }
-    body[data-state="on-air"] #onAirDeck {
-      display: flex !important;
-    }
-    body[data-state="wrap"] #receiptCard {
-      display: block !important;
-    }
-
-    /* Lobby Walk-In Card */
-    .lobby-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: -4px;
-    }
-    .lobby-badge {
-      font: 800 0.72rem ui-monospace, Menlo, monospace;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--ink);
-      background: var(--mint);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      padding: 3px 10px;
-    }
-    .lobby-action-box {
-      background: var(--ground);
-      border: 2.5px solid var(--line);
-      border-radius: 20px;
-      padding: 16px 20px;
-      box-shadow: 3px 3px 0 var(--line);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .telemetry-info {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-    .telemetry-title {
-      font-size: 0.76rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--muted);
-    }
-    .telemetry-detail {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: var(--ink);
-    }
-    .hero-start-btn {
-      width: 100%;
-      padding: 18px 24px;
-      font-size: 1.15rem;
-      font-weight: 900;
-      letter-spacing: .04em;
-      box-shadow: 4px 4px 0 var(--line);
-    }
-    .hero-start-btn:hover {
-      transform: translate(-1px, -2px) scale(1.02);
-      box-shadow: 6px 7px 0 var(--line);
-    }
-    .hero-start-btn:active {
-      transform: translate(2px, 2px) scale(0.95);
-      box-shadow: 1px 1px 0 var(--line);
-    }
-
-    /* On-Air Flow Cockpit */
-    .onair-card {
-      background: var(--paper);
-      border: 3px solid var(--line);
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: 6px 6px 0 var(--line);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .onair-top-strip {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 4px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .onair-title-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .onair-title-text {
-      font-weight: 900;
-      font-size: 1.15rem;
-      letter-spacing: -0.02em;
-    }
-    .onair-tools {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .live-chip-btn {
-      font: 800 0.82rem ui-monospace, Menlo, monospace;
-      color: var(--ink);
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      padding: 6px 14px;
-      cursor: pointer;
-      box-shadow: 2px 2px 0 var(--line);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: transform .18s var(--spring), box-shadow .18s var(--spring);
-    }
-    .live-chip-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 3px 3px 0 var(--line);
-      background: var(--butter);
-    }
-    .live-chip-btn:active {
-      transform: scale(0.94);
-    }
-    .chip-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #51cf66;
-    }
-    /* Hero Monitor */
-    .hero-monitor #ticker {
-      min-height: calc(var(--ticker-depth, 2) * 1.5em + 52px);
-      max-height: calc(var(--ticker-depth, 2) * 1.5em + 52px);
-      padding: 24px 32px;
-      border-radius: 24px;
-      box-shadow: 0 0 0 3px var(--line), 0 10px 28px rgba(30, 23, 20, 0.14);
-    }
-    body[data-live="1"] .hero-monitor #ticker {
-      box-shadow: 0 0 0 4px var(--mint), 0 12px 32px rgba(184, 240, 216, 0.38);
-    }
-
-    /* Silence Decay (Ghost Fade after 6s of quiet) */
-    #ticker.silence-decay .prev,
-    #ticker.silence-decay .fresh-lead {
-      opacity: 0.42;
-      transition: opacity 1.4s ease;
-    }
-
-    /* On-Air Command Strip */
-    .onair-command-strip {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .typed-input-wrap {
-      flex: 1;
-      min-width: 220px;
-    }
-    .tactile-pause-btn {
-      padding: 13px 22px;
-      font-weight: 900;
-      letter-spacing: .02em;
-    }
-    .tactile-pause-btn:active {
-      transform: scale(0.92);
-    }
-    .tactile-tool-btn {
-      padding: 13px 18px;
-    }
-    .tactile-end-btn {
-      padding: 13px 20px;
-      font-weight: 800;
-    }
-
-    /* Tokyo Hi-Fi Thermal Receipt (Wrap Screen) */
-    .receipt-card {
-      background: var(--paper);
-      border: 3px solid var(--line);
-      border-radius: 24px;
-      padding: 34px 30px;
-      box-shadow: 8px 8px 0 var(--line);
-      max-width: 680px;
-      margin: 0 auto;
-      width: 100%;
-      position: relative;
-      animation: receiptDrop 0.45s var(--spring-bounce);
-    }
-    @keyframes receiptDrop {
-      0% {
-        opacity: 0;
-        transform: translateY(-28px) scale(0.94);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-    .receipt-perforation {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 8px;
-      background-image: radial-gradient(circle at 5px 0px, var(--ground) 4px, transparent 4.5px);
-      background-size: 10px 8px;
-      background-repeat: repeat-x;
-    }
-    .receipt-header {
-      border-bottom: 2px dashed rgba(58, 46, 40, 0.22);
-      padding-bottom: 18px;
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-    }
-    .receipt-badge {
-      font: 800 0.72rem ui-monospace, Menlo, monospace;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      display: inline-block;
-      margin-bottom: 4px;
-    }
-    .receipt-title {
-      font-size: 1.55rem;
-      font-weight: 900;
-      letter-spacing: -0.03em;
-      margin: 0 0 4px;
-      line-height: 1.15;
-    }
-    .receipt-meta {
-      font-size: 0.84rem;
-      font-weight: 700;
-      color: var(--muted);
-    }
-    .receipt-stamp .stamp-pill {
-      font: 900 0.72rem ui-monospace, Menlo, monospace;
-      letter-spacing: .12em;
-      color: var(--ink);
-      background: var(--pink);
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      padding: 4px 10px;
-      display: inline-block;
-      transform: rotate(-4deg);
-      box-shadow: 2px 2px 0 var(--line);
-    }
-    .receipt-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    @media (max-width: 580px) {
-      .receipt-stats-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .receipt-stat-box {
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 16px;
-      padding: 14px 12px;
-      text-align: center;
-      box-shadow: 2px 2px 0 var(--line);
-    }
-    .receipt-stat-val {
-      font: 900 1.45rem ui-monospace, Menlo, monospace;
-      letter-spacing: -0.02em;
-      color: var(--ink);
-      line-height: 1.1;
-    }
-    .receipt-stat-lbl {
-      font-size: 0.72rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-    .receipt-save-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(184, 240, 216, 0.35);
-      border: 1.5px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 14px;
-      margin-bottom: 22px;
-    }
-    .receipt-save-badge .save-icon {
-      font-weight: 900;
-      color: var(--ink);
-    }
-    .receipt-actions-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    /* Screen 2: Backstage & Rehearsal Membrane */
-    /* Backstage: a corner-latch drawer, never a scroll section.
-       It's fixed + translated off-canvas; opening it never changes page height. */
-    .latch-pill {
-      cursor: pointer;
-      border: 2px solid var(--line);
-      transition: transform .18s var(--spring), box-shadow .18s var(--spring), background .15s;
-    }
-    .latch-pill:hover {
-      transform: translateY(-1px);
-      background: var(--butter);
-    }
-    body[data-backstage="open"] .latch-pill {
-      background: var(--ink);
-      color: var(--ground);
-    }
-    #backstageBackdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(30, 23, 20, 0.4);
-      z-index: 65;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .25s var(--snap);
-    }
-    body[data-backstage="open"] #backstageBackdrop {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .backstage-deck {
-      position: fixed;
-      top: 0;
-      right: 0;
-      z-index: 70;
-      height: 100dvh;
-      width: min(440px, 100vw);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      background: var(--ground);
-      border-left: 3px solid var(--line);
-      box-shadow: -8px 0 0 rgba(30, 23, 20, 0.1);
-      padding: 20px 20px 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      transform: translateX(100%);
-      transition: transform .36s var(--spring);
-    }
-    body[data-backstage="open"] .backstage-deck {
-      transform: translateX(0);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .backstage-deck,
-      #backstageBackdrop {
-        transition: none;
-      }
-    }
-    .membrane-divider {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      position: sticky;
-      top: -20px;
-      margin: -20px -20px 0;
-      padding: 16px 20px;
-      background: var(--ground);
-      border-bottom: 3px solid var(--line);
-      z-index: 1;
-    }
-    .membrane-title {
-      font-size: 0.82rem;
-      font-weight: 900;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .membrane-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--pink);
-      border: 1.5px solid var(--line);
-    }
-    .back-to-stage {
-      font-size: 0.82rem;
-      font-weight: 800;
-      color: var(--ink);
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      padding: 5px 14px;
-      box-shadow: 2px 2px 0 var(--line);
-    }
-    .back-to-stage:hover {
-      background: var(--mint);
-    }
-    .backstage-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-    .backstage-card {
-      background: var(--paper);
-      border: 2.5px solid var(--line);
-      border-radius: 20px;
-      padding: 18px;
-      box-shadow: 4px 4px 0 var(--line);
-    }
-    #backstageQrSlot:empty {
-      display: none;
-    }
-    #backstageQrSlot .qr-card {
-      margin-bottom: 4px;
-    }
-
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -1664,317 +1198,268 @@
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
           <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
           <span class="pill-badge" id="countBadge">0 reading</span>
-          <button id="backstageLatch" class="pill-badge latch-pill" type="button"
-            title="Backstage: ticker style, size, language, engine, transcript" aria-expanded="false" aria-controls="backstage">
-            <span aria-hidden="true">⚙</span> Backstage
-          </button>
         </div>
       </header>
 
-      <!-- SCREEN 1: THE LIVE STAGE COCKPIT -->
-      <section id="screen1" class="stage-screen">
-        <!-- 1A: LOBBY / WALK-IN CARD (Active before talk starts) -->
-        <div id="lobbyCard" class="stage-deck lobby-card">
-          <div class="lobby-header-row">
-            <span class="section-label">Pre-Flight & Walk-In</span>
-            <span class="lobby-badge">Stage Ready</span>
-          </div>
-
-          <div class="deck-grid">
-            <div class="deck-col">
-              <div class="panel-section">
-                <span class="section-label">This Talk</span>
-                <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
-                  placeholder="Title, e.g. COMP1010 Week 3" aria-label="Talk title">
-                <p class="hint" style="margin-top:2px">Name your session. Words prime recognition accuracy.</p>
+      <!-- The console: set up on the left, share on the right -->
+      <section class="stage-deck">
+        <div class="deck-grid">
+          <div class="deck-col">
+            <div class="panel-section">
+              <span class="section-label">This Talk</span>
+              <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
+                placeholder="Title, e.g. COMP1010 Week 3" aria-label="Talk title">
+              <div class="field-row">
+                <label class="field"><span class="opt-label">Language</span>
+            <select id="lang" class="opt-select" aria-label="Language">
+            <option value="en-AU">English (Australia)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-IN">English (India)</option>
+            <option value="es-ES">Español (España)</option>
+            <option value="es-MX">Español (México)</option>
+            <option value="fr-FR">Français</option>
+            <option value="de-DE">Deutsch</option>
+            <option value="it-IT">Italiano</option>
+            <option value="pt-BR">Português (Brasil)</option>
+            <option value="nl-NL">Nederlands</option>
+            <option value="pl-PL">Polski</option>
+            <option value="tr-TR">Türkçe</option>
+            <option value="ru-RU">Русский</option>
+            <option value="ar-SA">العربية</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="id-ID">Bahasa Indonesia</option>
+            <option value="vi-VN">Tiếng Việt</option>
+            <option value="th-TH">ไทย</option>
+            <option value="zh-CN">中文 (普通话)</option>
+            <option value="zh-TW">中文 (台灣)</option>
+            <option value="yue-Hant-HK">粵語 (香港)</option>
+            <option value="ja-JP">日本語</option>
+            <option value="ko-KR">한국어</option>
+            </select>
+          </label>
+                <label class="field"><span class="opt-label">Engine</span>
+            <select id="engine" class="opt-select" aria-label="Speech engine">
+              <option value="browser">Browser, free</option>
+              <option value="deepgram">Deepgram, via the relay</option>
+            </select>
+          </label>
               </div>
+              <p id="engineHint" class="hint" hidden></p>
+            </div>
 
-              <div class="panel-section">
-                <div class="lobby-action-box">
-                  <div class="telemetry-info">
-                    <span class="telemetry-title">Mic & Readiness</span>
-                    <span class="telemetry-detail">Voice reactive — glows with mic level</span>
-                  </div>
-                  <div id="lobbyCtaWrap">
-                    <button id="startBtn" class="volt hero-start-btn">GO LIVE (Space)</button>
-                  </div>
-                </div>
-                <p id="noticeLobby" class="hint">Press Space or click Go Live when you step up to speak.</p>
+            <div class="panel-section">
+              <span class="section-label">Voice</span>
+              <div class="btn-row">
+                <button id="startBtn" class="mint">Start captions</button>
+                <button id="pauseBtn" class="ground" hidden>Pause mic</button>
+                <button id="stopBtn" class="butter" hidden>End talk</button>
               </div>
-            </div>
-
-            <div class="deck-col">
-              <div id="lobbyQrSlot">
-                <!-- QR Card sits here in Lobby mode -->
-                <div class="qr-card">
-                  <div class="tab-bar">
-                    <button class="tab-btn active" id="tabAudience">Audience reader</button>
-                    <button class="tab-btn" id="tabMic">Phone lapel mic</button>
-                  </div>
-
-                  <div class="qr-body">
-                    <div id="qrEmpty">
-                      <svg class="qr-slot-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-                        <path d="M4 18V8a4 4 0 0 1 4-4h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
-                        <path d="M60 18V8a4 4 0 0 0-4-4H46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
-                        <path d="M4 46v10a4 4 0 0 0 4 4h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
-                        <path d="M60 46v10a4 4 0 0 1-4 4H46" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
-                        <rect x="15" y="15" width="10" height="10" rx="2" fill="currentColor" opacity=".85" />
-                        <rect x="39" y="15" width="10" height="10" rx="2" fill="currentColor" opacity=".35" />
-                        <rect x="15" y="39" width="10" height="10" rx="2" fill="currentColor" opacity=".35" />
-                        <rect x="30" y="30" width="6" height="6" rx="1.5" fill="currentColor" opacity=".85" />
-                        <rect x="39" y="39" width="10" height="10" rx="2" fill="currentColor" opacity=".6" />
-                      </svg>
-                      <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
-                    </div>
-                    <div id="qrGraphic"></div>
-
-                    <div>
-                      <p class="qr-talk" id="qrTalk" hidden></p>
-                      <p class="qr-info-title" id="qrTitle">Audience reader</p>
-                      <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
-                    </div>
-
-                    <div class="url-pill" id="urlDisplay" hidden>Standby</div>
-                    <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
-                  </div>
-
-                  <div class="btn-row">
-                    <button class="ground small" id="copyUrlBtn" disabled>Copy link</button>
-                    <button class="ground small" id="fsQrBtn" disabled>Fullscreen QR</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 1B: ON-AIR HERO COCKPIT (Active while Live) -->
-        <div id="onAirDeck" class="stage-deck onair-card" hidden>
-          <div class="onair-top-strip">
-            <div class="onair-title-wrap">
-              <span class="pulse-dot active" style="margin-right:2px"></span>
-              <span id="onairTitleDisplay" class="onair-title-text">StageType Live</span>
-            </div>
-            <div class="onair-tools">
-              <button id="liveQrChip" class="live-chip-btn" title="Open audience QR fullscreen (⌥ + Q)">
-                <span class="chip-dot"></span>
-                <span id="liveCodeText">JOIN / ⛶</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- HERO TYPOGRAPHY TICKER -->
-          <div class="monitor-card hero-monitor">
-            <div id="ticker" role="region" aria-live="polite" aria-atomic="false"></div>
-          </div>
-
-          <p id="notice" class="notice" hidden></p>
-
-          <!-- LIVE COMMAND STRIP -->
-          <div class="onair-command-strip">
-            <button id="pauseBtn" class="ground tactile-pause-btn" hidden>Pause mic</button>
-            <div class="typed-input-wrap">
+              <p id="notice" class="notice" hidden></p>
               <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
                 placeholder="Or type a caption and press Enter" aria-label="Type a caption">
             </div>
-            <button id="floatBtn" class="lilac tactile-tool-btn" disabled title="Float over slides (⌥ + F)">⧉ Float</button>
-            <button id="stopBtn" class="butter tactile-end-btn" hidden>End talk</button>
-          </div>
 
-          <div class="deck-footer">
-            <div class="shortcuts-hint">
-              <span><kbd>Space</kbd> Pause/Resume</span>
-              <span><kbd>⌥ + F</kbd> Float</span>
-              <span><kbd>⌥ + Q</kbd> Big QR</span>
-              <span><kbd>Enter</kbd> Send Typed</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 1C: TOKYO HI-FI THERMAL RECEIPT (Active when talk concludes) -->
-        <div id="receiptCard" class="receipt-card" hidden>
-          <div class="receipt-perforation"></div>
-          <div class="receipt-header">
-            <div>
-              <span class="receipt-badge">TALK CONCLUDED</span>
-              <h2 class="receipt-title" id="receiptTalkTitle">StageType Session</h2>
-              <div class="receipt-meta" id="receiptTimestamp">Live Session</div>
-            </div>
-            <div class="receipt-stamp">
-              <span class="stamp-pill">RECORDED</span>
-            </div>
-          </div>
-
-          <div class="receipt-stats-grid">
-            <div class="receipt-stat-box">
-              <div class="receipt-stat-val" id="receiptDuration">0m 00s</div>
-              <div class="receipt-stat-lbl">Duration</div>
-            </div>
-            <div class="receipt-stat-box">
-              <div class="receipt-stat-val" id="receiptWords">0</div>
-              <div class="receipt-stat-lbl">Words Captioned</div>
-            </div>
-            <div class="receipt-stat-box">
-              <div class="receipt-stat-val" id="receiptReaders">0</div>
-              <div class="receipt-stat-lbl">Audience Peak</div>
-            </div>
-          </div>
-
-          <div id="receiptTxSlot">
-            <div id="transcriptBox">
-              <div class="receipt-save-badge">
-                <span class="save-icon">✓</span>
-                <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
+            <div class="panel-section">
+              <div class="section-header-row">
+                <span class="section-label">Stage Ticker</span>
+                <button id="shuffleTicker" class="shuffle-btn ground" title="Shuffle caption style & vibe (⌥ + R)">🎲 Shuffle</button>
               </div>
-              <div class="btn-row" id="receiptExportRow">
-                <button id="copyTx" class="ground small" disabled>Copy</button>
-                <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
-                <button id="saveTxMd" class="ground small" disabled>Save .md</button>
-                <button id="mapInProMapper" class="mint small" disabled
-                  title="Map transcript into topics & action items in ProMapper">🗺️ Map in ProMapper</button>
+              <div class="btn-row">
+                <button id="floatBtn" class="lilac" disabled>Float over slides</button>
+                <button id="screenBtn" class="ground" disabled>Second screen</button>
               </div>
-            </div>
-          </div>
-
-          <div class="receipt-actions-row" style="margin-top: 16px;">
-            <div id="receiptActions">
-              <button id="newTalkBtn" class="butter small">✦ Dismiss Receipt</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Backstage drawer backdrop -->
-      <div id="backstageBackdrop"></div>
-
-      <!-- BACKSTAGE: ticker style/size, engine & language, transcript. Tucked behind the header latch, never a scroll section. -->
-      <section id="backstage" class="backstage-deck" aria-hidden="true">
-        <div class="membrane-divider">
-          <div class="membrane-title">
-            <span class="membrane-dot"></span>
-            <span>BACKSTAGE</span>
-          </div>
-          <button type="button" id="backstageClose" class="back-to-stage">✕ Close</button>
-        </div>
-
-        <div id="backstageQrSlot">
-          <!-- QR Card moves here when On-Air so tests & backstage can access it -->
-        </div>
-
-        <div class="backstage-grid">
-          <!-- Stage Ticker Customizer -->
-          <div class="panel-section backstage-card">
-            <div class="section-header-row">
-              <span class="section-label">Stage Ticker Customizer</span>
-              <button id="shuffleTicker" class="shuffle-btn ground" title="Shuffle caption style & vibe (⌥ + R)">🎲 Shuffle</button>
-            </div>
-            <div class="btn-row">
-              <button id="screenBtn" class="ground" disabled>Second screen</button>
-            </div>
-            <div class="opt-grid">
-              <span class="opt-label">Size</span>
-              <div class="segmented-control" data-pref="size">
-                <button class="seg-btn" data-v="28px">Compact</button>
-                <button class="seg-btn" data-v="38px">Standard</button>
-                <button class="seg-btn" data-v="50px">Jumbotron</button>
-              </div>
-              <span class="opt-label">Style</span>
-              <div class="segmented-control" data-pref="style">
-                <button class="seg-btn" data-v="ink">Ink</button>
-                <button class="seg-btn" data-v="paper">Paper</button>
-                <button class="seg-btn" data-v="brut">Yellow Brut</button>
-                <button class="seg-btn" data-v="hemingway">Hemingway</button>
-              </div>
-            </div>
-            <details class="more" id="moreTicker">
-              <summary>Face, weight, lines, flow, ring</summary>
               <div class="opt-grid">
-                <span class="opt-label">Face</span>
-                <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
-                  <option value="system">System (Helvetica)</option>
-                  <option value="inter">Inter</option>
-                  <option value="atkinson">Atkinson Hyperlegible</option>
-                  <option value="fraunces">Fraunces</option>
-                  <option value="mono">JetBrains Mono</option>
-                </select>
-                <span class="opt-label">Weight</span>
-                <div class="segmented-control" data-pref="weight">
-                  <button class="seg-btn" data-v="400">Regular</button>
-                  <button class="seg-btn" data-v="500">Medium</button>
-                  <button class="seg-btn" data-v="700">Bold</button>
+                <span class="opt-label">Size</span>
+                <div class="segmented-control" data-pref="size">
+                  <button class="seg-btn" data-v="28px">Compact</button>
+                  <button class="seg-btn" data-v="38px">Standard</button>
+                  <button class="seg-btn" data-v="50px">Jumbotron</button>
                 </div>
-                <span class="opt-label">Lines</span>
-                <div class="segmented-control" data-pref="depth">
-                  <button class="seg-btn" data-v="1">1</button>
-                  <button class="seg-btn" data-v="2">2</button>
-                  <button class="seg-btn" data-v="3">3</button>
-                </div>
-                <span class="opt-label">Flow</span>
-                <div class="segmented-control" data-pref="flow">
-                  <button class="seg-btn" data-v="live">Live words</button>
-                  <button class="seg-btn" data-v="settled">Settled sentences</button>
-                </div>
-                <span class="opt-label">Ring</span>
-                <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
-                  <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
-                  <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
-                  <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
-                  <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
-                  <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
+                <span class="opt-label">Style</span>
+                <div class="segmented-control" data-pref="style">
+                  <button class="seg-btn" data-v="ink">Ink</button>
+                  <button class="seg-btn" data-v="paper">Paper</button>
+                  <button class="seg-btn" data-v="brut">Yellow Brut</button>
+                  <button class="seg-btn" data-v="hemingway">Hemingway</button>
                 </div>
               </div>
-            </details>
-          </div>
-
-          <!-- Engine, Language & Past Talks -->
-          <div class="panel-section backstage-card">
-            <span class="section-label">Engine & Language</span>
-            <div class="field-row">
-              <label class="field"><span class="opt-label">Language</span>
-                <select id="lang" class="opt-select" aria-label="Language">
-                  <option value="en-AU">English (Australia)</option>
-                  <option value="en-GB">English (UK)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="en-IN">English (India)</option>
-                  <option value="es-ES">Español (España)</option>
-                  <option value="es-MX">Español (México)</option>
-                  <option value="fr-FR">Français</option>
-                  <option value="de-DE">Deutsch</option>
-                  <option value="it-IT">Italiano</option>
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="nl-NL">Nederlands</option>
-                  <option value="pl-PL">Polski</option>
-                  <option value="tr-TR">Türkçe</option>
-                  <option value="ru-RU">Русский</option>
-                  <option value="ar-SA">العربية</option>
-                  <option value="hi-IN">हिन्दी</option>
-                  <option value="id-ID">Bahasa Indonesia</option>
-                  <option value="vi-VN">Tiếng Việt</option>
-                  <option value="th-TH">ไทย</option>
-                  <option value="zh-CN">中文 (普通话)</option>
-                  <option value="zh-TW">中文 (台灣)</option>
-                  <option value="yue-Hant-HK">粵語 (香港)</option>
-                  <option value="ja-JP">日本語</option>
-                  <option value="ko-KR">한국어</option>
-                </select>
-              </label>
-              <label class="field"><span class="opt-label">Engine</span>
-                <select id="engine" class="opt-select" aria-label="Speech engine">
-                  <option value="browser">Browser, free</option>
-                  <option value="deepgram">Deepgram, via the relay</option>
-                </select>
-              </label>
+              <details class="more" id="moreTicker">
+                <summary>Face, weight, lines, flow, ring</summary>
+                <div class="opt-grid">
+                  <span class="opt-label">Face</span>
+                  <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
+                    <option value="system">System (Helvetica)</option>
+                    <option value="inter">Inter</option>
+                    <option value="atkinson">Atkinson Hyperlegible</option>
+                    <option value="fraunces">Fraunces</option>
+                    <option value="mono">JetBrains Mono</option>
+                  </select>
+                  <span class="opt-label">Weight</span>
+                  <div class="segmented-control" data-pref="weight">
+                    <button class="seg-btn" data-v="400">Regular</button>
+                    <button class="seg-btn" data-v="500">Medium</button>
+                    <button class="seg-btn" data-v="700">Bold</button>
+                  </div>
+                  <span class="opt-label">Lines</span>
+                  <div class="segmented-control" data-pref="depth">
+                    <button class="seg-btn" data-v="1">1</button>
+                    <button class="seg-btn" data-v="2">2</button>
+                    <button class="seg-btn" data-v="3">3</button>
+                  </div>
+                  <span class="opt-label">Flow</span>
+                  <div class="segmented-control" data-pref="flow">
+                    <button class="seg-btn" data-v="live">Live words</button>
+                    <button class="seg-btn" data-v="settled">Settled sentences</button>
+                  </div>
+                  <span class="opt-label">Ring</span>
+                  <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
+                    <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
+                    <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
+                    <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
+                    <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
+                    <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
+                  </div>
+                </div>
+              </details>
             </div>
-            <p id="engineHint" class="hint" hidden></p>
-            <div id="backstageTxSlot" style="margin-top: 16px;"></div>
 
-            <div style="margin-top: 14px;">
+            <div class="panel-section">
+              <span class="section-label">Transcript</span>
+              <div class="transcript-row">
+                <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
+                <div class="btn-row">
+                  <button id="copyTx" class="ground small" disabled>Copy</button>
+                  <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
+                  <button id="saveTxMd" class="ground small" disabled>Save .md</button>
+                </div>
+              </div>
               <details id="pastTalks" hidden>
                 <summary class="hint">Previous talks on this machine</summary>
                 <ul id="pastList"></ul>
               </details>
             </div>
+          </div>
+
+          <div class="deck-col">
+            <div class="qr-card">
+              <div class="tab-bar">
+                <button class="tab-btn active" id="tabAudience">Audience reader</button>
+                <button class="tab-btn" id="tabMic">Phone lapel mic</button>
+              </div>
+
+              <div class="qr-body">
+                <div id="qrEmpty">
+                  <svg class="mascot-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
+                    <!-- Stage Lights Conical Beam & Ray Accents -->
+                    <g class="mascot-aura">
+                      <polygon points="512,180 180,940 844,940" fill="url(#mascotGrad)" class="mascot-beam" opacity="0.18" />
+                      <path d="M512 40 L512 85 M195 135 L235 175 M829 135 L789 175 M115 365 L165 375 M909 365 L859 375"
+                        stroke="currentColor" stroke-width="18" stroke-linecap="round" />
+                    </g>
+
+                    <!-- Base Plate & Studio Yoke Mount -->
+                    <g class="mascot-yoke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <path
+                        d="M340 915 C340 890 380 880 512 880 C644 880 684 890 684 915 L684 935 C684 955 644 960 512 960 C380 960 340 955 340 935 Z"
+                        fill="currentColor" />
+                      <rect x="472" y="840" width="80" height="46" rx="8" fill="currentColor" />
+                      <path d="M190 515 C190 755 260 850 472 850 L552 850 C764 850 834 755 834 515"
+                        fill="none" stroke="currentColor" stroke-width="40" />
+                      <rect x="156" y="475" width="68" height="80" rx="20" fill="currentColor" />
+                      <circle cx="190" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
+                      <rect x="800" y="475" width="68" height="80" rx="20" fill="currentColor" />
+                      <circle cx="834" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
+                    </g>
+
+                    <!-- SOLID SILHOUETTE (#mascot-background) -->
+                    <g id="mascot-background" class="mascot-fill">
+                      <path class="tally-fill" d="M462 145 C462 110 484 90 512 90 C540 90 562 110 562 145 Z" fill="url(#mascotGrad)" />
+                      <path class="capsule-fill"
+                        d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
+                        fill="url(#mascotGrad)" />
+                      <path
+                        d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
+                        fill="url(#lensGlow)" />
+                    </g>
+
+                    <!-- CHASSIS OUTLINE (#mascot-body-path) -->
+                    <g id="mascot-body-path" class="mascot-outline" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M458 150 C458 105 482 82 512 82 C542 82 566 105 566 150 Z"
+                        fill="none" stroke-width="24" />
+                      <rect x="444" y="146" width="136" height="24" rx="10" fill="currentColor" stroke="none" />
+                      <path
+                        d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
+                        fill="none" stroke-width="28" />
+                      <path
+                        d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
+                        fill="none" stroke-width="20" stroke-opacity="0.9" />
+                      <g fill="currentColor" stroke="none">
+                        <rect x="360" y="680" width="304" height="18" rx="9" />
+                        <rect x="390" y="718" width="244" height="18" rx="9" />
+                        <rect x="424" y="755" width="176" height="18" rx="9" />
+                      </g>
+                      <circle cx="340" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
+                      <circle cx="684" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
+                      <path d="M472 525 C488 545 536 545 552 525"
+                        fill="none" stroke-width="16" stroke-linecap="round" />
+                    </g>
+
+                    <!-- LEFT EYE (#mascot-eye-left-path) -->
+                    <g id="mascot-eye-left-path" class="eye left">
+                      <ellipse class="eye-lid" cx="414" cy="425" rx="38" ry="58" fill="currentColor" />
+                      <circle cx="426" cy="406" r="14" fill="#ffffff" />
+                      <circle cx="400" cy="445" r="7" fill="#ffffff" />
+                    </g>
+
+                    <!-- RIGHT EYE (#mascot-eye-right-path) -->
+                    <g id="mascot-eye-right-path" class="eye right">
+                      <ellipse class="eye-lid" cx="610" cy="425" rx="38" ry="58" fill="currentColor" />
+                      <circle cx="622" cy="406" r="14" fill="#ffffff" />
+                      <circle cx="596" cy="445" r="7" fill="#ffffff" />
+                    </g>
+                  </svg>
+                  <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
+                </div>
+                <div id="qrGraphic"></div>
+
+                <div>
+                  <p class="qr-talk" id="qrTalk" hidden></p>
+                  <p class="qr-info-title" id="qrTitle">Audience reader</p>
+                  <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
+                </div>
+
+                <div class="url-pill" id="urlDisplay" hidden>Standby</div>
+                <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
+              </div>
+
+              <div class="btn-row">
+                <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Copy link</button>
+                <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Fullscreen QR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Stage Caption Monitor (docked broadcast output) -->
+        <div class="monitor-card">
+          <div class="monitor-header">
+            <span class="section-label">Live Stage Output</span>
+            <div class="monitor-tags">
+              <span class="monitor-badge" id="monitorStyleBadge">Ink · System</span>
+            </div>
+          </div>
+          <div id="ticker" aria-live="polite"></div>
+        </div>
+
+        <!-- Keyboard Shortcuts Bar (anchored inside console card) -->
+        <div class="deck-footer">
+          <div class="shortcuts-hint">
+            <span><kbd>Space</kbd> Start / pause mic</span>
+            <span><kbd>⌥ + F</kbd> Float over slides</span>
+            <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
+            <span><kbd>⌥ + R</kbd> Shuffle style & vibe</span>
+            <span><kbd>Esc</kbd> Close modal</span>
           </div>
         </div>
       </section>
@@ -2108,7 +1593,7 @@
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
         : "Nothing captioned yet.";
-      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd", "#mapInProMapper"]) $(b).disabled = transcript.length === 0;
+      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
     }
     function renderPastTalks() {
       let idx = [];
@@ -2160,18 +1645,6 @@
     $("#saveTxMd").onclick = () => {
       const rec = currentRecord();
       if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown");
-    };
-    $("#mapInProMapper").onclick = () => {
-      const rec = currentRecord();
-      if (!rec) return;
-      const text = asMarkdown(rec);
-      const payload = btoa(unescape(encodeURIComponent(JSON.stringify({
-        title: rec.title || "StageType Session",
-        transcript: text,
-        timestamp: new Date().toISOString(),
-      }))));
-      const url = `https://promapper.app/#import=${payload}`;
-      window.open(url, "_blank");
     };
 
     const engine = () => $("#engine").value;
@@ -2749,145 +2222,10 @@
       label.textContent = paused ? "Laptop mic paused" : (engine() === "deepgram" ? "Laptop mic · Deepgram" : "Laptop mic");
     }
 
-    // Mechanical relay click via Web Audio API (warm wooden thunk on mute/unmute)
-    function playRelayClick(isMuted) {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        const t = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const filter = ctx.createBiquadFilter();
-
-        filter.type = "lowpass";
-        filter.frequency.setValueAtTime(isMuted ? 130 : 210, t);
-
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(isMuted ? 60 : 85, t);
-        osc.frequency.exponentialRampToValueAtTime(20, t + 0.04);
-
-        gain.gain.setValueAtTime(0.06, t);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(t);
-        osc.stop(t + 0.05);
-        setTimeout(() => ctx.close().catch(() => {}), 200);
-      } catch {}
-    }
-
-    // Screen Wake Lock & Haptics (Pass 4 & Pass 8)
-    let wakeLock = null;
-    async function acquireWakeLock() {
-      if ("wakeLock" in navigator && !wakeLock) {
-        try {
-          wakeLock = await navigator.wakeLock.request("screen");
-          wakeLock.addEventListener("release", () => {
-            wakeLock = null;
-          });
-        } catch {}
-      }
-    }
-    function releaseWakeLock() {
-      if (wakeLock) {
-        try {
-          wakeLock.release();
-        } catch {}
-        wakeLock = null;
-      }
-    }
-    function haptic(pattern) {
-      try {
-        if (navigator.vibrate && navigator.userActivation?.hasBeenActive) {
-          navigator.vibrate(pattern);
-        }
-      } catch {}
-    }
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && room && !paused) {
-        acquireWakeLock();
-      }
-    });
-
-    // 3-State Temporal UI Architecture
-    function setUIState(state) {
-      document.body.dataset.state = state;
-      const lobby = $("#lobbyCard");
-      const onair = $("#onAirDeck");
-      const receipt = $("#receiptCard");
-      const qrCard = $(".qr-card");
-      const txBox = $("#transcriptBox");
-
-      if (state === "on-air") {
-        acquireWakeLock();
-        haptic([40, 20, 20]);
-        if (lobby) lobby.hidden = true;
-        if (receipt) receipt.hidden = true;
-        if (onair) onair.hidden = false;
-        if (qrCard && $("#backstageQrSlot")) $("#backstageQrSlot").append(qrCard);
-        if (txBox && $("#backstageTxSlot")) $("#backstageTxSlot").append(txBox);
-        const t = room?.title || "";
-        if ($("#onairTitleDisplay")) $("#onairTitleDisplay").textContent = t || "StageType Live";
-        if ($("#liveCodeText")) $("#liveCodeText").textContent = room?.code ? `JOIN / ${room.code} ⛶` : "JOIN QR ⛶";
-      } else if (state === "wrap") {
-        releaseWakeLock();
-        haptic([50]);
-        if (lobby) lobby.hidden = false;
-        if (onair) onair.hidden = true;
-        if (receipt) {
-          receipt.hidden = false;
-          if ($("#screen1")) $("#screen1").prepend(receipt);
-        }
-        if (qrCard && $("#lobbyQrSlot")) $("#lobbyQrSlot").append(qrCard);
-        if (txBox && $("#receiptTxSlot")) $("#receiptTxSlot").append(txBox);
-        if ($("#lobbyCtaWrap") && $("#startBtn")) {
-          $("#lobbyCtaWrap").prepend($("#startBtn"));
-          $("#startBtn").textContent = "GO LIVE (Space)";
-          $("#startBtn").hidden = false;
-        }
-        const t = exportRoom?.title || room?.title || "";
-        if ($("#receiptTalkTitle")) $("#receiptTalkTitle").textContent = t || "StageType Session";
-        const durSec = Math.max(1, Math.round(((exportRoom?.updatedAt || Date.now()) - (exportRoom?.startedAt || Date.now())) / 1000));
-        const mins = Math.floor(durSec / 60);
-        const secs = durSec % 60;
-        if ($("#receiptDuration")) $("#receiptDuration").textContent = `${mins}m ${secs.toString().padStart(2, "0")}s`;
-        if ($("#receiptWords")) $("#receiptWords").textContent = words(transcript).toLocaleString();
-        if ($("#receiptReaders")) $("#receiptReaders").textContent = $("#countBadge")?.textContent?.replace(" reading", "") || "0";
-        if ($("#receiptTimestamp")) {
-          $("#receiptTimestamp").textContent = new Date().toLocaleDateString(undefined, {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-        }
-      } else { // "lobby"
-        releaseWakeLock();
-        if (lobby) lobby.hidden = false;
-        if (onair) onair.hidden = true;
-        if (receipt) {
-          receipt.hidden = true;
-          if ($("#screen1")) $("#screen1").append(receipt);
-        }
-        if (qrCard && $("#lobbyQrSlot")) $("#lobbyQrSlot").append(qrCard);
-        if (txBox && $("#backstageTxSlot")) $("#backstageTxSlot").append(txBox);
-        if ($("#lobbyCtaWrap") && $("#startBtn")) {
-          $("#lobbyCtaWrap").prepend($("#startBtn"));
-          $("#startBtn").textContent = "GO LIVE (Space)";
-        }
-      }
-    }
-
     // Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
     function setPaused(on, restart = true) {
       paused = on;
       if (!on) pausedByPhone = false;
-      playRelayClick(on);
       $("#pauseBtn").textContent = on ? "Resume mic" : "Pause mic";
       $("#pauseBtn").classList.toggle("butter", on);
       if (on) {
@@ -3007,7 +2345,6 @@
       $("#liveDot").classList.add("active");
       $("#liveText").textContent = "Live";
       document.body.dataset.live = "1";
-      setUIState("on-air");
 
       localLive = true;
       lastWordTime = Date.now();
@@ -3027,11 +2364,6 @@
           $("#liveText").textContent = "Live · Mic quiet";
         } else {
           $("#liveText").textContent = "Live";
-        }
-        if (quietSeconds > 6) {
-          for (const el of tickerEls) el.classList.add("silence-decay");
-        } else {
-          for (const el of tickerEls) el.classList.remove("silence-decay");
         }
         // Watchdog: If voice level is detected on mic but speech recognition yields no words
         if (isBraveBrowser && engine() === "browser" && quietSeconds > 5 && transcript.length === 0 && !interim) {
@@ -3102,21 +2434,11 @@
       $("#qrGraphic").innerHTML = "";
       $("#joinLine").hidden = true;
       $("#fsCode").hidden = true;
-      setUIState("wrap");
     }
 
     $("#startBtn").onclick = () => openRoom();
     $("#stopBtn").onclick = () => handleTalkEnded(true);
     $("#pauseBtn").onclick = () => setPaused(!paused);
-    $("#newTalkBtn")?.addEventListener("click", () => {
-      setUIState("lobby");
-      $("#title").value = "";
-      $("#title").disabled = false;
-      $("#title").focus();
-    });
-    $("#liveQrChip")?.addEventListener("click", () => {
-      openFullscreenQR();
-    });
 
     // Tabs for QR switching
     $("#tabAudience").onclick = () => {
@@ -3172,7 +2494,7 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "var(--volt)", hemingway: "#f4ede2" };
+          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "#ffe853", hemingway: "#f4ede2" };
           pip.document.body.style.cssText = `margin:0;background:${
             bgMap[prefs.style] || "#1e1714"
           };display:flex;align-items:center;justify-content:center;overflow:hidden;`;
@@ -3255,26 +2577,13 @@
     applyVibe(currentVibe);
     renderPastTalks();
     updateTranscriptStat();
-    setUIState("lobby");
     resumeRoom();
-
-    // Backstage: a drawer, not a scroll section. Opening/closing never touches page height.
-    function toggleBackstage(open) {
-      const willOpen = open ?? document.body.dataset.backstage !== "open";
-      document.body.dataset.backstage = willOpen ? "open" : "";
-      $("#backstage").setAttribute("aria-hidden", willOpen ? "false" : "true");
-      $("#backstageLatch")?.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    }
-    $("#backstageLatch")?.addEventListener("click", () => toggleBackstage());
-    $("#backstageClose")?.addEventListener("click", () => toggleBackstage(false));
-    $("#backstageBackdrop")?.addEventListener("click", () => toggleBackstage(false));
 
     // Keyboard Shortcuts
     window.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
       if (e.key === "Escape") {
-        if (document.body.dataset.backstage === "open") toggleBackstage(false);
-        else closeFullscreenQR();
+        closeFullscreenQR();
       } else if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
         e.preventDefault();
         floatTickerWindow();
