@@ -196,12 +196,6 @@
       box-shadow: 0 0 6px var(--vibe-accent, var(--mint));
       transition: background .3s, box-shadow .3s;
     }
-    .section-header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2px;
-    }
     .shuffle-btn {
       font: 800 0.78rem var(--swiss);
       padding: 4px 10px;
@@ -248,7 +242,14 @@
       flex-direction: column;
       gap: 8px;
     }
+    .panel-section + .panel-section {
+      border-top: 2px dashed rgba(58, 46, 40, 0.16);
+      padding-top: 16px;
+    }
     .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
@@ -268,17 +269,17 @@
       font: 800 0.95rem var(--swiss);
       color: var(--ink);
       background: var(--pink);
-      border: 2.5px solid var(--line);
+      border: 2px solid var(--line);
       border-radius: 999px;
-      padding: 12px 20px;
+      padding: 10px 16px;
       cursor: pointer;
       font-family: var(--swiss);
-      box-shadow: 3px 3px 0 var(--line);
+      box-shadow: 2px 2px 0 var(--line);
       transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       -webkit-tap-highlight-color: transparent;
     }
     select {
@@ -289,10 +290,14 @@
     button[hidden] {
       display: none;
     } /* the display rule above would otherwise beat the hidden attribute */
+    #floatBtn:disabled,
+    #screenBtn:disabled {
+      display: none;
+    }
     @media (hover: hover) {
       button:not(:disabled):hover {
         transform: translate(-1px, -2px);
-        box-shadow: 5px 6px 0 var(--line);
+        box-shadow: 4px 5px 0 var(--line);
       }
     }
     button:not(:disabled):active {
@@ -314,8 +319,8 @@
       box-shadow: 3px 3px 0 var(--line);
     }
     #startBtn {
-      padding: 14px 26px;
-      font-size: 1.05rem;
+      padding: 12px 20px;
+      font-size: 1rem;
     }
     button.mint {
       background: var(--mint);
@@ -434,7 +439,48 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
+    body[data-live="1"] .field-row,
+    body[data-live="1"] #engineHint {
+      display: none;
+    }
     @media (max-width: 520px) {
+      .stage-deck {
+        padding: 16px;
+        border-radius: 22px;
+      }
+      button:not(.ring),
+      select {
+        min-height: 44px;
+      }
+      .segmented-control {
+        max-width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .segmented-control::-webkit-scrollbar {
+        display: none;
+      }
+      .ring {
+        width: 44px;
+        height: 44px;
+        background: transparent;
+        border: 0;
+      }
+      .ring::before {
+        content: "";
+        width: 24px;
+        height: 24px;
+        border: 2px solid var(--line);
+        border-radius: 50%;
+        background: var(--c);
+      }
+      .ring[aria-checked="true"] {
+        outline: none;
+      }
+      .ring[aria-checked="true"]::before {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
+      }
       .field-row {
         grid-template-columns: 1fr;
       }
@@ -469,6 +515,15 @@
     }
     .more[open] summary {
       margin-bottom: 10px;
+    }
+    .more-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    .transcript-actions[hidden],
+    .qr-actions[hidden] {
+      display: none;
     }
     #qrEmpty {
       display: flex;
@@ -1198,7 +1253,7 @@
         <div class="status-pills">
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
           <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
-          <span class="pill-badge" id="countBadge">0 reading</span>
+          <span class="pill-badge" id="countBadge">0 readers</span>
         </div>
       </header>
 
@@ -1207,9 +1262,9 @@
         <div class="deck-grid">
           <div class="deck-col">
             <div class="panel-section">
-              <span class="section-label">This Talk</span>
+              <span class="section-label">Talk</span>
               <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
-                placeholder="Title, e.g. COMP1010 Week 3" aria-label="Talk title">
+                placeholder="Add a title (optional)" aria-label="Talk title">
               <div class="field-row">
                 <label class="field"><span class="opt-label">Language</span>
             <select id="lang" class="opt-select" aria-label="Language">
@@ -1242,7 +1297,7 @@
                 <label class="field"><span class="opt-label">Engine</span>
             <select id="engine" class="opt-select" aria-label="Speech engine">
               <option value="browser">Browser, free</option>
-              <option value="deepgram">Deepgram, via the relay</option>
+              <option value="deepgram">Deepgram</option>
             </select>
           </label>
               </div>
@@ -1250,22 +1305,19 @@
             </div>
 
             <div class="panel-section">
-              <span class="section-label">Voice</span>
+              <span class="section-label">Captions</span>
               <div class="btn-row">
                 <button id="startBtn" class="mint">Start captions</button>
-                <button id="pauseBtn" class="ground" hidden>Pause mic</button>
-                <button id="stopBtn" class="butter" hidden>End talk</button>
+                <button id="pauseBtn" class="ground" hidden><span class="btn-label">Pause</span></button>
+                <button id="stopBtn" class="ground" hidden>End talk</button>
               </div>
               <p id="notice" class="notice" hidden></p>
               <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
-                placeholder="Or type a caption and press Enter" aria-label="Type a caption">
+                placeholder="Type a caption, press Enter" aria-label="Type a caption">
             </div>
 
             <div class="panel-section">
-              <div class="section-header-row">
-                <span class="section-label">Stage Ticker</span>
-                <button id="shuffleTicker" class="shuffle-btn ground" title="Shuffle caption style & vibe (⌥ + R)">🎲 Shuffle</button>
-              </div>
+              <span class="section-label">Ticker</span>
               <div class="btn-row">
                 <button id="floatBtn" class="lilac" disabled>Float over slides</button>
                 <button id="screenBtn" class="ground" disabled>Second screen</button>
@@ -1286,7 +1338,7 @@
                 </div>
               </div>
               <details class="more" id="moreTicker">
-                <summary>Face, weight, lines, flow, ring</summary>
+                <summary>More style options</summary>
                 <div class="opt-grid">
                   <span class="opt-label">Face</span>
                   <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
@@ -1322,6 +1374,9 @@
                     <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
                   </div>
                 </div>
+                <div class="more-actions">
+                  <button id="shuffleTicker" class="shuffle-btn ground" title="Shuffle ticker style and details">Shuffle style</button>
+                </div>
               </details>
             </div>
 
@@ -1329,10 +1384,10 @@
               <span class="section-label">Transcript</span>
               <div class="transcript-row">
                 <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
-                <div class="btn-row">
-                  <button id="copyTx" class="ground small" disabled>Copy</button>
-                  <button id="saveTxTxt" class="ground small" disabled>Save .txt</button>
-                  <button id="saveTxMd" class="ground small" disabled>Save .md</button>
+                <div class="btn-row transcript-actions" id="transcriptActions" hidden>
+                  <button id="copyTx" class="ground small" disabled><span class="btn-label">Copy</span></button>
+                  <button id="saveTxTxt" class="ground small" disabled>Text file</button>
+                  <button id="saveTxMd" class="ground small" disabled>Markdown</button>
                 </div>
               </div>
               <details id="pastTalks" hidden>
@@ -1345,8 +1400,8 @@
           <div class="deck-col">
             <div class="qr-card">
               <div class="tab-bar">
-                <button class="tab-btn active" id="tabAudience">Audience reader</button>
-                <button class="tab-btn" id="tabMic">Phone lapel mic</button>
+                <button class="tab-btn active" id="tabAudience">Reader</button>
+                <button class="tab-btn" id="tabMic">Phone mic</button>
               </div>
 
               <div class="qr-body">
@@ -1420,23 +1475,23 @@
                       <circle cx="596" cy="445" r="7" fill="#ffffff" />
                     </g>
                   </svg>
-                  <p>Start captions to get a QR code and a four-letter join code for the screen.</p>
+                  <p>Start captions to show the room QR and join code.</p>
                 </div>
                 <div id="qrGraphic"></div>
 
                 <div>
                   <p class="qr-talk" id="qrTalk" hidden></p>
                   <p class="qr-info-title" id="qrTitle">Audience reader</p>
-                  <p class="qr-info-sub" id="qrSub">Scan with phone camera to follow captions live</p>
+                  <p class="qr-info-sub" id="qrSub">Scan to follow live captions</p>
                 </div>
 
                 <div class="url-pill" id="urlDisplay" hidden>Standby</div>
                 <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
               </div>
 
-              <div class="btn-row">
-                <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Copy link</button>
-                <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Fullscreen QR</button>
+              <div class="btn-row qr-actions" id="qrActions" hidden>
+                <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled><span class="btn-label">Copy link</span></button>
+                <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Project QR</button>
               </div>
             </div>
           </div>
@@ -1445,7 +1500,7 @@
         <!-- Live Stage Caption Monitor (docked broadcast output) -->
         <div class="monitor-card">
           <div class="monitor-header">
-            <span class="section-label">Live Stage Output</span>
+            <span class="section-label">Live ticker</span>
             <div class="monitor-tags">
               <span class="monitor-badge" id="monitorStyleBadge">Ink · System</span>
             </div>
@@ -1459,7 +1514,7 @@
             <span><kbd>Space</kbd> Start / pause mic</span>
             <span><kbd>⌥ + F</kbd> Float over slides</span>
             <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
-            <span><kbd>⌥ + R</kbd> Shuffle style & vibe</span>
+            <span><kbd>⌥ + R</kbd> Shuffle ticker</span>
             <span><kbd>Esc</kbd> Close modal</span>
           </div>
         </div>
@@ -1594,6 +1649,7 @@
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
         : "Nothing captioned yet.";
+      $("#transcriptActions").hidden = transcript.length === 0;
       for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
     }
     function renderPastTalks() {
@@ -1634,9 +1690,9 @@
       if (!rec) return;
       try {
         await navigator.clipboard.writeText(rec.lines.join("\n\n"));
-        const b = $("#copyTx");
-        b.textContent = "Copied!";
-        setTimeout(() => (b.textContent = "Copy"), 1500);
+        const lbl = $("#copyTx").querySelector(".btn-label");
+        lbl.textContent = "Copied!";
+        setTimeout(() => (lbl.textContent = "Copy"), 1500);
       } catch {}
     };
     $("#saveTxTxt").onclick = () => {
@@ -1924,13 +1980,13 @@
       $("#fsCodeText").textContent = room.code || "";
       $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
       if (isMic) {
-        $("#qrTitle").textContent = "Phone lapel mic";
-        $("#qrSub").textContent = "Scan with your phone to speak untethered on stage";
+        $("#qrTitle").textContent = "Phone mic";
+        $("#qrSub").textContent = "Scan to use your phone as the mic";
         $("#fsTitle").textContent = "Pair wireless lapel mic";
         $("#fsNote").textContent = "This code carries the room's write key. Scan it yourself, keep it off the projector.";
       } else {
         $("#qrTitle").textContent = "Audience reader";
-        $("#qrSub").textContent = "Scan with phone camera to follow captions live";
+        $("#qrSub").textContent = "Scan to follow captions live";
         $("#fsTitle").textContent = "Scan to read along";
         $("#fsNote").textContent = "Project on screen before the talk kicks off.";
       }
@@ -2053,7 +2109,7 @@
         if (typeof j.listeners === "number") {
           // This console holds one of the stream connections itself; don't count it as an audience member.
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
-          const label = `${others} reading`;
+          const label = `${others} ${others === 1 ? "reader" : "readers"}`;
           if ($("#countBadge").textContent !== label) {
             $("#countBadge").textContent = label;
             $("#countBadge").classList.remove("bump");
@@ -2196,7 +2252,7 @@
           pausedByPhone = true;
           setPaused(true, false);
         }
-        $("#liveText").textContent = "Live · Phone mic";
+        $("#liveText").textContent = "Live";
         // Clear only our own earlier phone notices; leave anything else (a resume note, a relay warning) alone.
         if (/^(Phone mic|The phone mic)/.test($("#notice").textContent)) notice("");
       } else if (lost) {
@@ -2211,7 +2267,7 @@
       } else {
         label.textContent = "Phone mic paused";
         if (pausedByPhone) {
-          notice("Phone mic paused. The laptop mic is still paused: press Space or Resume mic to caption from here.");
+          notice("Phone mic paused. Resume the laptop mic with Space or Resume.");
         }
       }
       updateMicLabel();
@@ -2227,7 +2283,7 @@
     function setPaused(on, restart = true) {
       paused = on;
       if (!on) pausedByPhone = false;
-      $("#pauseBtn").textContent = on ? "Resume mic" : "Pause mic";
+      $("#pauseBtn").querySelector(".btn-label").textContent = on ? "Resume" : "Pause";
       $("#pauseBtn").classList.toggle("butter", on);
       if (on) {
         rec?.stop();
@@ -2235,7 +2291,7 @@
         dg = null;
         interim = "";
         renderTicker();
-        $("#liveText").textContent = phoneLive ? "Live · Phone mic" : "Live · Mic paused";
+        $("#liveText").textContent = "Live";
       } else if (restart && localLive) {
         notice("");
         $("#liveText").textContent = "Live";
@@ -2334,7 +2390,7 @@
       $("#startBtn").hidden = true;
       $("#stopBtn").hidden = false;
       $("#pauseBtn").hidden = false;
-      $("#pauseBtn").textContent = "Pause mic";
+      $("#pauseBtn").querySelector(".btn-label").textContent = "Pause";
       $("#floatBtn").disabled = false;
       $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (⌥ + F)" : "Pop out ticker over slides (⌥ + F)";
       $("#engine").disabled = true;
@@ -2342,6 +2398,7 @@
       $("#urlDisplay").hidden = false;
       $("#copyUrlBtn").disabled = false;
       $("#fsQrBtn").disabled = false;
+      $("#qrActions").hidden = false;
 
       $("#liveDot").classList.add("active");
       $("#liveText").textContent = "Live";
@@ -2362,7 +2419,7 @@
         if (!localLive || paused || phoneLive) return;
         const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
         if (quietSeconds > 25) {
-          $("#liveText").textContent = "Live · Mic quiet";
+          $("#liveText").textContent = "Mic quiet";
         } else {
           $("#liveText").textContent = "Live";
         }
@@ -2424,6 +2481,7 @@
       $("#urlDisplay").hidden = true;
       $("#copyUrlBtn").disabled = true;
       $("#fsQrBtn").disabled = true;
+      $("#qrActions").hidden = true;
       interim = "";
       renderTicker();
       $("#lang").disabled = false;
@@ -2462,10 +2520,11 @@
       if (!text || text.startsWith("Standby")) return;
       try {
         await navigator.clipboard.writeText(text);
-        const orig = $("#copyUrlBtn").textContent;
-        $("#copyUrlBtn").textContent = "Copied!";
+        const lbl = $("#copyUrlBtn").querySelector(".btn-label");
+        const orig = lbl.textContent;
+        lbl.textContent = "Copied!";
         setTimeout(() => {
-          $("#copyUrlBtn").textContent = orig;
+          lbl.textContent = orig;
         }, 1500);
       } catch {}
     };
@@ -2547,7 +2606,7 @@
           const hint = $("#engineHint");
           if (hint) {
             hint.innerHTML =
-              '🦁 <b>Brave note:</b> Turn on <i>"Use Google services for speech recognition"</i> in <code style="font-size:0.75rem">brave://settings/system</code>, or pair the phone lapel mic.';
+              'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or use your phone mic.';
             hint.hidden = false;
           }
         }
@@ -2569,7 +2628,7 @@
           store.set("st-engine", "browser");
         }
         if (!isBraveBrowser) {
-          $("#engineHint").textContent = "Deepgram needs a key on the relay (DEEPGRAM_API_KEY). Browser recognition is on.";
+          $("#engineHint").textContent = "Deepgram needs a relay API key. Using browser captions.";
           $("#engineHint").hidden = false;
         }
       }
