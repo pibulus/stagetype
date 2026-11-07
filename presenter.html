@@ -749,6 +749,9 @@
       font-weight: 500;
       margin-left: 2px;
     }
+    .asset-tray img[hidden] {
+      display: none;
+    }
     .stage.drop {
       outline: 2px dashed color-mix(in srgb, var(--pink) 55%, transparent);
       outline-offset: -6px;
@@ -1266,7 +1269,10 @@
               </div>
             </details>
           </div>
-          <div class="asset-tray" id="assetTray" hidden></div>
+          <div class="asset-tray" id="assetTray" hidden>
+            <img hidden alt="" id="trayFirst">
+            <span id="pasteHint">Copy a screenshot, then ⌘V on this page.</span>
+          </div>
           <div class="transcript-bar">
             <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
             <div class="transcript-actions" id="transcriptActions" hidden>
@@ -1660,34 +1666,94 @@
 
     function addTrayImage(thumb) {
       const tray = $("#assetTray");
+      const hint = $("#pasteHint");
       const img = document.createElement("img");
       img.src = thumb;
       img.alt = "Image shared with the room";
       tray.append(img);
-      let count = tray.querySelector("span");
-      if (!count) {
-        count = document.createElement("span");
-        tray.append(count);
-      }
-      const n = tray.querySelectorAll("img").length;
-      count.textContent = `${n} shared`;
+      const n = tray.querySelectorAll("img:not([hidden])").length;
+      hint.textContent = `${n} shared`;
       tray.hidden = false;
     }
 
-    $("#shareImageBtn").onclick = () => $("#imageFile").click();
+    // The clipboard is the smoothest source there is: copy a screenshot anywhere, and the console
+    // picks it up. Browsers refuse to watch the clipboard in the background (there is no event, and
+    // read() needs a gesture or a granted permission), so this watches the two moments it can:
+    // a paste, and the window coming back into focus once clipboard-read has been granted.
+    let lastClipHash = null;
+    let clipboardReadGranted = false;
+    const hashBytes = async (blob) => {
+      try {
+        const buf = await blob.arrayBuffer();
+        const digest = await crypto.subtle.digest("SHA-256", buf);
+        return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+      } catch {
+        return String(blob.size);
+      }
+    };
+
+    async function clipboardImage() {
+      if (!navigator.clipboard?.read) return null;
+      try {
+        for (const item of await navigator.clipboard.read()) {
+          const type = item.types.find((t) => t.startsWith("image/"));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          return new File([blob], "clipboard", { type });
+        }
+      } catch { /* denied or empty: the file picker is still there */ }
+      return null;
+    }
+
+    async function sharesFreshClipboard() {
+      if (!room) return false;
+      const file = await clipboardImage();
+      if (!file) return false;
+      const hash = await hashBytes(file);
+      if (hash === lastClipHash) return false;
+      lastClipHash = hash;
+      await shareImage(file);
+      return true;
+    }
+
+    navigator.permissions?.query?.({ name: "clipboard-read" })
+      .then((p) => {
+        clipboardReadGranted = p.state === "granted";
+        p.onchange = () => (clipboardReadGranted = p.state === "granted");
+      })
+      .catch(() => {});
+
+    // Clicking Image with a screenshot already copied sends it; otherwise the file picker opens.
+    $("#shareImageBtn").onclick = async () => {
+      if (await sharesFreshClipboard()) return;
+      $("#imageFile").click();
+    };
     $("#imageFile").onchange = (e) => {
       const file = e.target.files?.[0];
       e.target.value = "";
       if (file) shareImage(file);
     };
-    // Paste or drop a picture anywhere on the stage.
-    const stageCard = $(".stage");
-    stageCard?.addEventListener("paste", (e) => {
+
+    // Paste anywhere on the console while a talk is live.
+    document.addEventListener("paste", (e) => {
+      if (!room) return;
       const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
       if (!item) return;
       e.preventDefault();
-      shareImage(item.getAsFile());
+      const file = item.getAsFile();
+      if (file) hashBytes(file).then((h) => (lastClipHash = h));
+      shareImage(file);
     });
+
+    // A copy made in another app lands here the moment the console comes back into focus.
+    addEventListener("focus", () => {
+      if (room && clipboardReadGranted) sharesFreshClipboard();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && room && clipboardReadGranted) sharesFreshClipboard();
+    });
+
+    const stageCard = $(".stage");
     stageCard?.addEventListener("dragover", (e) => {
       if (!room) return;
       e.preventDefault();
@@ -2229,6 +2295,7 @@
       updateQR();
       $("#qrHint").hidden = false;
       $("#shareImageBtn").disabled = false;
+      $("#assetTray").hidden = false;
       $("#title").disabled = true;
       $("#typed").disabled = false;
       $("#screenBtn").disabled = false;

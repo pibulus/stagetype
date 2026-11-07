@@ -35,6 +35,8 @@ StageType's **Floating Ticker** uses the native **Document Picture-in-Picture AP
 ### 2. The Zero-Hardware Lapel Mic (Wii U Appendage Pattern)
 Presenters are normally tethered to their MacBook's built-in microphone at the lectern or stuck troubleshooting Bluetooth AirPods. 
 
+Pictures ride along too: copy a screenshot anywhere, come back to the console, and it lands in everyone's transcript, compressed on this machine before it is sent.
+
 StageType implements the **Appendage Architecture**: scan the **Phone lapel mic** QR code, slide your smartphone into your shirt pocket, and walk the stage freely. Your phone captures your voice, keeps the screen awake via the Screen Wake Lock API, and streams transcript tokens straight to the room relay.
 
 The handoff is automatic. When the phone goes live the console pauses the laptop mic, so one voice never lands in the transcript twice, and shows **Phone mic live**. Pause the phone and the laptop stays paused until you say otherwise (Space or Resume mic). If the phone drops out (battery, lock screen, wifi) the relay notices within 45 seconds and the laptop mic comes back on by itself, with a note saying so. Closing the mic tab hands back immediately.

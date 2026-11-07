@@ -26,6 +26,8 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `GET` | `/ticker/:id` | none | The bar on its own; prefs in the query string |
 | `POST` | `/api/room/:id` | Bearer token | Push `{ text, final, source }`; `source` is `mic` (default), `phone` or `typed`. `{ ping: true }` is a keepalive that broadcasts nothing. `{ ping: true, source: "phone", live: true\|false }` announces the phone mic and heartbeats it while live |
 | `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, phone }`, then `interim { text, source }`, `final { text, seq, source }`, `source { source: "phone", live, lost }` on handoffs, `end` |
+| `POST` | `/api/room/:id/asset` | Bearer token | Share an image: multipart `full` + `thumb` (WebP/JPEG/PNG), 2 MB and 40 images a room, not in demo rooms |
+| `GET` | `/api/room/:id/asset/:assetId` | none | The full frame, immutable and cacheable. The room id is the secret |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 | `GET` | `/api/engines` | none | `{ browser: true, deepgram: bool }` |
@@ -33,6 +35,8 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `GET` | `/api/demo/mint` | none | `{ id, sig, exp, token }`. Stores nothing |
 | `GET` | `/api/demo/:id?s=sig` | signature | `{ alive, listeners }` |
 | `WS` | `/api/room/:id/audio?source=mic\|phone&lang=xx` | subprotocol `bearer, <token>` | 16 kHz mono PCM in; `{ ready }`, `{ interim }`, `{ final }`, `{ error }` JSON back; send `{ "type": "stop" }` to finish |
+
+Images travel as `asset { id, seq, thumb }` events with the 320 px thumb inlined as a data URL, so every phone paints the catch without a fetch; `backlog` carries the last twelve thumbs. Frames are compressed on the presenter's device and die with the room.
 
 `offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
 

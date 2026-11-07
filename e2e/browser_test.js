@@ -417,6 +417,27 @@ ok((await ar.$$eval("#feed a", (n) => n.map((a) => a.href))).every((h) => h.star
 await ar.reload();
 await ar.waitForFunction(() => document.querySelectorAll("#feed p.line").length === 5);
 ok(await ar.$eval("#feed p.line.starred", (n) => !!n), "kept lines survive a reload");
+
+// ---- The clipboard: a copied screenshot reaches the phones without a file picker
+await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: base });
+await p.evaluate(async () => {
+  const c = document.createElement("canvas");
+  c.width = 420; c.height = 280;
+  const g = c.getContext("2d");
+  g.fillStyle = "#ff6ac2"; g.fillRect(0, 0, 420, 280);
+  g.fillStyle = "#1e1714"; g.font = "bold 40px Helvetica"; g.fillText("SLIDE 4", 30, 150);
+  const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+});
+await p.evaluate(() => window.dispatchEvent(new Event("focus")));
+await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 1);
+ok(true, "a copied screenshot lands on the phones");
+await p.evaluate(() => window.dispatchEvent(new Event("focus")));
+await new Promise((r) => setTimeout(r, 600));
+ok((await ar.$$eval("#feed figure.catch", (n) => n.length)) === 1, "the same screenshot is not sent twice");
+await ar.click("#feed figure.catch img");
+ok(await ar.$eval("#lightbox", (n) => n.classList.contains("open")), "tapping the image opens the full frame");
+await ar.click("#lightbox");
 await p.click("#stopBtn");
 
 // ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere
