@@ -8,6 +8,14 @@ A living note of the product and business thinking behind StageType, so decision
 
 Same job, a tenth of the price, none of the ceremony, open source, and nicer to look at. The Plausible-versus-Google-Analytics play.
 
+## The two acts (the pitch in one breath)
+
+**During the talk:** speak at the desk, and the room reads along. A bar under the slides, a giant ticker on the spare screen, and every phone in the back row scrolling at its own size.
+
+**After the talk:** everyone leaves with the talk in their pocket. The live stream settles into a note they can keep: the transcript, the lines they tapped to keep, and the links that were spoken or typed into the stage.
+
+That second act is why the QR gets scanned by the whole room and not just the people who need captions. Accessibility stops being a separate lane and becomes the default handout.
+
 ## What we're actually selling
 
 Floating captions are becoming free plumbing: macOS Live Captions, PowerPoint live subtitles and Chrome Live Caption all put words over a screen at no cost. Don't sell the ticker.
@@ -59,10 +67,11 @@ StageType is MIT today. MIT lets anyone host it and sell it back to our customer
 
 ## Build order
 
-Done: captions, phone lapel mic with handoff, audience reader with themes and type, join codes, typing box, standalone ticker, persistence on every device, Deepgram through the relay, hosting recipe, the live demo at `/demo`.
+Done: captions, phone lapel mic with handoff, audience reader with themes and type, join codes, typing into the stage bar, standalone ticker, persistence on every device, Deepgram through the relay, hosting recipe, the live demo at `/demo`, the flat console with a sample talk in the stage, kept lines on the reader, live links collected into a take-home card, shelf export.
 
 Next, in order:
 
+0. **The take-home pack, finished.** Presenters attach a few links, a deck, a syllabus, their notes, either before Start or while bags are being packed; every reader's end card grows a section for them. The typing bar already recognises links and pins them, so this is mostly a place to put them that isn't a caption.
 1. **The Live Knowledge Loop & Showbag ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)).** Connect the fleet loop: StageType thermal weighting → ProMapper topic clusters & action items → Slide-o-Matic auto-generated slide deck via compressed `gz.` URLs. The audience end card becomes the interactive Showbag (transcript, deck link, ProMap, links, ethical trading card).
 2. **Distinct Identity & Mascot.** StageType gets its own character (Spotlight Luminaire / Retro Broadcast capsule) adhering to the `softstack-mascot` eye-tracking contract, and its own "Stage Lights" palette (Electric Lime, Cyber Cyan, Stage Violet, Hot Magenta) breaking away from TalkType peach.
 3. **Ambient Presence & Thermal Map (No Text, No Numbers).** Audience taps create organic bioluminescent glows/auras rather than noisy chat/counters. Invisible thermal map weights the post-talk slide deck synthesis.
@@ -72,6 +81,22 @@ Next, in order:
 7. **Hosted relay on a real domain**, with `/demo` as the front page.
 8. **Diarisation and speaker names** for panels: Deepgram's streaming diarizer tags Speaker 0, 1, and the console lets you name them.
 9. **Mac host app** wrapping `/ticker/:id`, with on-device speech.
+
+## Money: one Passport for the family
+
+Free, right in the browser: browser speech, a floating bar, a fullscreen ticker, a live room. Every reader is free forever, with their own type, theme, kept lines and downloads.
+
+The TalkType Passport extends to the room: no session clock on long lectures and conference days, the phone-mic relay, the offline engines, and the take-home pack. A presenter pasting their own Deepgram key is the cheap escape hatch; a pooled relay pass is the convenience.
+
+StageType is the family's growth loop because it is the only one that is public by nature: every talk puts the URL in forty pockets.
+
+## Engines: the dual-track idea (not built)
+
+Offline Whisper in chunks of 10-15 seconds is fine for a catch-pad and wrong for a stage: when the mouth stops, twelve seconds of silence looks broken, and a cut mid-word invites invented punctuation. The shape that works is two tracks: browser or on-device streaming for the in-flight words (sub-300 ms), and a local Whisper pass over pause-delimited phrases (voice activity at roughly 600 ms of silence, capped at 10 s) that quietly replaces the rough line as it settles into the transcript. Instant words on screen, clean saved text, no per-minute cost.
+
+## The mic handshake (designed, not built)
+
+The lapel mic pairing card carries the room's write token, so it can never be the code on the projector, and a reader page cannot simply "become the mic" without it. The honest version: a phone asks the relay to be the mic, the console shows "a phone wants the mic", the presenter taps allow, and the relay hands that request a scoped one-shot token. Until then the pairing card lives behind one Mic button.
 
 ## The live demo and signed noise
 
