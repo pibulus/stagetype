@@ -130,7 +130,11 @@ try {
       const text = document.createElement("span");
       const b = document.createElement("b"); b.textContent = t.title || "Untitled talk";
       const small = document.createElement("small");
-      small.textContent = `${new Date(t.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })} · ${t.words} word${t.words === 1 ? "" : "s"}`;
+      small.textContent = [
+        new Date(t.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
+        `${t.words} word${t.words === 1 ? "" : "s"}`,
+        t.kept ? `${t.kept} kept` : "",
+      ].filter(Boolean).join(" · ");
       text.append(b, small); a.append(text);
       if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "In progress"; a.append(tag); }
       li.append(a); list.append(li);

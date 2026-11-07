@@ -275,6 +275,7 @@
 
 <section id="endCard" role="status" hidden>
   <h2>Talk ended</h2>
+  <p class="sub" id="endStats" hidden></p>
   <p class="sub">The transcript stays on this phone. Reopen this link any time, or find it under Saved talks at <span id="joinHost"></span>. Take a copy along too.</p>
   <p class="sub" id="keptLine" hidden></p>
   <div id="linksTray" hidden>
@@ -590,6 +591,12 @@ function talkOver(label, state = "ended") {
   $("#jump").hidden = true;
   if (linesArr.length) {
     paintStars();
+    const stats = $("#endStats");
+    const bits = [`${totalWords} word${totalWords === 1 ? "" : "s"}`];
+    if (stars.size) bits.push(`${stars.size} kept`);
+    if (links.length) bits.push(`${links.length} link${links.length === 1 ? "" : "s"}`);
+    stats.textContent = bits.join(" · ");
+    stats.hidden = false;
     $("#endCard").hidden = false;
     saveTalk(true);
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);
