@@ -60,15 +60,17 @@ ok((await p.$$eval("#qrGraphic svg", (n) => n.length)) === 1, "QR svg rendered")
 ok(!(await p.$eval("#pauseBtn", (b) => b.hidden)), "pause button visible while live");
 ok(!(await p.isVisible("#startBtn")) && await p.isVisible("#stopBtn"), "start button really hidden while live, end talk shown");
 const roomId = url.split("/").pop();
-// token is only in the mic tab URL; grab it from the page state via the mic QR text
-await p.click("#tabMic"); const micUrl = await p.textContent("#urlDisplay"); await p.click("#tabAudience");
+// one code on the card; the lapel mic pairing card is a modal away and carries the key
+await p.click("#micBtn");
+const micUrl = await p.textContent("#urlDisplay");
 const token = micUrl.split("#")[1];
 ok(token && token.length === 32, "mic pairing URL carries 32-char token");
-await p.click("#tabMic");
-ok((await p.textContent("#fsNote")).includes("write key"), "fullscreen note warns about projecting the mic QR");
-await p.click("#tabAudience");
-ok((await p.textContent("#fsNote")).includes("Project"), "fullscreen note back to audience copy");
+ok((await p.textContent("#fsNote")).includes("Keys ride"), "pairing card warns about projecting the mic QR");
+ok(await p.$eval("#fsModal", (m) => m.classList.contains("open")), "pairing card opens the modal");
+await p.keyboard.press("Escape");
+ok((await p.textContent("#urlDisplay")).endsWith(roomId), "card goes back to the room link after the pairing card closes");
 await p.click("#fsQrBtn"); ok(await p.$eval("#fsModal", (m) => m.classList.contains("open")), "fullscreen modal opens");
+ok((await p.textContent("#fsNote")).includes("Project"), "projector card is the audience copy");
 await p.keyboard.press("Escape"); ok(await p.$eval("#fsModal", (m) => !m.classList.contains("open")), "escape closes modal");
 ok(await p.evaluate(() => window.__rec()?.started === true), "local recogniser started");
 
@@ -165,7 +167,7 @@ await p.waitForSelector("#stopBtn:not([hidden])");
 ok((await p.textContent("#qrTalk")) === "COMP1010 Week 3" && !(await p.$eval("#qrTalk", (e) => e.hidden)), "title shown on QR card");
 ok(await p.$eval("#title", (i) => i.disabled), "title locked while live");
 const url2 = await p.textContent("#urlDisplay"); const room2 = url2.split("/").pop();
-await p.click("#tabMic"); const tok2 = (await p.textContent("#urlDisplay")).split("#")[1]; await p.click("#tabAudience");
+await p.click("#micBtn"); const tok2 = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
 // ticker prefs: a style is a whole look (frame, face, weight), size carries the lines
 await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
 await p.click('[data-pref="size"] [data-v="50px"]');
@@ -220,9 +222,9 @@ ok(/^[A-Z]{4}$/.test(joinCode) && !(await p.$eval("#joinLine", (e) => e.hidden))
 await p.click("#fsQrBtn");
 ok((await p.textContent("#fsCodeText")) === joinCode && await p.isVisible("#fsCode"), "fullscreen card shows the code large");
 await p.keyboard.press("Escape");
-await p.click("#tabMic");
-ok(await p.$eval("#joinLine", (e) => e.hidden), "code hidden on the mic tab (that QR carries the write key)");
-await p.click("#tabAudience");
+await p.click("#micBtn");
+ok(await p.$eval("#fsCode", (e) => e.hidden), "the pairing card hides the four-letter code (it carries the write key)");
+await p.keyboard.press("Escape");
 const roomJ = (await p.textContent("#urlDisplay")).split("/").pop();
 // join page: typing the code lands on the reader
 const j = await ctx.newPage(); track(j, "join");
@@ -286,7 +288,7 @@ await p.waitForSelector("#stopBtn:not([hidden])");
 ok((await p.textContent("#micSource")) === "Laptop mic" && await p.evaluate(() => window.__rec().started === true), "laptop mic live before the phone joins");
 ok(!(await p.$eval("#floatBtn", (b) => b.disabled)) || !(await p.evaluate(() => "documentPictureInPicture" in window)), "float button enabled while live where PiP exists");
 const roomH = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#tabMic"); const tokH = (await p.textContent("#urlDisplay")).split("#")[1]; await p.click("#tabAudience");
+await p.click("#micBtn"); const tokH = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
 const phone = (body) => fetch(`${base}/api/room/${roomH}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokH}` }, body: JSON.stringify({ source: "phone", ...body }) });
 // the real mic page announces itself on Go live
 const mh = await ctx.newPage(); track(mh, "mic-handoff");
@@ -339,7 +341,7 @@ await p.fill("#title", "Persist 101");
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
 const roomP = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#tabMic"); const tokP = (await p.textContent("#urlDisplay")).split("#")[1]; await p.click("#tabAudience");
+await p.click("#micBtn"); const tokP = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
 const pushP = (text) => fetch(`${base}/api/room/${roomP}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokP}` }, body: JSON.stringify({ text, final: true, source: "phone" }) });
 const ap = await ctx.newPage(); track(ap, "audience-persist");
 await ap.goto(`${base}/live/${roomP}`);
@@ -392,7 +394,7 @@ await p.screenshot({ path: `${SHOTS}/presenter-transcript.png` });
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
 const roomR = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#tabMic"); const tokR = (await p.textContent("#urlDisplay")).split("#")[1]; await p.click("#tabAudience");
+await p.click("#micBtn"); const tokR = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
 const ar = await ctx.newPage(); track(ar, "audience-reload");
 await ar.goto(`${base}/live/${roomR}`);
 await ar.waitForFunction(() => document.querySelector("#state").textContent === "Live");

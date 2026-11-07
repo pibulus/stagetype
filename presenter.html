@@ -413,10 +413,41 @@
         opacity: 0;
       }
     }
-    #ticker:empty::before {
-      content: "Waiting on the first line.";
-      opacity: 0.3;
-      font-weight: 500;
+    #ticker .ticker-text {
+      width: 100%;
+    }
+    #ticker .ticker-text:empty {
+      min-height: 1.2em;
+    }
+    /* The bar is where words go both ways: it reads them out and takes a typed line. */
+    #ticker #typed {
+      margin-top: 10px;
+      padding: 8px 0 2px;
+      border: 0;
+      border-top: 1px solid rgba(255, 253, 245, 0.14);
+      border-radius: 0;
+      background: transparent;
+      color: var(--surface);
+      font: 500 14px var(--swiss);
+      box-shadow: none;
+    }
+    #ticker #typed::placeholder {
+      color: rgba(255, 253, 245, 0.4);
+    }
+    #ticker #typed:focus {
+      outline: none;
+      border-top-color: var(--pink);
+    }
+    #ticker.empty {
+      justify-content: center;
+    }
+    #ticker.empty .ticker-text {
+      display: none;
+    }
+    #ticker.empty #typed {
+      margin-top: 0;
+      border-top-color: transparent;
+      font-size: 20px;
     }
     /* A style carries its own frame. No separate ring picker. */
     #ticker[data-ring="ink"] {
@@ -840,34 +871,6 @@
       gap: 12px;
       text-align: center;
     }
-    .tab-bar {
-      display: flex;
-      width: 100%;
-      gap: 2px;
-      padding: 3px;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--ink) 6%, transparent);
-    }
-    .tab-btn {
-      flex: 1;
-      border: 1px solid transparent;
-      background: transparent;
-      border-radius: 999px;
-      padding: 7px 10px;
-      font: 600 12.5px var(--swiss);
-      color: var(--quiet);
-    }
-    .tab-btn:hover {
-      background: transparent;
-      border-color: transparent;
-      color: var(--ink);
-    }
-    .tab-btn.active {
-      background: var(--surface);
-      border-color: var(--hair);
-      color: var(--ink);
-      font-weight: 700;
-    }
     .qr-body {
       display: flex;
       flex-direction: column;
@@ -1166,9 +1169,11 @@
             <p class="eyebrow">Stage</p>
             <span class="badge" id="monitorStyleBadge">Ink · System</span>
           </div>
-          <div id="ticker" aria-live="polite"></div>
-          <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
-            placeholder="Type a line · Enter" aria-label="Type a caption">
+          <div id="ticker" aria-live="polite">
+            <div class="ticker-text"></div>
+            <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
+              placeholder="Type a line · Enter" aria-label="Type a caption">
+          </div>
           <div class="stage-controls">
             <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
               <button class="seg-btn" data-v="28px" title="Compact" aria-label="Compact">S</button>
@@ -1221,10 +1226,6 @@
 
         <!-- THE ROOM: what a stranger's phone needs, and nothing about the plumbing. -->
         <section class="card room qr-card">
-          <div class="tab-bar">
-            <button class="tab-btn active" id="tabAudience">Room</button>
-            <button class="tab-btn" id="tabMic">Phone mic</button>
-          </div>
           <div class="qr-body">
             <div id="qrEmpty">
               <div class="qr-slot" aria-hidden="true"><span></span></div>
@@ -1240,6 +1241,7 @@
             <div class="room-actions" id="qrActions" hidden>
               <button id="copyUrlBtn" disabled aria-label="Copy the room link"><span class="btn-label">Copy link</span></button>
               <button id="fsQrBtn" disabled aria-label="Show the code full screen">Full screen</button>
+              <button id="micBtn" disabled aria-label="Pair a phone as the lapel mic" title="Pair a phone as the lapel mic">Mic</button>
             </div>
           </div>
         </section>
@@ -1305,7 +1307,6 @@
     let lastInterimSent = 0;
     let interimTimer = null;
     let tickerEls = [$("#ticker")];
-    let activeTab = "audience"; // 'audience' | 'mic'
     let lanBase = "";
     let lastWordTime = Date.now();
     let silenceInterval = null;
@@ -1466,7 +1467,10 @@
         html += ` <span class="interim">${esc(interim)}</span>`;
       }
       for (const el of tickerEls) {
-        el.innerHTML = html ? `<div>${html}</div>` : "";
+        // The console ticker holds the typing field too, so only its text layer is rewritten.
+        const holder = el.querySelector?.(".ticker-text") || el;
+        holder.innerHTML = html ? `<div>${html}</div>` : "";
+        el.classList?.toggle("empty", !html);
       }
     }
 
@@ -1598,49 +1602,44 @@
     }
 
     // Update QR Code
+    function qrSvgFor(url, cellSize) {
+      const qr = qrcode(0, "M");
+      qr.addData(url);
+      qr.make();
+      return qr.createSvgTag({ cellSize, margin: 0, scalable: true });
+    }
+    const roomUrl = () => `${lanBase}/live/${room.id}`;
+    // The lapel mic inherits the talk's language and engine at scan time, so the phone
+    // never asks the same two questions a second time.
+    const micUrl = () => `${lanBase}/mic/${room.id}?${new URLSearchParams({ lang: $("#lang").value, engine: engine() })}#${room.token}`;
+
+    // The card always carries the room code. The mic pairing code is a modal away.
     function updateQR() {
       if (!room) return;
-      const isMic = activeTab === "mic";
-      // The lapel mic inherits the talk's language and engine at scan time, so the phone
-      // never asks the same two questions a second time.
-      const micPrefs = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
-      const targetUrl = isMic
-        ? `${lanBase}/mic/${room.id}?${micPrefs}#${room.token}`
-        : `${lanBase}/live/${room.id}`;
-
-      const qr = qrcode(0, "M");
-      qr.addData(targetUrl);
-      qr.make();
-
-      const svg = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });
-      $("#qrGraphic").innerHTML = svg;
+      const targetUrl = roomUrl();
+      $("#qrGraphic").innerHTML = qrSvgFor(targetUrl, 5);
       $("#qrGraphic").classList.remove("pop");
       void $("#qrGraphic").offsetWidth;
       $("#qrGraphic").classList.add("pop");
-      $(".qr-card").dataset.tab = activeTab;
       $("#urlDisplay").textContent = targetUrl;
-
-      const showCode = !isMic && !!room.code;
-      $("#joinLine").hidden = !showCode;
-      $("#fsCode").hidden = !showCode;
+      $("#joinLine").hidden = !room.code;
       $("#joinCode").textContent = room.code || "";
-      $("#fsCodeText").textContent = room.code || "";
       $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
-      if (isMic) {
-        $("#qrTitle").textContent = "Phone mic";
-        $("#qrSub").textContent = "Scan to use your phone as the mic";
-        $("#fsTitle").textContent = "Pair wireless lapel mic";
-        $("#fsNote").textContent = "This code carries the room's write key. Scan it yourself, keep it off the projector.";
-      } else {
-        $("#qrTitle").textContent = "Audience reader";
-        $("#qrSub").textContent = "Scan to follow captions live";
-        $("#fsTitle").textContent = "Scan to read along";
-        $("#fsNote").textContent = "Project on screen before the talk kicks off.";
-      }
+    }
 
-      const fsQrSvg = qr.createSvgTag({ cellSize: 9, margin: 0, scalable: true });
-      $("#fsQr").innerHTML = fsQrSvg;
-      $("#fsUrl").textContent = targetUrl;
+    // isMic: the pairing card, which carries the write key and never goes on the projector.
+    function renderModalQR(isMic) {
+      if (!room) return;
+      const target = isMic ? micUrl() : roomUrl();
+      $("#fsQr").innerHTML = qrSvgFor(target, 9);
+      $("#fsUrl").textContent = target;
+      $("#urlDisplay").textContent = target;
+      $("#fsCode").hidden = isMic || !room.code;
+      $("#fsCodeText").textContent = isMic ? "" : room.code || "";
+      $("#fsTitle").textContent = isMic ? "Pair the lapel mic" : "Read along on a phone";
+      $("#fsNote").textContent = isMic
+        ? "Keys ride in this code. Scan it, then keep it off the projector."
+        : "Project on screen before the talk kicks off.";
     }
 
     // Audio Level Meter
@@ -2045,6 +2044,7 @@
       $("#urlDisplay").hidden = false;
       $("#copyUrlBtn").disabled = false;
       $("#fsQrBtn").disabled = false;
+      $("#micBtn").disabled = false;
       $("#qrActions").hidden = false;
 
       $("#liveDot").classList.add("active");
@@ -2128,6 +2128,7 @@
       $("#urlDisplay").hidden = true;
       $("#copyUrlBtn").disabled = true;
       $("#fsQrBtn").disabled = true;
+      $("#micBtn").disabled = true;
       $("#qrActions").hidden = true;
       interim = "";
       renderTicker();
@@ -2146,20 +2147,8 @@
     $("#stopBtn").onclick = () => handleTalkEnded(true);
     $("#pauseBtn").onclick = () => setPaused(!paused);
 
-    // Tabs for QR switching
-    $("#tabAudience").onclick = () => {
-      activeTab = "audience";
-      $("#tabAudience").classList.add("active");
-      $("#tabMic").classList.remove("active");
-      updateQR();
-    };
-
-    $("#tabMic").onclick = () => {
-      activeTab = "mic";
-      $("#tabMic").classList.add("active");
-      $("#tabAudience").classList.remove("active");
-      updateQR();
-    };
+    // One room code on the card. The pairing code for the lapel mic lives in the
+    // fullscreen modal, one tap away, because it carries the write key.
 
     // Copy link button
     $("#copyUrlBtn").onclick = async () => {
@@ -2177,15 +2166,18 @@
     };
 
     // Fullscreen Modal
-    const openFullscreenQR = () => {
+    const openFullscreenQR = (isMic = false) => {
       if (!room) return;
+      renderModalQR(isMic);
       $("#fsModal").classList.add("open");
     };
     const closeFullscreenQR = () => {
       $("#fsModal").classList.remove("open");
+      if (room) updateQR();
     };
 
-    $("#fsQrBtn").onclick = openFullscreenQR;
+    $("#fsQrBtn").onclick = () => openFullscreenQR(false);
+    $("#micBtn").onclick = () => openFullscreenQR(true);
     $("#closeFsBtn").onclick = closeFullscreenQR;
     $("#fsModal").onclick = (e) => {
       if (e.target === $("#fsModal")) closeFullscreenQR();
@@ -2298,7 +2290,7 @@
         shuffleTicker();
       } else if (e.altKey && (e.code === "KeyQ" || e.key.toLowerCase() === "q")) {
         e.preventDefault();
-        openFullscreenQR();
+        openFullscreenQR(false);
       } else if (e.code === "Space") {
         // Space never ends the talk: that's a deliberate click on "End talk".
         e.preventDefault();
