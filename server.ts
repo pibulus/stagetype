@@ -442,6 +442,20 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return json({ id: asset.id, seq: asset.seq, thumb: asset.thumb });
   }
 
+  // Pull a picture back: the wrong screenshot never stays in forty pockets.
+  const assetDel = path.match(/^\/api\/room\/([a-z0-9]+)\/asset\/([a-z0-9]+)$/);
+  if (assetDel && req.method === "DELETE") {
+    const r = rooms.get(assetDel[1]);
+    if (!r) return json({ error: "room gone" }, 404);
+    if (!tokenOk(req.headers.get("authorization"), r.token)) return json({ error: "nope" }, 403);
+    const asset = r.assets.get(assetDel[2]);
+    if (!asset) return json({ error: "no such image" }, 404);
+    r.assets.delete(asset.id);
+    r.assetBytes -= asset.full.length;
+    send(r, "asset-gone", { id: asset.id });
+    return json({ ok: true });
+  }
+
   // A phone taps a thumb: hand it the full frame. Immutable and cacheable, no auth (the room id is the secret).
   const assetGet = path.match(/^\/api\/room\/([a-z0-9]+)\/asset\/([a-z0-9]+)$/);
   if (assetGet) {

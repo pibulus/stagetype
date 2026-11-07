@@ -28,6 +28,7 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, phone }`, then `interim { text, source }`, `final { text, seq, source }`, `source { source: "phone", live, lost }` on handoffs, `end` |
 | `POST` | `/api/room/:id/asset` | Bearer token | Share an image: multipart `full` + `thumb` (WebP/JPEG/PNG), 2 MB and 40 images a room, not in demo rooms |
 | `GET` | `/api/room/:id/asset/:assetId` | none | The full frame, immutable and cacheable. The room id is the secret |
+| `DELETE` | `/api/room/:id/asset/:assetId` | Bearer token | Pull a picture back; every listener gets `asset-gone { id }` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
 | `GET` | `/api/engines` | none | `{ browser: true, deepgram: bool }` |

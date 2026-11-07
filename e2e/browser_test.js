@@ -438,6 +438,10 @@ ok((await ar.$$eval("#feed figure.catch", (n) => n.length)) === 1, "the same scr
 await ar.click("#feed figure.catch img");
 ok(await ar.$eval("#lightbox", (n) => n.classList.contains("open")), "tapping the image opens the full frame");
 await ar.click("#lightbox");
+// pull it back: the wrong screenshot leaves every phone
+await p.click("#assetTray img");
+await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 0);
+ok(true, "pulling a picture back removes it from the phones");
 await p.click("#stopBtn");
 
 // ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere

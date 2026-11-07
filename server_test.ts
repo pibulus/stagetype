@@ -502,3 +502,32 @@ Deno.test("assets: an image needs the write token, rides out as a thumb, and com
   await reader.cancel();
   await del(`/api/room/${id}`, token);
 });
+
+Deno.test("assets: the presenter can pull one back", async () => {
+  const { id, token } = await mkRoom();
+  const full = new Uint8Array([1, 2, 3, 4]);
+  const form = new FormData();
+  form.append("full", new File([full], "full.webp", { type: "image/webp" }));
+  form.append("thumb", new File([new Uint8Array([9])], "thumb.webp", { type: "image/webp" }));
+  const saved = await (await handler(
+    new Request(`${base}/api/room/${id}/asset`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    }),
+  )).json() as { id: string };
+
+  const { reader, read } = await openStream(id);
+  await read(); // backlog
+
+  assertEquals((await del(`/api/room/${id}/asset/${saved.id}`, "wrong")).status, 403);
+  assertEquals((await del(`/api/room/${id}/asset/${saved.id}`, token)).status, 200);
+  const gone = await read();
+  assert(gone.includes("event: asset-gone") && gone.includes(saved.id));
+  assertEquals((await handler(new Request(`${base}/api/room/${id}/asset/${saved.id}`))).status, 404);
+  assertEquals((await del(`/api/room/${id}/asset/${saved.id}`, token)).status, 404);
+  assertEquals(rooms.get(id)!.assetBytes, 0);
+
+  await reader.cancel();
+  await del(`/api/room/${id}`, token);
+});

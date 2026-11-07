@@ -1270,7 +1270,6 @@
             </details>
           </div>
           <div class="asset-tray" id="assetTray" hidden>
-            <img hidden alt="" id="trayFirst">
             <span id="pasteHint">Copy a screenshot, then ⌘V on this page.</span>
           </div>
           <div class="transcript-bar">
@@ -1655,7 +1654,7 @@
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const saved = await res.json();
-        addTrayImage(saved.thumb);
+        addTrayImage(saved.thumb, saved.id);
       } catch (err) {
         notice(`Couldn't share that image (${err.message}).`);
       } finally {
@@ -1664,16 +1663,44 @@
       }
     }
 
-    function addTrayImage(thumb) {
+    function addTrayImage(thumb, assetId) {
       const tray = $("#assetTray");
       const hint = $("#pasteHint");
       const img = document.createElement("img");
       img.src = thumb;
       img.alt = "Image shared with the room";
+      img.dataset.asset = assetId;
+      img.title = "Pull this picture back";
+      img.onclick = () => pullBack(assetId);
       tray.append(img);
-      const n = tray.querySelectorAll("img:not([hidden])").length;
-      hint.textContent = `${n} shared`;
       tray.hidden = false;
+      paintTray();
+    }
+
+    function paintTray() {
+      const tray = $("#assetTray");
+      const n = tray.querySelectorAll("img").length;
+      $("#pasteHint").textContent = n
+        ? `${n} shared · tap a picture to pull it back`
+        : "Copy a screenshot, then ⌘V on this page.";
+    }
+
+    async function pullBack(assetId) {
+      if (!room) return;
+      const img = $(`#assetTray img[data-asset="${assetId}"]`);
+      const src = img?.src;
+      img?.remove();
+      paintTray();
+      try {
+        const res = await fetch(`/api/room/${room.id}/asset/${assetId}`, {
+          method: "DELETE",
+          headers: { authorization: `Bearer ${room.token}` },
+        });
+        if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+      } catch {
+        notice("Couldn't pull that picture back, so it stays in the room.");
+        if (src) addTrayImage(src, assetId);
+      }
     }
 
     // The clipboard is the smoothest source there is: copy a screenshot anywhere, and the console

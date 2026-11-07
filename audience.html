@@ -638,6 +638,16 @@ es.addEventListener("asset", (e) => {
   addAsset(JSON.parse(e.data));
 });
 
+// The presenter pulled one back: it leaves this phone the same way it arrived.
+es.addEventListener("asset-gone", (e) => {
+  const { id } = JSON.parse(e.data);
+  const fig = feed.querySelector(`figure.catch img[data-asset="${id}"]`)?.closest("figure.catch");
+  if (!fig) return;
+  if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) lightbox.onclick();
+  fig.remove();
+  if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
+});
+
 es.addEventListener("interim", (e) => {
   interimEl.textContent = JSON.parse(e.data).text || "";
   follow();
