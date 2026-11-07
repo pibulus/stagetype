@@ -429,10 +429,10 @@ await p.evaluate(async () => {
   const blob = await new Promise((r) => c.toBlob(r, "image/png"));
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 });
-await p.evaluate(() => window.dispatchEvent(new Event("focus")));
+await p.evaluate(() => globalThis.dispatchEvent(new Event("focus")));
 await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 1);
 ok(true, "a copied screenshot lands on the phones");
-await p.evaluate(() => window.dispatchEvent(new Event("focus")));
+await p.evaluate(() => globalThis.dispatchEvent(new Event("focus")));
 await new Promise((r) => setTimeout(r, 600));
 ok((await ar.$$eval("#feed figure.catch", (n) => n.length)) === 1, "the same screenshot is not sent twice");
 await ar.click("#feed figure.catch img");
