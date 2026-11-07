@@ -344,6 +344,18 @@
       color: var(--quiet);
       margin: 0;
     }
+    .ghost-chip {
+      font: 600 9.5px var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--coral);
+      border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+    .ghost-chip[hidden] {
+      display: none;
+    }
     .eyebrow .badge {
       margin-left: auto;
       font: 600 10px var(--mono);
@@ -437,6 +449,9 @@
     #ticker #typed:focus {
       outline: none;
       border-top-color: var(--pink);
+    }
+    #ticker.ghosting #typed {
+      display: none;
     }
     #ticker.empty {
       justify-content: center;
@@ -956,6 +971,15 @@
       text-indent: .22em;
       color: var(--ink);
     }
+    .qr-hint {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--quiet);
+    }
+    .qr-hint[hidden] {
+      display: none;
+    }
     .room-actions {
       display: flex;
       align-items: center;
@@ -1166,8 +1190,8 @@
         <!-- THE STAGE: the product, its dressing, and the transcript under it. -->
         <section class="card stage">
           <div class="stage-top">
-            <p class="eyebrow">Stage</p>
-            <span class="badge" id="monitorStyleBadge">Ink · System</span>
+            <p class="eyebrow">Stage <span class="ghost-chip" id="ghostChip" hidden>sample</span></p>
+            <span class="badge" id="monitorStyleBadge">Ink · Standard</span>
           </div>
           <div id="ticker" aria-live="polite">
             <div class="ticker-text"></div>
@@ -1234,6 +1258,7 @@
             <div id="qrGraphic"></div>
             <p class="qr-talk" id="qrTalk" hidden></p>
             <div class="join-line" id="joinLine" hidden><b id="joinCode"></b></div>
+            <p class="qr-hint" id="qrHint" hidden>Point a phone camera at the code.</p>
             <span id="qrTitle" hidden></span>
             <span id="qrSub" hidden></span>
             <span id="joinHost" hidden></span>
@@ -1756,6 +1781,7 @@
           // This console holds one of the stream connections itself; don't count it as an audience member.
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
           const label = others === 0 ? "Room empty" : `${others} reading`;
+          $("#qrHint").hidden = others > 0;
           if ($("#countBadge").textContent !== label) {
             $("#countBadge").textContent = label;
             $("#countBadge").classList.remove("bump");
@@ -1954,6 +1980,56 @@
       return (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
     }
 
+    // Until a real room opens, the stage runs a quiet sample talk. The console shows what it
+    // does instead of describing it; the first Start clears it.
+    const GHOST = [
+      "Every room has a back row.",
+      "Tonight the back row reads along, in its own type, own size, own light.",
+      "Speak at the desk. The words land on the phones, the ticker, the screen behind.",
+      "Start captions, and this sample gives way to the room.",
+    ];
+    let ghostTimer = null, ghostLine = 0, ghostChars = 0, ghostHold = 0;
+    function ghostPaint() {
+      const holder = $("#ticker .ticker-text");
+      if (!holder) return;
+      const prev = ghostLine > 0 && ghostChars === 0 ? GHOST[ghostLine - 1] : "";
+      const typed = GHOST[ghostLine].slice(0, ghostChars);
+      holder.innerHTML = (prev ? `<span class="prev">${esc(prev)}</span> ` : "") + `<span class="fresh-lead">${esc(typed)}</span>`;
+      $("#ticker").classList.remove("empty");
+    }
+    function startGhost() {
+      if (ghostTimer) return;
+      $("#ghostChip").hidden = false;
+      $("#ticker").classList.add("ghosting");
+      ghostTimer = setInterval(() => {
+        if (ghostHold > 0) {
+          ghostHold -= 1;
+          if (ghostHold === 0) {
+            if (ghostLine >= GHOST.length - 1) {
+              stopGhost();
+              return;
+            }
+            ghostLine += 1;
+            ghostChars = 0;
+          }
+          return;
+        }
+        ghostChars += 1;
+        ghostPaint();
+        if (ghostChars >= GHOST[ghostLine].length) ghostHold = 28;
+      }, 42);
+    }
+    // The sample stops typing when it runs out of lines, and is wiped when a real room opens.
+    function stopGhost(clear = false) {
+      clearInterval(ghostTimer);
+      ghostTimer = null;
+      if (!clear) return;
+      $("#ghostChip").hidden = true;
+      $("#ticker").classList.remove("ghosting");
+      const holder = $("#ticker .ticker-text");
+      if (holder) holder.innerHTML = "";
+    }
+
     async function openRoom() {
       if (room) return;
       notice("");
@@ -2016,6 +2092,7 @@
       } catch {}
       exportRoom = null;
 
+      stopGhost(true);
       // Fresh talk, fresh ticker
       finals = [];
       interim = "";
@@ -2026,6 +2103,7 @@
       applyRoomStyle();
       renderTicker();
       updateQR();
+      $("#qrHint").hidden = false;
       $("#title").disabled = true;
       $("#typed").disabled = false;
       $("#screenBtn").disabled = false;
@@ -2275,7 +2353,9 @@
     applyPrefs();
     renderPastTalks();
     updateTranscriptStat();
-    resumeRoom();
+    resumeRoom().then((resumed) => {
+      if (!resumed) startGhost();
+    });
 
     // Keyboard Shortcuts
     window.addEventListener("keydown", (e) => {
