@@ -420,8 +420,16 @@
       opacity: 0.3;
       font-weight: 500;
     }
-    body[data-live="1"] #ticker {
-      --ring: var(--teal);
+    /* A style carries its own frame. No separate ring picker. */
+    #ticker[data-ring="ink"] {
+      --ring: var(--ink);
+    }
+    #ticker[data-ring="paper"] {
+      --ring: rgba(58, 46, 40, 0.22);
+      border-width: 1px;
+    }
+    #ticker[data-ring="clay"] {
+      --ring: #b07a4e;
     }
     #ticker[data-ring="pink"],
     body[data-live="1"] #ticker[data-ring="pink"] {
@@ -649,6 +657,7 @@
     .more-actions {
       display: flex;
       justify-content: flex-end;
+      width: 100%;
       flex: 1 1 100%;
     }
     .mini-btn {
@@ -671,10 +680,7 @@
     #floatBtn:hover {
       background: color-mix(in srgb, var(--violet) 36%, var(--surface));
     }
-    #floatBtn:disabled,
-    #screenBtn:disabled {
-      display: none;
-    }
+
     .vibe-pill {
       font: 600 10.5px var(--mono);
       letter-spacing: .1em;
@@ -695,6 +701,73 @@
       border-radius: 50%;
       background: var(--vibe-accent);
       transition: background .3s;
+    }
+
+    /* ---------- small menus ---------- */
+    .menu {
+      position: relative;
+    }
+    .menu > summary {
+      list-style: none;
+      cursor: pointer;
+      font: 600 12px var(--swiss);
+      color: var(--quiet);
+      padding: 6px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .menu > summary::-webkit-details-marker {
+      display: none;
+    }
+    .menu > summary:hover {
+      color: var(--ink);
+      background: var(--sand);
+    }
+    .menu-body {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 176px;
+      background: var(--surface);
+      border: 1px solid rgba(58, 46, 40, 0.22);
+      border-radius: 12px;
+      padding: 6px;
+    }
+    .menu > summary::after {
+      content: " ▾";
+      font-size: 10px;
+      opacity: .7;
+    }
+    .menu[open] > summary::after {
+      content: " ▴";
+    }
+    .menu > summary {
+      display: inline-flex;
+      align-items: center;
+    }
+    .menu-body button {
+      justify-content: flex-start;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: left;
+    }
+    .menu-body button:hover {
+      background: var(--sand);
+      border-color: transparent;
+    }
+    #displayMenu {
+      display: none;
+    }
+    body[data-live="1"] #displayMenu {
+      display: inline-block;
     }
 
     /* ---------- transcript strip ---------- */
@@ -1142,8 +1215,13 @@
               <button class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut">Aa</button>
               <button class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway">Aa</button>
             </div>
-            <button id="floatBtn" disabled>Float</button>
-            <button id="screenBtn" disabled>Screen</button>
+            <details class="menu" id="displayMenu">
+              <summary>Display</summary>
+              <div class="menu-body">
+                <button id="floatBtn" disabled>Float over slides</button>
+                <button id="screenBtn" disabled>Second screen</button>
+              </div>
+            </details>
             <details class="more" id="moreTicker">
               <summary>More</summary>
               <div class="opt-grid">
@@ -1158,27 +1236,12 @@
                 <span class="opt-label">Weight</span>
                 <div class="segmented-control" data-pref="weight">
                   <button class="seg-btn" data-v="400">Regular</button>
-                  <button class="seg-btn" data-v="500">Medium</button>
                   <button class="seg-btn" data-v="700">Bold</button>
-                </div>
-                <span class="opt-label">Lines</span>
-                <div class="segmented-control" data-pref="depth">
-                  <button class="seg-btn" data-v="1">1</button>
-                  <button class="seg-btn" data-v="2">2</button>
-                  <button class="seg-btn" data-v="3">3</button>
                 </div>
                 <span class="opt-label">Flow</span>
                 <div class="segmented-control" data-pref="flow">
                   <button class="seg-btn" data-v="live">Live words</button>
                   <button class="seg-btn" data-v="settled">Settled sentences</button>
-                </div>
-                <span class="opt-label">Ring</span>
-                <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
-                  <button class="ring" data-v="mint" aria-label="Teal" style="--c:#2dd4bf"></button>
-                  <button class="ring" data-v="pink" aria-label="Pink" style="--c:#ff6ac2"></button>
-                  <button class="ring" data-v="lilac" aria-label="Violet" style="--c:#a78bfa"></button>
-                  <button class="ring" data-v="butter" aria-label="Amber" style="--c:#ffc74d"></button>
-                  <button class="ring" data-v="none" aria-label="None" style="--c:transparent"></button>
                 </div>
               </div>
               <div class="more-actions">
@@ -1189,13 +1252,14 @@
           <div class="transcript-bar">
             <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
             <div class="transcript-actions" id="transcriptActions" hidden>
-              <button id="copyTx" class="icon" disabled aria-label="Copy transcript" title="Copy transcript">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                  stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5" /><path
-                    d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-7A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15" /></svg>
-              </button>
-              <button id="saveTxTxt" class="mini-btn" disabled>.txt</button>
-              <button id="saveTxMd" class="mini-btn" disabled>.md</button>
+              <details class="menu" id="exportMenu">
+                <summary aria-label="Export the transcript">Export ▾</summary>
+                <div class="menu-body">
+                  <button id="copyTx" disabled>Copy transcript</button>
+                  <button id="saveTxTxt" disabled>Text file (.txt)</button>
+                  <button id="saveTxMd" disabled>Markdown (.md)</button>
+                </div>
+              </details>
             </div>
           </div>
           <details id="pastTalks" class="past" hidden>
@@ -1504,6 +1568,11 @@
       document.documentElement.style.setProperty("--vibe-accent-2", v.stops.at(-1)?.[1] ?? v.accent);
     }
 
+    // Native <details> stays open on an outside click; these are popovers, so close them.
+    document.addEventListener("click", (e) => {
+      for (const m of $$(".menu[open]")) if (!m.contains(e.target)) m.open = false;
+    });
+
     function cycleVibe() {
       const nextIdx = (VIBE_KEYS.indexOf(currentVibe) + 1) % VIBE_KEYS.length;
       applyVibe(VIBE_KEYS[nextIdx]);
@@ -1512,15 +1581,20 @@
     $("#vibePill")?.addEventListener("click", cycleVibe);
 
     // Stage ticker preferences: size, face, weight, depth, flow, ring, style. Remembered on this machine.
+    // Size is the only shape control: each step carries its own line count, so the
+    // presenter never has to reason about two dials that both just make the bar taller.
+    const SIZE_DEPTH = { "28px": "1", "38px": "2", "50px": "3" };
+    // A style carries its own frame.
+    const STYLE_RING = { ink: "mint", paper: "paper", brut: "ink", hemingway: "clay" };
     const prefs = {
       size: store.get("st-size") || "38px",
       face: store.get("st-face") || "system",
       weight: store.get("st-weight") || "700",
-      depth: store.get("st-depth") || "2",
+      depth: SIZE_DEPTH[store.get("st-size")] || "2",
       flow: store.get("st-flow") || "live",
-      ring: store.get("st-ring") || "mint",
       style: store.get("st-style") || "ink",
     };
+    const ringFor = () => STYLE_RING[prefs.style] || "none";
     const tickerUrl = () => {
       if (!room) return "";
       const q = new URLSearchParams({
@@ -1529,7 +1603,7 @@
         weight: prefs.weight,
         depth: prefs.depth,
         flow: prefs.flow,
-        ring: prefs.ring,
+        ring: "none",
         size: prefs.size,
       });
       return `${location.origin}/ticker/${room.id}?${q}`;
@@ -1546,7 +1620,7 @@
         el.style.setProperty("--ticker-depth", prefs.depth);
         el.dataset.face = prefs.face;
         el.dataset.flow = prefs.flow;
-        el.dataset.ring = prefs.ring;
+        el.dataset.ring = ringFor();
         el.dataset.style = prefs.style;
       }
       const badge = $("#monitorStyleBadge");
@@ -1572,12 +1646,10 @@
     function shuffleTicker() {
       const styles = ["ink", "paper", "brut", "hemingway"];
       const faces = ["system", "inter", "atkinson", "fraunces", "mono"];
-      const rings = ["mint", "pink", "lilac", "butter", "none"];
-      const weights = ["400", "500", "700"];
+      const weights = ["400", "700"];
 
       let s = styles[Math.floor(Math.random() * styles.length)];
       let f = faces[Math.floor(Math.random() * faces.length)];
-      let r = rings[Math.floor(Math.random() * rings.length)];
       let w = weights[Math.floor(Math.random() * weights.length)];
 
       if (s === "hemingway" && Math.random() > 0.3) f = "fraunces";
@@ -1585,11 +1657,9 @@
 
       prefs.style = s;
       prefs.face = f;
-      prefs.ring = r;
       prefs.weight = w;
       store.set("st-style", s);
       store.set("st-face", f);
-      store.set("st-ring", r);
       store.set("st-weight", w);
       applyPrefs();
     }
@@ -1628,6 +1698,7 @@
         b.onclick = () => {
           prefs[key] = b.dataset.v;
           store.set(`st-${key}`, prefs[key]);
+          if (key === "size") prefs.depth = SIZE_DEPTH[prefs.size] || prefs.depth;
           applyPrefs();
         }
       );
@@ -1646,7 +1717,12 @@
     function updateQR() {
       if (!room) return;
       const isMic = activeTab === "mic";
-      const targetUrl = isMic ? `${lanBase}/mic/${room.id}#${room.token}` : `${lanBase}/live/${room.id}`;
+      // The lapel mic inherits the talk's language and engine at scan time, so the phone
+      // never asks the same two questions a second time.
+      const micPrefs = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
+      const targetUrl = isMic
+        ? `${lanBase}/mic/${room.id}?${micPrefs}#${room.token}`
+        : `${lanBase}/live/${room.id}`;
 
       const qr = qrcode(0, "M");
       qr.addData(targetUrl);

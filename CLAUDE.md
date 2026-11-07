@@ -50,6 +50,7 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - **Flat, not screen print, not skeuomorph.** Cards are warm `--surface` on a warm `--ground`, separated by a 1px sepia hairline (`--hair`). No drop shadows, no gradients, no glows on surfaces: the depth comes from colour blocking (the room card is `--sand`) and from type weight. The ticker's ring is a flat 3px border in the ring colour, not a glow.
 - **One palette, flat fills.** Hot pink `#ff6ac2` is the only "go" colour, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float. Everything else is cream, sand and ink. No ambient gradient washes, no dot grid behind running text.
 - **Layout before decoration.** The talk bar runs full width on top (title, language, engine, one action), then two cards of matched height: the stage on the left, the room (QR + code) on the right. Balance is the brief; ornament is not.
+- **Control budget: one dial per idea.** Size carries its own line count; the style carries its own frame colour; the microphone inherits the talk's language and engine from the QR query and only overrides on the phone. A control that duplicates another one gets deleted, not hidden in a submenu.
 - **Motto: juicy, sticky, fresh.** The vibe lives in aesthetics of utility, in what we offer, and in how things feel to touch. Never in gags.
   - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); the newest caption glows in; the audience's fresh line gets a highlighter sweep; interim text carries a caret. Each of these tells the reader something.
   - Sticky: small, honest feedback. Count badge bumps when it changes, step numbers carry a pastel chip, the mic page says how many words were captioned.
@@ -61,7 +62,7 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - **Contrast floor.** Caption text ≥ 7:1 on every reader theme, secondary UI ≥ 4.5:1. The table in docs/ACCESSIBILITY.md has the numbers; recompute if you touch a theme colour or `--muted`.
 
 ## 📱 Appendage Pattern (Phone as Lapel Mic)
-- Phone connects via `/mic/:id#token`.
+- Phone connects via `/mic/:id?lang=xx&engine=browser|deepgram#token`. The query inherits the talk's language and engine; the write token stays in the `#hash`.
 - Write token rides in `#hash`, keeping credentials client-side only.
 - Audio capture via Web Speech API / `getUserMedia`.
 - Screen Wake Lock active while broadcasting.

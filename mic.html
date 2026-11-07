@@ -340,8 +340,24 @@ function startRec() {
   }
 }
 
+// The console's QR carries the talk's language and engine, so the phone inherits both
+// instead of asking the same two questions twice. A manual choice on this phone wins.
+const qp = new URLSearchParams(location.search);
+if (qp.get("lang")) {
+  const sel = $("#lang");
+  const want = qp.get("lang");
+  if ([...sel.options].some((o) => o.value === want)) sel.value = want;
+}
 // Engine: browser recognition, or Deepgram through the relay if the relay has a key.
-let engine = (() => { try { return localStorage.getItem("stm-engine") || "browser"; } catch { return "browser"; } })();
+let engine = (() => {
+  const inherited = qp.get("engine");
+  if (inherited === "browser" || inherited === "deepgram") return inherited;
+  try {
+    return localStorage.getItem("stm-engine") || "browser";
+  } catch {
+    return "browser";
+  }
+})();
 let dg = null;
 const paintEngine = () => document.querySelectorAll("#engineSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === engine)));
 document.querySelectorAll("#engineSeg button").forEach((b) => b.onclick = () => { if (b.disabled) return; engine = b.dataset.v; try { localStorage.setItem("stm-engine", engine); } catch {} paintEngine(); });

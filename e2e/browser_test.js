@@ -170,11 +170,13 @@ await p.click("#tabMic"); const tok2 = (await p.textContent("#urlDisplay")).spli
 await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
 await p.selectOption("#face", "fraunces");
 await p.click('[data-pref="weight"] [data-v="400"]');
-await p.click('[data-pref="depth"] [data-v="3"]');
+await p.click('[data-pref="size"] [data-v="50px"]');
 await p.click('[data-pref="flow"] [data-v="settled"]');
-await p.click('[data-pref="ring"] [data-v="none"]');
 const tk = await p.$eval("#ticker", (t) => ({ face: t.dataset.face, flow: t.dataset.flow, ring: t.dataset.ring, ff: getComputedStyle(t).fontFamily, fw: getComputedStyle(t).fontWeight, depth: t.style.getPropertyValue("--ticker-depth") }));
-ok(tk.face === "fraunces" && tk.ff.includes("Fraunces") && tk.fw === "400" && tk.depth === "3" && tk.flow === "settled" && tk.ring === "none", "ticker prefs applied: " + JSON.stringify(tk));
+ok(tk.face === "fraunces" && tk.ff.includes("Fraunces") && tk.fw === "400" && tk.depth === "3" && tk.flow === "settled", "size carries the line count, face and weight stick: " + JSON.stringify(tk));
+await p.click('[data-pref="style"] [data-v="brut"]');
+ok((await p.$eval("#ticker", (t) => t.dataset.ring)) === "ink", "the style carries its own frame");
+await p.click('[data-pref="style"] [data-v="ink"]');
 ok((await p.evaluate(() => localStorage.getItem("st-face"))) === "fraunces", "ticker prefs persisted");
 const fontsLoaded = await p.evaluate(async () => { await document.fonts.load("700 20px Fraunces"); return document.fonts.check("700 20px Fraunces"); });
 ok(fontsLoaded, "Fraunces webfont actually loads from /vendor/fonts");
@@ -361,6 +363,7 @@ await p.waitForFunction(() => transcript.length === 61);
 ok(await p.evaluate(() => transcript[60] === "After the reload."), "lines keep flowing into the resumed transcript");
 // console export during the talk
 ok(!(await p.$eval("#saveTxMd", (b) => b.disabled)), "export enabled mid-talk");
+await p.evaluate(() => { document.querySelector("#exportMenu").open = true; });
 const [dl] = await Promise.all([p.waitForEvent("download"), p.click("#saveTxMd")]);
 ok(dl.suggestedFilename().startsWith("persist-101-") && dl.suggestedFilename().endsWith(".md"), "markdown named after the title: " + dl.suggestedFilename());
 const md = await (await import("node:fs/promises")).readFile(await dl.path(), "utf8");
@@ -369,6 +372,7 @@ ok(md.startsWith("# Persist 101") && md.includes("Sentence number 60.") && md.in
 await p.click("#stopBtn");
 await ap.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await p.textContent("#transcriptStat")).includes("saved on this machine") && !(await p.$eval("#saveTxTxt", (b) => b.disabled)), "console export still works after End talk");
+await p.evaluate(() => { document.querySelector("#exportMenu").open = true; });
 const [dl2] = await Promise.all([p.waitForEvent("download"), p.click("#saveTxTxt")]);
 ok(dl2.suggestedFilename().endsWith(".txt"), "txt export after end: " + dl2.suggestedFilename());
 await new Promise((r) => setTimeout(r, 300));
