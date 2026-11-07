@@ -46,11 +46,14 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - **Zero absolute white (`#fff`) or absolute black (`#000`)** across body and UI surfaces.
 - **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
 - `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
-- **Mascot**: TalkType ghost SVG in header. It is alive: eyes blink (`.eye` paths), it floats faster when live, and it swells with mic level via the `--vu` CSS variable.
+- **No mascot.** The console, the demo landing and the join page are type-led: a wordmark, a vibe pill, nothing smiling at the presenter. Lumen lives in git history, not on screen.
+- **Flat, not screen print, not skeuomorph.** Cards are warm `--surface` on a warm `--ground`, separated by a 1px sepia hairline (`--hair`). No drop shadows, no gradients, no glows on surfaces: the depth comes from colour blocking (the room card is `--sand`) and from type weight. The ticker's ring is a flat 3px border in the ring colour, not a glow.
+- **One palette, flat fills.** Hot pink `#ff6ac2` is the only "go" colour, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float. Everything else is cream, sand and ink. No ambient gradient washes, no dot grid behind running text.
+- **Layout before decoration.** The talk bar runs full width on top (title, language, engine, one action), then two cards of matched height: the stage on the left, the room (QR + code) on the right. Balance is the brief; ornament is not.
 - **Motto: juicy, sticky, fresh.** The vibe lives in aesthetics of utility, in what we offer, and in how things feel to touch. Never in gags.
   - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); the newest caption glows in; the audience's fresh line gets a highlighter sweep; interim text carries a caret. Each of these tells the reader something.
-  - Sticky: small, honest feedback. Count badge bumps when it changes, sticker-style step numbers, the mic page says how many words were captioned. The ghost blinks and swells with your voice because it is the connection indicator, not a mascot on holiday.
-  - Fresh: dot-grid ground, one accent per state (mint = live, pink = attention, lilac = phone mic), lots of air. No gradients on surfaces, no glassmorphism.
+  - Sticky: small, honest feedback. Count badge bumps when it changes, step numbers carry a pastel chip, the mic page says how many words were captioned.
+  - Fresh: warm cream ground with a stage light in the corner, one accent per state (mint = live, pink = attention, lilac = phone mic), lots of air. No gradients on text surfaces, no glassmorphism beyond a translucent pill.
   - Classy is the ceiling. No confetti, no "That's a wrap", no "Nice one", no idle nudges. If a flourish needs a switch to turn it off, it shouldn't exist. Copy is warm and factual.
   - Landing animations on inline caption text must be wrap-safe (opacity/text-shadow only, never `inline-block` + transform).
   - Everything respects `prefers-reduced-motion`.

@@ -15,17 +15,19 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: var(--ground); color: var(--ink); font-family: var(--swiss); -webkit-font-smoothing: antialiased; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(28rem 20rem at 82% -6%, color-mix(in srgb, var(--mint) 18%, transparent), transparent 70%),
+      radial-gradient(26rem 18rem at 6% 104%, color-mix(in srgb, var(--pink) 14%, transparent), transparent 68%);
+  }
   body {
-    background-image: radial-gradient(color-mix(in srgb, var(--ink) 9%, transparent) 1.1px, transparent 1.3px); background-size: 22px 22px;
     display: grid; place-items: center; min-height: 100dvh;
     padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
   }
   main { width: min(100%, 420px); display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
-  .ghost { width: 72px; height: 72px; color: var(--ink); filter: drop-shadow(3px 3px 0 var(--pink)); animation: float 3.4s ease-in-out infinite; }
-  .ghost-fill { fill: url(#ghostGrad); }
-  .ghost .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.6s infinite; }
-  @keyframes float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
-  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+  .wordmark { font-size: 1.35rem; font-weight: 900; letter-spacing: -0.045em; }
+  .wordmark::after { content: "."; color: var(--pink); }
   h1 { margin: 0; font-size: 2rem; letter-spacing: -0.04em; font-weight: 900; line-height: 1; }
   h1::after { content: "."; color: var(--pink); }
   p { margin: 0; color: var(--muted); font-weight: 600; font-size: 15px; line-height: 1.45; }
@@ -33,21 +35,21 @@
   #code {
     width: 100%; text-align: center; text-transform: uppercase;
     font: 900 clamp(44px, 16vw, 64px)/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .28em; text-indent: .28em;
-    color: var(--ink); background: #fffef7; border: 3px solid var(--line); border-radius: 22px; padding: 18px 8px;
-    box-shadow: 5px 5px 0 var(--line); caret-color: var(--pink); transition: box-shadow .2s var(--spring);
+    color: var(--ink); background: #fffef7; border: 1px solid rgba(58, 46, 40, 0.13); border-radius: 24px; padding: 18px 8px;
+    caret-color: var(--pink); transition: box-shadow .2s ease, border-color .2s;
   }
   #code::placeholder { color: color-mix(in srgb, var(--ink) 22%, transparent); letter-spacing: .28em; }
-  #code:focus { outline: none; box-shadow: 5px 5px 0 var(--pink); }
+  #code:focus { outline: none; border-color: var(--pink); }
   #code.shake { animation: shake .4s; }
   @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
   button {
-    font: 800 17px var(--swiss); color: var(--ink); background: var(--mint); border: 2.5px solid var(--line); border-radius: 999px;
-    height: 52px; padding: 0 28px; width: 100%; cursor: pointer; box-shadow: 3px 3px 0 var(--line);
-    transition: transform .22s var(--spring), box-shadow .22s var(--spring); -webkit-tap-highlight-color: transparent;
+    font: 700 17px var(--swiss); color: var(--ink); background: var(--mint); border: 1px solid rgba(58, 46, 40, 0.16); border-radius: 999px;
+    height: 52px; padding: 0 28px; width: 100%; cursor: pointer;
+        transition: transform .22s var(--spring), box-shadow .22s ease; -webkit-tap-highlight-color: transparent;
   }
-  button:active { transform: translate(2px, 2px) scale(.97); box-shadow: 0 0 0 var(--line); transition-duration: .06s; }
-  button:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
-  #err { min-height: 1.4em; color: var(--ink); font-weight: 700; background: var(--butter); border: 2px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+  button:active { transform: scale(.97); transition-duration: .06s; }
+  button:focus-visible { outline: 3px solid color-mix(in srgb, var(--pink) 65%, transparent); outline-offset: 3px; }
+  #err { min-height: 1.4em; color: var(--ink); font-weight: 600; background: color-mix(in srgb, var(--butter) 55%, #fffef7); border: 1px solid rgba(58, 46, 40, 0.1); border-radius: 14px; padding: 10px 14px; }
   #err:empty { display: none; }
   #saved { width: 100%; text-align: left; margin-top: 8px; }
   #saved[hidden] { display: none; }
@@ -55,13 +57,13 @@
   #savedList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   #savedList a {
     display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; color: var(--ink);
-    background: #fffef7; border: 2.5px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: 3px 3px 0 var(--line);
-    transition: transform .22s var(--spring), box-shadow .22s var(--spring);
+    background: #fffef7; border: 1px solid rgba(58, 46, 40, 0.1); border-radius: 16px; padding: 13px 15px;
+    transition: transform .22s var(--spring), box-shadow .22s ease;
   }
-  #savedList a:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--line); }
+  #savedList a:active { transform: scale(.99); box-shadow: none; }
   #savedList b { font-size: 15px; font-weight: 800; }
   #savedList small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; margin-top: 2px; }
-  #savedList .live { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: var(--mint); border: 2px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+  #savedList .live { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: color-mix(in srgb, var(--mint) 80%, #fffef7); border: 1px solid rgba(58, 46, 40, 0.08); border-radius: 999px; padding: 3px 9px; }
   footer { font-size: 13px; color: var(--muted); font-weight: 600; }
   footer a { color: inherit; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
@@ -69,77 +71,7 @@
 </head>
 <body>
 <main>
-  <svg class="ghost" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
-    <defs>
-      <linearGradient id="mascotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#00f5a0"/>
-        <stop offset="32%" stop-color="#00d9f5"/>
-        <stop offset="70%" stop-color="#7b61ff"/>
-        <stop offset="100%" stop-color="#d946ef"/>
-      </linearGradient>
-      <radialGradient id="lensGlow" cx="50%" cy="40%" r="55%">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
-        <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <!-- Stage Lights Conical Beam & Ray Accents -->
-    <g class="mascot-aura">
-      <polygon points="512,180 180,940 844,940" fill="url(#mascotGrad)" opacity="0.18"/>
-      <path d="M512 40 L512 85 M195 135 L235 175 M829 135 L789 175 M115 365 L165 375 M909 365 L859 375"
-            stroke="currentColor" stroke-width="18" stroke-linecap="round"/>
-    </g>
-    <!-- Base Plate & Studio Yoke Mount -->
-    <g class="mascot-yoke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M340 915 C340 890 380 880 512 880 C644 880 684 890 684 915 L684 935 C684 955 644 960 512 960 C380 960 340 955 340 935 Z"
-            fill="currentColor"/>
-      <rect x="472" y="840" width="80" height="46" rx="8" fill="currentColor"/>
-      <path d="M190 515 C190 755 260 850 472 850 L552 850 C764 850 834 755 834 515"
-            fill="none" stroke="currentColor" stroke-width="40"/>
-      <rect x="156" y="475" width="68" height="80" rx="20" fill="currentColor"/>
-      <circle cx="190" cy="515" r="14" fill="var(--paper, #fbf1e4)"/>
-      <rect x="800" y="475" width="68" height="80" rx="20" fill="currentColor"/>
-      <circle cx="834" cy="515" r="14" fill="var(--paper, #fbf1e4)"/>
-    </g>
-    <!-- SOLID SILHOUETTE (#mascot-background) -->
-    <g id="mascot-background" class="mascot-fill">
-      <path d="M462 145 C462 110 484 90 512 90 C540 90 562 110 562 145 Z" fill="url(#mascotGrad)"/>
-      <path d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-            fill="url(#mascotGrad)"/>
-      <path d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-            fill="url(#lensGlow)"/>
-    </g>
-    <!-- CHASSIS OUTLINE (#mascot-body-path) -->
-    <g id="mascot-body-path" class="mascot-outline" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M458 150 C458 105 482 82 512 82 C542 82 566 105 566 150 Z"
-            fill="none" stroke-width="24"/>
-      <rect x="444" y="146" width="136" height="24" rx="10" fill="currentColor" stroke="none"/>
-      <path d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-            fill="none" stroke-width="28"/>
-      <path d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-            fill="none" stroke-width="20" stroke-opacity="0.9"/>
-      <g fill="currentColor" stroke="none">
-        <rect x="360" y="680" width="304" height="18" rx="9"/>
-        <rect x="390" y="718" width="244" height="18" rx="9"/>
-        <rect x="424" y="755" width="176" height="18" rx="9"/>
-      </g>
-      <circle cx="340" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none"/>
-      <circle cx="684" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none"/>
-      <path d="M472 525 C488 545 536 545 552 525"
-            fill="none" stroke-width="16" stroke-linecap="round"/>
-    </g>
-    <!-- LEFT EYE (#mascot-eye-left-path) -->
-    <g id="mascot-eye-left-path" class="eye left" style="transform-box: fill-box; transform-origin: center;">
-      <ellipse cx="414" cy="425" rx="38" ry="58" fill="currentColor"/>
-      <circle cx="426" cy="406" r="14" fill="#ffffff"/>
-      <circle cx="400" cy="445" r="7" fill="#ffffff"/>
-    </g>
-    <!-- RIGHT EYE (#mascot-eye-right-path) -->
-    <g id="mascot-eye-right-path" class="eye right" style="transform-box: fill-box; transform-origin: center;">
-      <ellipse cx="610" cy="425" rx="38" ry="58" fill="currentColor"/>
-      <circle cx="622" cy="406" r="14" fill="#ffffff"/>
-      <circle cx="596" cy="445" r="7" fill="#ffffff"/>
-    </g>
-  </svg>
+  <div class="wordmark">StageType</div>
   <div>
     <h1>Join a talk</h1>
     <p style="margin-top:8px">Type the four-letter code on the screen.</p>

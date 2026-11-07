@@ -10,20 +10,28 @@
     <link rel="stylesheet" href="/vendor/fonts.css">
     <style>
     :root {
-      --paper: #fbf1e4;
-      --ground: #fffef7;
+      /* StageType palette: warm cream, one hot pink, one amber, one teal. Flat fills only. */
+      --ground: #fff6e6;
+      --surface: #fffdf5;
+      --sand: #fdf1e0;
       --ink: #1e1714;
+      --quiet: #7a6a60;
+      --muted: rgba(30, 23, 20, 0.56);
+      --hair: rgba(58, 46, 40, 0.12);
+      --hair-soft: rgba(58, 46, 40, 0.07);
+      --pink: #ff6ac2;
+      --coral: #ff8a5c;
+      --amber: #ffc74d;
+      --teal: #2dd4bf;
+      --violet: #a78bfa;
       --line: #3a2e28;
-      --pink: #ffb3d1;
-      --mint: #b8f0d8;
-      --lilac: #d9c8ff;
-      --butter: #fff0a8;
-      --volt: #ffe853;
-      --muted: rgba(30, 23, 20, 0.58);
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
-      --spring: cubic-bezier(.2, .9, .3, 1.35); /* juicy overshoot */
+      --mono: ui-monospace, Menlo, Consolas, monospace;
+      --spring: cubic-bezier(.2, .9, .3, 1.35);
       --snap: cubic-bezier(.4, 0, .2, 1);
-      --vu: 0; /* 0..1 mic level, drives the ghost */
+      --vibe-accent: #ff6ac2;
+      --vibe-accent-2: #ffc74d;
+      --vu: 0;
     }
     * {
       box-sizing: border-box;
@@ -33,8 +41,6 @@
       min-height: 100vh;
       color: var(--ink);
       background: var(--ground);
-      background-image: radial-gradient(rgba(30, 23, 20, 0.085) 1.1px, transparent 1.3px);
-      background-size: 22px 22px;
       font-family: var(--swiss);
       -webkit-font-smoothing: antialiased;
     }
@@ -43,361 +49,719 @@
       color: var(--ink);
     }
     main {
-      max-width: 980px;
+      max-width: 1060px;
       margin: 0 auto;
-      padding: 24px 20px 48px;
-      display: grid;
-      gap: 20px;
+      padding: 28px 24px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    /* Header & Mascot */
+    /* ---------- header ---------- */
     header {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
       flex-wrap: wrap;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .brand-title-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .mascot-wrap {
-      width: 48px;
-      height: 48px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      user-select: none;
-      animation: mascotFloat 3.8s ease-in-out infinite;
-      filter: drop-shadow(3px 3px 0 var(--vibe-accent, var(--pink)));
-      transition: filter .3s var(--snap), transform .18s var(--spring);
-      border-radius: 12px;
-    }
-    .mascot-wrap:hover {
-      transform: scale(1.08) rotate(-2deg);
-    }
-    .mascot-wrap:active {
-      transform: scale(0.92);
-    }
-    body[data-live="1"] .mascot-wrap {
-      animation-duration: 2s;
-      filter: drop-shadow(3px 3px 0 var(--mint));
-    }
-    .mascot-icon {
-      width: 100%;
-      height: 100%;
-      color: var(--ink);
-      transform: scale(calc(1 + var(--vu, 0) * 0.16));
-      transition: transform .09s ease-out;
-      transform-origin: 50% 70%;
-    }
-    .brand:hover .mascot-wrap {
-      animation-duration: 1.4s;
-    }
-    .mascot-fill .capsule-fill,
-    .mascot-fill .tally-fill {
-      fill: url(#mascotGrad);
-      transition: fill .3s var(--snap);
-    }
-    body[data-live="1"] .mascot-fill .capsule-fill,
-    body[data-live="1"] .mascot-fill .tally-fill {
-      fill: url(#mascotGradLive);
-    }
-    body[data-live="1"] .mascot-beam {
-      fill: url(#mascotGradLive);
-      opacity: 0.32;
-    }
-    .eye {
-      transform-box: fill-box;
-      transform-origin: center center;
-    }
-    .eye .eye-lid {
-      transform-box: fill-box;
-      transform-origin: center center;
-      animation: blink 4.6s infinite;
-    }
-    .eye.right .eye-lid {
-      animation-delay: .05s;
-    }
-    @keyframes blink {
-      0%,
-      92%,
-      100% {
-        transform: scaleY(1);
-      }
-      95% {
-        transform: scaleY(0.08);
-      }
-    }
-    @keyframes mascotFloat {
-      0%,
-      100% {
-        transform: translateY(0) rotate(-1.5deg);
-      }
-      50% {
-        transform: translateY(-4px) rotate(1.5deg);
-      }
+      padding: 0 2px 4px;
     }
     h1 {
       margin: 0;
-      font-size: 2.2rem;
-      letter-spacing: -0.04em;
+      font-size: 42px;
       font-weight: 900;
-      line-height: 1;
+      letter-spacing: -0.05em;
+      line-height: 0.9;
     }
     h1::after {
       content: ".";
-      color: var(--vibe-accent, var(--pink));
-      transition: color .3s;
+      color: var(--pink);
     }
     .sub {
-      margin: 2px 0 0;
-      color: var(--muted);
-      font-size: 0.96rem;
+      margin: 8px 0 0;
+      color: var(--quiet);
+      font-size: 15px;
+      font-weight: 500;
     }
-    .vibe-pill {
-      font: 800 0.76rem ui-monospace, Menlo, monospace;
-      color: var(--ink);
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      padding: 3px 10px;
-      cursor: pointer;
-      box-shadow: 2px 2px 0 var(--line);
+    .status-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      transition: transform .18s var(--spring), box-shadow .18s var(--spring);
-      text-transform: uppercase;
-      letter-spacing: .06em;
+      gap: 8px;
+      font: 600 13px var(--swiss);
+      color: var(--ink);
+      padding: 8px 14px;
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      border-radius: 999px;
     }
-    .vibe-pill:hover {
-      transform: translateY(-1px);
-      box-shadow: 3px 3px 0 var(--line);
+    .pill-sep {
+      color: var(--hair);
     }
-    .vibe-pill:active {
-      transform: translate(1px, 1px) scale(.96);
-      box-shadow: 1px 1px 0 var(--line);
+    #micPill {
+      color: var(--quiet);
     }
-    .vibe-dot {
+    .pulse-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--vibe-accent, var(--mint));
-      border: 1.5px solid var(--ink);
-      box-shadow: 0 0 6px var(--vibe-accent, var(--mint));
-      transition: background .3s, box-shadow .3s;
+      background: rgba(58, 46, 40, 0.22);
     }
-    .shuffle-btn {
-      font: 800 0.78rem var(--swiss);
-      padding: 4px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 2px solid var(--line);
-      background: var(--ground);
-      box-shadow: 2px 2px 0 var(--line);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+    .pulse-dot.active {
+      background: var(--teal);
+      animation: breatheDot 2.4s ease-in-out infinite;
     }
-
-    /* Stage Console Card (Split Layout) */
-    .stage-deck {
-      background: var(--paper);
-      border: 3px solid var(--line);
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: 6px 6px 0 var(--line);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    @keyframes breatheDot {
+      50% {
+        opacity: .5;
+      }
     }
-    .deck-grid {
-      display: grid;
-      grid-template-columns: 1.15fr 1fr;
-      gap: 24px;
-      align-items: stretch;
+    body[data-live="1"] #liveBadge {
+      background: color-mix(in srgb, var(--teal) 18%, var(--surface));
+      border-color: color-mix(in srgb, var(--teal) 40%, var(--hair));
     }
-    @media (max-width: 840px) {
-      .deck-grid {
-        grid-template-columns: 1fr;
+    #countBadge {
+      color: var(--quiet);
+    }
+    #countBadge.bump {
+      animation: bump .45s var(--spring);
+    }
+    @keyframes bump {
+      30% {
+        transform: scale(1.07);
+      }
+      100% {
+        transform: none;
       }
     }
 
-    .deck-col {
+    /* ---------- the talk bar ---------- */
+    .bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      border-radius: 20px;
+      padding: 16px 16px 16px;
+    }
+    .field {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 5px;
+      min-width: 0;
     }
-    .panel-section {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .panel-section + .panel-section {
-      border-top: 2px dashed rgba(58, 46, 40, 0.16);
-      padding-top: 16px;
-    }
-    .section-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 12px;
-      font-weight: 800;
+    .field > span {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: .12em;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--muted);
+      color: var(--quiet);
+    }
+    .field-title {
+      flex: 4 1 240px;
+    }
+    .field-lang {
+      flex: 0 1 172px;
+    }
+    .field-engine {
+      flex: 0 1 150px;
+    }
+    .bar .control-row {
+      flex: 0 0 auto;
+    }
+    input,
+    select {
+      font: 500 15px var(--swiss);
+      color: var(--ink);
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      border-radius: 12px;
+      padding: 11px 13px;
+      width: 100%;
+      transition: border-color .18s, background .18s;
+    }
+    input::placeholder {
+      color: color-mix(in srgb, var(--quiet) 75%, transparent);
+      font-weight: 400;
+    }
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237a6a60' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+      cursor: pointer;
+      text-overflow: ellipsis;
+    }
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: color-mix(in srgb, var(--pink) 60%, var(--hair));
+      background: #fff;
+    }
+    input:disabled {
+      color: var(--ink);
+      background: transparent;
+      border-color: transparent;
+      padding-left: 2px;
+      font-weight: 600;
+    }
+    .bar .hint,
+    .bar .notice {
+      flex: 1 1 100%;
+    }
+    body[data-live="1"] .field-lang,
+    body[data-live="1"] .field-engine,
+    body[data-live="1"] #engineHint {
+      display: none;
+    }
+    .hint {
+      margin: 10px 2px 0;
+      font-size: 12px;
+      color: var(--quiet);
+    }
+    .hint[hidden] {
+      display: none;
     }
 
-    /* Buttons & Controls */
-    .btn-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
-    button,
-    select {
-      font: 800 0.95rem var(--swiss);
+    /* ---------- buttons ---------- */
+    button {
+      font: 700 14px var(--swiss);
       color: var(--ink);
-      background: var(--pink);
-      border: 2px solid var(--line);
+      background: var(--surface);
+      border: 1px solid var(--hair);
       border-radius: 999px;
-      padding: 10px 16px;
+      padding: 11px 18px;
       cursor: pointer;
-      font-family: var(--swiss);
-      box-shadow: 2px 2px 0 var(--line);
-      transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .15s;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      transition: background .15s, border-color .15s, transform .18s var(--spring);
       -webkit-tap-highlight-color: transparent;
-    }
-    select {
-      background: var(--ground);
-      padding: 10px 16px;
-      cursor: pointer;
+      white-space: nowrap;
     }
     button[hidden] {
       display: none;
-    } /* the display rule above would otherwise beat the hidden attribute */
-    #floatBtn:disabled,
-    #screenBtn:disabled {
-      display: none;
     }
-    @media (hover: hover) {
-      button:not(:disabled):hover {
-        transform: translate(-1px, -2px);
-        box-shadow: 4px 5px 0 var(--line);
-      }
+    button:not(:disabled):hover {
+      border-color: color-mix(in srgb, var(--ink) 22%, var(--hair));
     }
     button:not(:disabled):active {
-      transform: translate(2px, 2px) scale(.97);
-      box-shadow: 0 0 0 var(--line);
-      transition-duration: .06s;
+      transform: scale(.97);
     }
     button:focus-visible,
-    select:focus-visible,
-    .seg-btn:focus-visible,
-    .tab-btn:focus-visible {
-      outline: 3px solid var(--pink);
-      outline-offset: 3px;
+    select:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--pink) 45%, transparent);
+      outline-offset: 2px;
     }
     button:disabled {
-      opacity: 0.5;
+      opacity: .45;
       cursor: not-allowed;
-      transform: none;
-      box-shadow: 3px 3px 0 var(--line);
     }
     #startBtn {
-      padding: 12px 20px;
-      font-size: 1rem;
+      background: var(--pink);
+      border-color: var(--pink);
+      font-weight: 800;
+      font-size: 15px;
+      padding: 12px 22px;
     }
-    button.mint {
-      background: var(--mint);
+    #startBtn:hover {
+      background: color-mix(in srgb, var(--pink) 86%, var(--ink));
+      border-color: transparent;
     }
-    button.lilac {
-      background: var(--lilac);
+    #pauseBtn {
+      background: var(--amber);
+      border-color: var(--amber);
+      font-weight: 800;
     }
-    button.butter {
-      background: var(--butter);
+    #pauseBtn:hover {
+      background: color-mix(in srgb, var(--amber) 84%, var(--ink));
+      border-color: transparent;
     }
-    button.ground {
-      background: var(--ground);
-    }
-    button.ghost {
+    #stopBtn {
       background: transparent;
+      color: var(--quiet);
     }
-
+    #stopBtn:hover {
+      color: var(--ink);
+      background: var(--sand);
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .notice {
-      margin: 0;
-      font-size: 0.85rem;
-      font-weight: 700;
-      line-height: 1.4;
-      background: var(--butter);
-      border: 2px solid var(--line);
+      margin: 10px 2px 0;
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.45;
+      color: var(--ink);
+      background: color-mix(in srgb, var(--amber) 30%, var(--surface));
       border-radius: 12px;
-      padding: 8px 12px;
+      padding: 9px 12px;
     }
     .notice[hidden] {
       display: none;
     }
 
-    /* Talk setup */
-    .text-input {
-      font: 700 1rem var(--swiss);
-      color: var(--ink);
-      background: var(--ground);
-      border: 2.5px solid var(--line);
-      border-radius: 14px;
-      padding: 12px 14px;
-      width: 100%;
-      box-shadow: 3px 3px 0 var(--line);
-      transition: box-shadow .2s var(--spring), transform .2s var(--spring);
+    /* ---------- the two rooms ---------- */
+    .console {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 336px;
+      gap: 16px;
+      align-items: stretch;
     }
-    .text-input::placeholder {
-      color: var(--muted);
-      font-weight: 500;
+    @media (max-width: 900px) {
+      .console {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
-    .hint {
-      margin: 0;
-      font-size: 0.78rem;
-      color: var(--muted);
-      font-weight: 600;
-      line-height: 1.4;
-    }
-    .transcript-row {
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      border-radius: 20px;
+      padding: 16px;
+      min-width: 0;
       display: flex;
       flex-direction: column;
+    }
+    .eyebrow {
+      display: flex;
+      align-items: center;
       gap: 8px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--quiet);
+      margin: 0;
     }
-    button.small {
-      padding: 8px 14px;
-      font-size: 0.82rem;
+    .eyebrow .badge {
+      margin-left: auto;
+      font: 600 10px var(--mono);
+      letter-spacing: .06em;
+      color: var(--quiet);
+      border: 1px solid var(--hair-soft);
+      border-radius: 999px;
+      padding: 3px 9px;
     }
-    #pastTalks[hidden] {
+
+    /* ---------- stage ---------- */
+    .stage {
+      gap: 12px;
+    }
+    .stage-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #ticker {
+      --ring: var(--pink);
+      box-sizing: border-box;
+      width: 100%;
+      flex: 1 1 auto;
+      padding: 18px 22px;
+      background: var(--ink);
+      color: var(--surface);
+      border: 3px solid var(--ring);
+      border-radius: 16px;
+      font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.22 var(--ticker-face, var(--face-system));
+      letter-spacing: -0.02em;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: calc(var(--ticker-depth, 2) * 1.3em + 36px);
+      overflow: hidden;
+      transition: border-color .2s ease, font-size .15s ease, background .2s ease;
+    }
+    #ticker > div {
+      width: 100%;
+    }
+    #ticker .prev {
+      opacity: 0.5;
+      font-weight: max(300, calc(var(--ticker-weight, 700) - 300));
+    }
+    #ticker .fresh-lead {
+      color: var(--surface);
+      font-weight: 700;
+    }
+    #ticker .interim {
+      color: var(--pink);
+    }
+    #ticker .interim::after {
+      content: "";
+      display: inline-block;
+      width: .12em;
+      height: .9em;
+      margin-left: .12em;
+      vertical-align: -0.1em;
+      background: var(--pink);
+      border-radius: 2px;
+      animation: caret 1s steps(2) infinite;
+    }
+    @keyframes caret {
+      to {
+        opacity: 0;
+      }
+    }
+    #ticker:empty::before {
+      content: "Waiting on the first line.";
+      opacity: 0.3;
+      font-weight: 500;
+    }
+    body[data-live="1"] #ticker {
+      --ring: var(--teal);
+    }
+    #ticker[data-ring="pink"],
+    body[data-live="1"] #ticker[data-ring="pink"] {
+      --ring: var(--pink);
+    }
+    #ticker[data-ring="mint"],
+    body[data-live="1"] #ticker[data-ring="mint"] {
+      --ring: var(--teal);
+    }
+    #ticker[data-ring="lilac"],
+    body[data-live="1"] #ticker[data-ring="lilac"] {
+      --ring: var(--violet);
+    }
+    #ticker[data-ring="butter"],
+    body[data-live="1"] #ticker[data-ring="butter"] {
+      --ring: var(--amber);
+    }
+    #ticker[data-ring="none"],
+    body[data-live="1"] #ticker[data-ring="none"] {
+      --ring: transparent;
+    }
+    #ticker[data-flow="settled"] .interim {
       display: none;
     }
-    #pastTalks summary {
+    #ticker[data-style="paper"] {
+      background: var(--surface);
+      color: var(--ink);
+    }
+    #ticker[data-style="paper"] .fresh-lead {
+      color: var(--ink);
+    }
+    #ticker[data-style="paper"] .interim {
+      color: var(--ink);
+      background: color-mix(in srgb, var(--pink) 32%, transparent);
+      border-radius: .15em;
+      padding: 0 .12em;
+    }
+    #ticker[data-style="paper"] .interim::after {
+      background: var(--ink);
+    }
+    #ticker[data-style="brut"] {
+      background: var(--amber);
+      color: var(--ink);
+    }
+    #ticker[data-style="brut"] .fresh-lead {
+      color: var(--ink);
+    }
+    #ticker[data-style="brut"] .interim {
+      color: var(--ink);
+      background: rgba(30, 23, 20, 0.12);
+      border-radius: .15em;
+      padding: 0 .12em;
+    }
+    #ticker[data-style="brut"] .interim::after {
+      background: var(--ink);
+    }
+    #ticker[data-style="hemingway"] {
+      background: #f7ecdc;
+      color: #2c221e;
+      font-family: var(--face-fraunces), serif;
+    }
+    #ticker[data-style="hemingway"] .fresh-lead {
+      color: #2c221e;
+    }
+    #ticker[data-style="hemingway"] .interim {
+      color: #8c6239;
+      background: rgba(140, 98, 57, 0.1);
+      border-radius: .15em;
+      padding: 0 .12em;
+    }
+    #ticker[data-style="hemingway"] .interim::after {
+      background: #8c6239;
+    }
+
+    /* ---------- stage controls ---------- */
+    .stage-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .segmented-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--sand);
+    }
+    .seg-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: 600 12.5px var(--swiss);
+      color: var(--quiet);
+    }
+    .seg-btn:hover {
+      background: transparent;
+      border-color: transparent;
+      color: var(--ink);
+    }
+    .seg-btn.active {
+      background: var(--surface);
+      border-color: var(--hair);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .seg-btn:active {
+      transform: scale(.95);
+    }
+    .segmented-control.swatches {
+      gap: 4px;
+    }
+    .segmented-control.swatches .seg-btn {
+      width: 32px;
+      height: 26px;
+      padding: 0;
+      border-radius: 8px;
+      font: 700 11px var(--swiss);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .segmented-control.swatches .seg-btn[data-v="ink"] {
+      background: var(--ink);
+      color: var(--surface);
+    }
+    .segmented-control.swatches .seg-btn[data-v="paper"] {
+      background: var(--surface);
+      color: var(--ink);
+      border-color: var(--hair);
+    }
+    .segmented-control.swatches .seg-btn[data-v="brut"] {
+      background: var(--amber);
+      color: var(--ink);
+    }
+    .segmented-control.swatches .seg-btn[data-v="hemingway"] {
+      background: #f7ecdc;
+      color: #8c6239;
+      font-family: var(--face-fraunces), Georgia, serif;
+      font-size: 13px;
+    }
+    .segmented-control.swatches .seg-btn.active {
+      outline: 2px solid var(--ink);
+      outline-offset: 1px;
+    }
+    .more {
+      margin-left: auto;
+    }
+    .more summary {
       cursor: pointer;
       list-style: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--quiet);
+      padding: 6px 10px;
+      border-radius: 999px;
     }
-    #pastTalks summary::-webkit-details-marker {
+    .more summary:hover {
+      color: var(--ink);
+      background: var(--sand);
+    }
+    .more summary::-webkit-details-marker {
       display: none;
     }
-    #pastTalks summary::before {
+    .more summary::after {
+      content: " ▾";
+    }
+    .more[open] summary::after {
+      content: " ▴";
+    }
+    .more[open] {
+      flex: 1 1 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-left: 0;
+      border-top: 1px solid var(--hair-soft);
+      padding-top: 12px;
+    }
+    .more[open] summary {
+      flex: 1 1 100%;
+    }
+    .opt-grid {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px 12px;
+      align-items: center;
+      flex: 1 1 100%;
+    }
+    .opt-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--quiet);
+    }
+    .opt-select {
+      font: 500 13px var(--swiss);
+      padding: 7px 28px 7px 12px;
+      border-radius: 999px;
+      justify-self: start;
+      width: auto;
+      background-color: var(--surface);
+    }
+    .ring-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .ring {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 50%;
+      background: var(--c);
+      border: 1px solid var(--hair);
+    }
+    .ring[aria-checked="true"] {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .more-actions {
+      display: flex;
+      justify-content: flex-end;
+      flex: 1 1 100%;
+    }
+    .mini-btn {
+      font: 600 11.5px var(--mono);
+      padding: 6px 10px;
+      border-radius: 8px;
+      color: var(--quiet);
+      background: transparent;
+      border-color: transparent;
+    }
+    .mini-btn:hover {
+      color: var(--ink);
+      background: var(--sand);
+      border-color: transparent;
+    }
+    #floatBtn {
+      background: color-mix(in srgb, var(--violet) 24%, var(--surface));
+      border-color: color-mix(in srgb, var(--violet) 40%, var(--hair));
+    }
+    #floatBtn:hover {
+      background: color-mix(in srgb, var(--violet) 36%, var(--surface));
+    }
+    #floatBtn:disabled,
+    #screenBtn:disabled {
+      display: none;
+    }
+    .vibe-pill {
+      font: 600 10.5px var(--mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--quiet);
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      padding: 8px 13px;
+    }
+    .vibe-pill:hover {
+      color: var(--ink);
+      background: var(--sand);
+      border-color: transparent;
+    }
+    .vibe-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--vibe-accent);
+      transition: background .3s;
+    }
+
+    /* ---------- transcript strip ---------- */
+    .transcript-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 12px;
+      border-top: 1px solid var(--hair-soft);
+    }
+    .transcript-bar .eyebrow {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    #transcriptStat {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--quiet);
+    }
+    .transcript-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .transcript-actions[hidden] {
+      display: none;
+    }
+    button.icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 9px;
+      color: var(--quiet);
+      background: transparent;
+      border-color: transparent;
+    }
+    button.icon:hover {
+      color: var(--ink);
+      background: var(--sand);
+    }
+    button.icon svg {
+      width: 16px;
+      height: 16px;
+    }
+    .past {
+      margin-top: 8px;
+    }
+    .past[hidden] {
+      display: none;
+    }
+    .past summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--quiet);
+    }
+    .past summary::-webkit-details-marker {
+      display: none;
+    }
+    .past summary::before {
       content: "▸ ";
     }
-    #pastTalks[open] summary::before {
+    .past[open] summary::before {
       content: "▾ ";
     }
     #pastList {
@@ -413,303 +777,53 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 12px;
-      padding: 8px 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      background: var(--sand);
+      border-radius: 10px;
+      padding: 9px 12px;
     }
     #pastList small {
       display: block;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 0.75rem;
-    }
-    .text-input:focus {
-      outline: none;
-      box-shadow: 3px 3px 0 var(--pink);
-    }
-    .text-input:disabled {
-      opacity: .7;
-    }
-    /* Setup fields */
-    .field-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    body[data-live="1"] .field-row,
-    body[data-live="1"] #engineHint {
-      display: none;
-    }
-    @media (max-width: 520px) {
-      .stage-deck {
-        padding: 16px;
-        border-radius: 22px;
-      }
-      button:not(.ring),
-      select {
-        min-height: 44px;
-      }
-      .segmented-control {
-        max-width: 100%;
-        overflow-x: auto;
-        scrollbar-width: none;
-      }
-      .segmented-control::-webkit-scrollbar {
-        display: none;
-      }
-      .ring {
-        width: 44px;
-        height: 44px;
-        background: transparent;
-        border: 0;
-      }
-      .ring::before {
-        content: "";
-        width: 24px;
-        height: 24px;
-        border: 2px solid var(--line);
-        border-radius: 50%;
-        background: var(--c);
-      }
-      .ring[aria-checked="true"] {
-        outline: none;
-      }
-      .ring[aria-checked="true"]::before {
-        outline: 2px solid var(--ink);
-        outline-offset: 2px;
-      }
-      .field-row {
-        grid-template-columns: 1fr;
-      }
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .field .opt-select {
-      width: 100%;
-      justify-self: stretch;
-    }
-    .more {
-      margin-top: 2px;
-    }
-    .more summary {
-      cursor: pointer;
-      list-style: none;
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--muted);
-    }
-    .more summary::-webkit-details-marker {
-      display: none;
-    }
-    .more summary::before {
-      content: "▸ ";
-    }
-    .more[open] summary::before {
-      content: "▾ ";
-    }
-    .more[open] summary {
-      margin-bottom: 10px;
-    }
-    .more-actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 10px;
-    }
-    .transcript-actions[hidden],
-    .qr-actions[hidden] {
-      display: none;
-    }
-    #qrEmpty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 18px 8px 6px;
-    }
-    #qrEmpty[hidden] {
-      display: none;
-    }
-    #qrEmpty svg {
-      width: 92px;
-      height: 92px;
-      color: var(--line);
-      filter: drop-shadow(2px 2px 0 rgba(58, 46, 40, 0.08));
-    }
-    #qrEmpty .mascot-fill .capsule-fill,
-    #qrEmpty .mascot-fill .tally-fill {
-      fill: url(#mascotGrad);
-      opacity: .88;
-    }
-    #qrEmpty p {
-      margin: 0;
-      font-size: 0.86rem;
-      color: var(--muted);
-      font-weight: 600;
-      line-height: 1.45;
-      max-width: 24em;
-    }
-    #qrGraphic:empty {
-      display: none;
-    }
-    .url-pill[hidden] {
-      display: none;
-    }
-
-    /* Status Badges */
-    .status-pills {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .pill-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font: 800 13px var(--swiss);
-      padding: 6px 14px;
-      background: var(--ground);
-      border: 2px solid var(--line);
-      border-radius: 999px;
-    }
-    .pulse-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--muted);
-      border: 1.5px solid var(--line);
-    }
-    .pulse-dot.active {
-      background: #51cf66;
-      animation: breatheDot 1.6s ease-in-out infinite;
-    }
-    @keyframes breatheDot {
-      50% {
-        transform: scale(1.25);
-        background: var(--pink);
-      }
-    }
-    .pill-badge {
-      transition: background .2s, transform .3s var(--spring);
-    }
-    body[data-live="1"] #liveBadge {
-      background: var(--mint);
-      box-shadow: 0 0 0 4px rgba(184, 240, 216, 0.45);
-    }
-    #countBadge.bump {
-      animation: bump .45s var(--spring);
-    }
-    @keyframes bump {
-      30% {
-        transform: scale(1.18) rotate(-3deg);
-      }
-      100% {
-        transform: none;
-      }
-    }
-
-    /* Stage ticker options */
-    .opt-grid {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 8px 12px;
-      align-items: center;
-    }
-    .opt-label {
+      color: var(--quiet);
+      font-weight: 400;
       font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--muted);
-    }
-    .opt-select {
-      font: 800 12px var(--swiss);
-      padding: 7px 12px;
-      box-shadow: none;
-      border-width: 2px;
-      justify-self: start;
-      border-radius: 12px;
-    }
-    .ring-row {
-      display: flex;
-      gap: 8px;
-    }
-    .ring {
-      width: 26px;
-      height: 26px;
-      padding: 0;
-      border-radius: 50%;
-      background: var(--c);
-      box-shadow: none;
-      border-width: 2px;
-      transition: transform .22s var(--spring);
-    }
-    .ring[aria-checked="true"] {
-      outline: 3px solid var(--ink);
-      outline-offset: 2px;
-    }
-    .ring:hover {
-      transform: scale(1.15);
-    }
-    .ring:not(:disabled):active {
-      transform: scale(.92);
-      box-shadow: none;
     }
 
-    /* Segmented Ticker Sizer */
-    .segmented-control {
-      display: flex;
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      background: var(--ground);
-      padding: 2px;
-      gap: 2px;
-    }
-    .seg-btn {
-      border: none;
-      box-shadow: none;
-      border-radius: 999px;
-      padding: 6px 14px;
-      font: 800 12px var(--swiss);
-      background: transparent;
-      cursor: pointer;
-    }
-    .seg-btn {
-      transition: background .2s var(--snap), color .2s, transform .2s var(--spring);
-    }
-    .seg-btn.active {
-      background: var(--ink);
-      color: #fffef7;
-    }
-    .seg-btn:not(.active):hover {
-      background: var(--butter);
-      transform: none;
-      box-shadow: none;
-    }
-    .seg-btn:active {
-      transform: scale(.94);
-    }
-
-    /* QR Box & Tabs */
-    .qr-card {
-      height: 100%;
-      box-sizing: border-box;
-      background: var(--ground);
-      border: 2.5px solid var(--line);
-      border-radius: 20px;
-      padding: 22px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
+    /* ---------- the room ---------- */
+    .room {
+      background: var(--sand);
+      border-color: color-mix(in srgb, var(--ambra, #e0b98a) 40%, var(--hair));
+      gap: 12px;
       text-align: center;
+    }
+    .tab-bar {
+      display: flex;
+      width: 100%;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--ink) 6%, transparent);
+    }
+    .tab-btn {
+      flex: 1;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font: 600 12.5px var(--swiss);
+      color: var(--quiet);
+    }
+    .tab-btn:hover {
+      background: transparent;
+      border-color: transparent;
+      color: var(--ink);
+    }
+    .tab-btn.active {
+      background: var(--surface);
+      border-color: var(--hair);
+      color: var(--ink);
+      font-weight: 700;
     }
     .qr-body {
       display: flex;
@@ -717,155 +831,149 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
-      margin: auto 0;
+      flex: 1 1 auto;
       width: 100%;
     }
-    .tab-bar {
+    #qrEmpty {
       display: flex;
-      width: 100%;
-      border: 2px solid var(--line);
-      border-radius: 999px;
-      overflow: hidden;
-      background: var(--paper);
-      padding: 3px;
-      gap: 3px;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 24px 8px;
     }
-    .tab-btn {
-      flex: 1;
-      border: none;
-      box-shadow: none;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font: 800 12px var(--swiss);
-      background: transparent;
-      cursor: pointer;
+    #qrEmpty[hidden] {
+      display: none;
     }
-    .tab-btn {
-      transition: background .2s var(--snap), color .2s, transform .2s var(--spring);
+    .qr-slot {
+      width: 92px;
+      height: 92px;
+      border-radius: 20px;
+      border: 1px dashed rgba(58, 46, 40, 0.22);
+      display: grid;
+      place-items: center;
+      background: var(--surface);
     }
-    .tab-btn.active {
-      background: var(--ink);
-      color: #fffef7;
+    .qr-slot span {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--vibe-accent);
+      animation: breatheDot 3.2s ease-in-out infinite;
     }
-    .tab-btn:not(.active):hover {
-      background: var(--lilac);
-      transform: none;
-      box-shadow: none;
-    }
-    .tab-btn:active {
-      transform: scale(.96);
+    #qrEmpty p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--quiet);
+      font-weight: 500;
+      line-height: 1.5;
+      max-width: 18em;
     }
     #qrGraphic {
-      padding: 8px;
-      background: #fffef7;
-      border: 2px solid var(--line);
+      padding: 10px;
+      background: var(--surface);
+      border: 1px solid var(--hair);
       border-radius: 16px;
       line-height: 0;
-      box-shadow: 4px 4px 0 var(--pink);
-      transition: box-shadow .3s var(--spring), transform .3s var(--spring);
     }
-    #qrGraphic:hover {
-      transform: rotate(-1.5deg) scale(1.02);
-    }
-    #qrGraphic.pop {
-      animation: qrPop .5s var(--spring);
-    }
-    @keyframes qrPop {
-      0% {
-        transform: scale(.85) rotate(4deg);
-        opacity: .4;
-      }
-      100% {
-        transform: none;
-        opacity: 1;
-      }
-    }
-    .qr-card[data-tab="mic"] #qrGraphic {
-      box-shadow: 4px 4px 0 var(--lilac);
+    #qrGraphic:empty {
+      display: none;
     }
     #qrGraphic svg {
-      width: 175px;
-      height: 175px;
+      width: 168px;
+      height: 168px;
     }
     .qr-talk {
-      margin: 0 0 4px;
-      font-weight: 900;
-      font-size: 1.15rem;
-      letter-spacing: -0.02em;
+      margin: 0;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--quiet);
+      max-width: 20em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .qr-talk[hidden] {
       display: none;
     }
+    /* The four letters ARE the join instruction. Nothing else belongs here. */
     .join-line {
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .join-line[hidden] {
       display: none;
     }
     .join-line b {
-      font: 900 1.05rem ui-monospace, Menlo, monospace;
-      letter-spacing: .14em;
+      font: 700 36px/1 var(--mono);
+      letter-spacing: .22em;
+      text-indent: .22em;
       color: var(--ink);
-      background: var(--butter);
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      padding: 2px 8px;
     }
-    .fs-code {
+    .room-actions {
       display: flex;
-      align-items: baseline;
-      gap: 14px;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding-top: 12px;
+      border-top: 1px solid rgba(58, 46, 40, 0.1);
     }
-    .fs-code[hidden] {
+    .room-actions[hidden] {
       display: none;
     }
-    .fs-code span {
-      font-size: 1rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--muted);
+    .room-actions button {
+      flex: 1;
+      font-size: 12.5px;
+      padding: 9px 12px;
+      background: var(--surface);
     }
-    .fs-code b {
-      font: 900 clamp(48px, 9vw, 84px)/1 ui-monospace, Menlo, monospace;
-      letter-spacing: .2em;
-      text-indent: .2em;
-      color: var(--ink);
-      background: var(--butter);
-      border: 3px solid var(--line);
-      border-radius: 18px;
-      padding: 8px 12px 8px 28px;
-      box-shadow: 5px 5px 0 var(--line);
-    }
-    .qr-info-title {
-      font-weight: 800;
-      font-size: 1.05rem;
-      margin: 0;
-    }
-    .qr-info-sub {
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin: 0;
-    }
-    .url-pill {
-      font: 700 0.82rem ui-monospace, Menlo, monospace;
-      word-break: break-all;
-      background: var(--paper);
-      border: 2px solid var(--line);
-      border-radius: 8px;
-      padding: 6px 10px;
-      max-width: 100%;
+    /* Kept in the DOM for the copy button and the tests; never shown. */
+    .url-pill,
+    #qrTitle,
+    #qrSub,
+    #joinHost {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+      padding: 0;
+      margin: -1px;
     }
 
-    /* Fullscreen QR Modal */
+    /* ---------- footer ---------- */
+    .deck-footer {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 11.5px;
+      color: var(--quiet);
+      font-weight: 500;
+      padding: 2px;
+    }
+    kbd {
+      background: color-mix(in srgb, var(--ink) 7%, transparent);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      color: var(--ink);
+    }
+    @media (hover: none) {
+      .deck-footer {
+        display: none;
+      }
+    }
+
+    /* ---------- fullscreen QR ---------- */
     #fsModal {
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(30, 23, 20, 0.88);
-      backdrop-filter: blur(8px);
+      background: rgba(30, 23, 20, 0.82);
       display: none;
       align-items: center;
       justify-content: center;
@@ -875,264 +983,66 @@
       display: flex;
     }
     #fsModal.open .fs-card {
-      animation: cardIn .38s var(--spring);
+      animation: cardIn .3s var(--spring);
     }
     @keyframes cardIn {
       from {
-        transform: translateY(24px) scale(.94) rotate(-1deg);
+        transform: translateY(16px);
         opacity: 0;
       }
     }
     .fs-card {
-      background: var(--paper);
-      border: 4px solid var(--line);
-      border-radius: 32px;
-      padding: 36px 32px;
-      box-shadow: 10px 10px 0 var(--line);
-      max-width: 600px;
+      background: var(--surface);
+      border-radius: 28px;
+      padding: 30px;
+      max-width: 560px;
       width: 90vw;
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
+    }
+    #fsQr {
+      background: var(--surface);
+      padding: 14px;
+      border: 1px solid var(--hair);
+      border-radius: 18px;
+      line-height: 0;
     }
     #fsQr svg {
-      width: min(65vw, 360px);
-      height: min(65vw, 360px);
+      width: min(62vw, 300px);
+      height: min(62vw, 300px);
     }
-
-    /* Shortcuts footer anchored inside the stage deck card */
-    .deck-footer {
-      border-top: 2px dashed rgba(58, 46, 40, 0.16);
-      padding-top: 14px;
-      margin-top: 2px;
-    }
-    .shortcuts-hint {
+    .fs-code {
       display: flex;
-      gap: 16px;
-      justify-content: center;
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 700;
-      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 12px;
     }
-    kbd {
-      background: var(--ground);
-      border: 1.5px solid var(--line);
-      border-radius: 6px;
-      padding: 2px 6px;
-      font-family: ui-monospace, monospace;
-      box-shadow: 1px 1px 0 var(--line);
-    }
-
-    /* Live Stage Monitor (docked broadcast output) */
-    .monitor-card {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .monitor-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 4px;
-    }
-    .monitor-badge {
-      font: 800 0.72rem ui-monospace, Menlo, monospace;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: var(--muted);
-      background: var(--ground);
-      border: 1.5px solid var(--line);
-      border-radius: 999px;
-      padding: 2px 10px;
-    }
-
-    /* Pinned / Docked Ticker Bar */
-    #ticker {
-      width: 100%;
-      box-sizing: border-box;
-      min-height: 1.4em;
-      padding: 20px 28px;
-      background: rgba(30, 23, 20, 0.94);
-      color: #fffef7;
-      border-radius: 20px;
-      font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.28 var(--ticker-face, var(--face-system));
-      letter-spacing: -0.01em;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      min-height: calc(var(--ticker-depth, 2) * 1.35em + 44px);
-      max-height: calc(var(--ticker-depth, 2) * 1.35em + 44px);
-      overflow: hidden;
-      box-shadow: 0 0 0 3px var(--pink), 0 8px 24px rgba(30, 23, 20, 0.16);
-      transition: box-shadow 0.2s ease, font-size 0.15s ease, background 0.2s ease;
-    }
-    #ticker > div {
-      width: 100%;
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
-      mask-image: linear-gradient(to bottom, transparent 0%, black 16px);
-    }
-    #ticker .prev {
-      opacity: 0.55;
-      font-weight: max(300, calc(var(--ticker-weight, 700) - 200));
-    }
-    #ticker .fresh-lead {
-      color: #fffef7;
-      font-weight: 700;
-      animation: land .55s ease-out;
-    }
-    #ticker .interim {
-      color: var(--pink);
-      opacity: 0.9;
-    }
-    #ticker .interim::after {
-      content: "";
-      display: inline-block;
-      width: .12em;
-      height: .9em;
-      margin-left: .12em;
-      vertical-align: -0.1em;
-      background: var(--pink);
-      border-radius: 2px;
-      animation: caret 1s steps(2) infinite;
-    }
-    /* inline-safe landing: a long sentence still wraps mid-line, it just glows in */
-    @keyframes land {
-      0% {
-        opacity: 0;
-        text-shadow: 0 0 0 var(--mint);
-      }
-      35% {
-        opacity: 1;
-        text-shadow: 0 0 18px var(--mint);
-      }
-      100% {
-        text-shadow: 0 0 0 transparent;
-      }
-    }
-    @keyframes caret {
-      to {
-        opacity: 0;
-      }
-    }
-    #ticker:empty::before {
-      content: "Captions appear here in real time";
-      opacity: 0.35;
-      font-weight: 500;
-    }
-    body[data-live="1"] #ticker {
-      box-shadow: 0 0 0 3px var(--mint), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    /* Ring colour is the presenter's choice; the mint live ring is only the default */
-    #ticker[data-ring="pink"],
-    body[data-live="1"] #ticker[data-ring="pink"] {
-      box-shadow: 0 0 0 3px var(--pink), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    #ticker[data-ring="mint"],
-    body[data-live="1"] #ticker[data-ring="mint"] {
-      box-shadow: 0 0 0 3px var(--mint), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    #ticker[data-ring="lilac"],
-    body[data-live="1"] #ticker[data-ring="lilac"] {
-      box-shadow: 0 0 0 3px var(--lilac), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    #ticker[data-ring="butter"],
-    body[data-live="1"] #ticker[data-ring="butter"] {
-      box-shadow: 0 0 0 3px var(--butter), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    #ticker[data-ring="none"],
-    body[data-live="1"] #ticker[data-ring="none"] {
-      box-shadow: 0 0 0 3px var(--ground), 0 8px 24px rgba(30, 23, 20, 0.18);
-    }
-    #ticker[data-flow="settled"] .interim {
+    .fs-code[hidden] {
       display: none;
     }
-    #ticker[data-style="paper"] {
-      background: var(--paper);
+    .fs-code span {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--quiet);
+    }
+    .fs-code b {
+      font: 700 clamp(38px, 8vw, 60px)/1 var(--mono);
+      letter-spacing: .2em;
+      text-indent: .2em;
       color: var(--ink);
-      box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
     }
-    #ticker[data-style="paper"] .fresh-lead {
-      color: var(--ink);
-    }
-    #ticker[data-style="paper"] .interim {
-      color: var(--ink);
-      background: color-mix(in srgb, var(--pink) 45%, transparent);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="paper"] .interim::after {
-      background: var(--ink);
-    }
-    #ticker[data-style="paper"][data-ring="pink"],
-    body[data-live="1"] #ticker[data-style="paper"][data-ring="pink"] {
-      box-shadow: 0 0 0 3px var(--pink), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="paper"][data-ring="mint"],
-    body[data-live="1"] #ticker[data-style="paper"][data-ring="mint"] {
-      box-shadow: 0 0 0 3px var(--mint), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="paper"][data-ring="lilac"],
-    body[data-live="1"] #ticker[data-style="paper"][data-ring="lilac"] {
-      box-shadow: 0 0 0 3px var(--lilac), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="paper"][data-ring="butter"],
-    body[data-live="1"] #ticker[data-style="paper"][data-ring="butter"] {
-      box-shadow: 0 0 0 3px var(--butter), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="paper"][data-ring="none"],
-    body[data-live="1"] #ticker[data-style="paper"][data-ring="none"] {
-      box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
+    #fsNote {
+      margin: 0;
+      color: var(--quiet);
+      font-weight: 500;
+      font-size: 12.5px;
+      max-width: 30em;
     }
 
-    #ticker[data-style="brut"] {
-      background: var(--volt);
-      color: var(--ink);
-      box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="brut"] .fresh-lead {
-      color: var(--ink);
-    }
-    #ticker[data-style="brut"] .interim {
-      color: var(--ink);
-      background: rgba(30, 23, 20, 0.14);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="brut"] .interim::after {
-      background: var(--ink);
-    }
-    #ticker[data-style="brut"][data-ring="none"],
-    body[data-live="1"] #ticker[data-style="brut"][data-ring="none"] {
-      box-shadow: 0 0 0 3px var(--line), 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-
-    #ticker[data-style="hemingway"] {
-      background: #f4ede2;
-      color: #2c221e;
-      font-family: var(--face-fraunces), serif;
-      box-shadow: 0 0 0 3px #8c6239, 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
-    #ticker[data-style="hemingway"] .fresh-lead {
-      color: #2c221e;
-    }
-    #ticker[data-style="hemingway"] .interim {
-      color: #8c6239;
-      background: rgba(140, 98, 57, 0.12);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="hemingway"] .interim::after {
-      background: #8c6239;
-    }
-    #ticker[data-style="hemingway"][data-ring="none"],
-    body[data-live="1"] #ticker[data-style="hemingway"][data-ring="none"] {
-      box-shadow: 0 0 0 3px #8c6239, 0 8px 24px rgba(30, 23, 20, 0.14);
-    }
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
@@ -1147,394 +1057,203 @@
   <body>
     <main>
       <header>
-        <div class="brand">
-          <span class="mascot-wrap" id="mascotWrap" role="button" tabindex="0" title="Click to cycle stage vibe"
-            aria-label="Mascot Lumen - Click to cycle vibe">
-            <svg class="mascot-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
-              <defs>
-                <linearGradient id="mascotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#00f5a0" />
-                  <stop offset="32%" stop-color="#00d9f5" />
-                  <stop offset="70%" stop-color="#7b61ff" />
-                  <stop offset="100%" stop-color="#d946ef" />
-                </linearGradient>
-                <linearGradient id="mascotGradLive" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#ffe135" />
-                  <stop offset="30%" stop-color="#00f5a0" />
-                  <stop offset="70%" stop-color="#00d9f5" />
-                  <stop offset="100%" stop-color="#7b61ff" />
-                </linearGradient>
-                <radialGradient id="lensGlow" cx="50%" cy="40%" r="55%">
-                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45" />
-                  <stop offset="60%" stop-color="#ffffff" stop-opacity="0" />
-                </radialGradient>
-              </defs>
-
-              <!-- Stage Lights Conical Beam & Ray Accents -->
-              <g class="mascot-aura">
-                <polygon points="512,180 180,940 844,940" fill="url(#mascotGrad)" class="mascot-beam" opacity="0.18" />
-                <path d="M512 40 L512 85 M195 135 L235 175 M829 135 L789 175 M115 365 L165 375 M909 365 L859 375"
-                  stroke="currentColor" stroke-width="18" stroke-linecap="round" />
-              </g>
-
-              <!-- Base Plate & Studio Yoke Mount -->
-              <g class="mascot-yoke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                  d="M340 915 C340 890 380 880 512 880 C644 880 684 890 684 915 L684 935 C684 955 644 960 512 960 C380 960 340 955 340 935 Z"
-                  fill="currentColor" />
-                <rect x="472" y="840" width="80" height="46" rx="8" fill="currentColor" />
-                <path d="M190 515 C190 755 260 850 472 850 L552 850 C764 850 834 755 834 515"
-                  fill="none" stroke="currentColor" stroke-width="40" />
-                <rect x="156" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                <circle cx="190" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-                <rect x="800" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                <circle cx="834" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-              </g>
-
-              <!-- SOLID SILHOUETTE (#mascot-background) -->
-              <g id="mascot-background" class="mascot-fill">
-                <path class="tally-fill" d="M462 145 C462 110 484 90 512 90 C540 90 562 110 562 145 Z" fill="url(#mascotGrad)" />
-                <path class="capsule-fill"
-                  d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                  fill="url(#mascotGrad)" />
-                <path
-                  d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                  fill="url(#lensGlow)" />
-              </g>
-
-              <!-- CHASSIS OUTLINE (#mascot-body-path) -->
-              <g id="mascot-body-path" class="mascot-outline" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M458 150 C458 105 482 82 512 82 C542 82 566 105 566 150 Z"
-                  fill="none" stroke-width="24" />
-                <rect x="444" y="146" width="136" height="24" rx="10" fill="currentColor" stroke="none" />
-                <path
-                  d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                  fill="none" stroke-width="28" />
-                <path
-                  d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                  fill="none" stroke-width="20" stroke-opacity="0.9" />
-                <g fill="currentColor" stroke="none">
-                  <rect x="360" y="680" width="304" height="18" rx="9" />
-                  <rect x="390" y="718" width="244" height="18" rx="9" />
-                  <rect x="424" y="755" width="176" height="18" rx="9" />
-                </g>
-                <circle cx="340" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                <circle cx="684" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                <path d="M472 525 C488 545 536 545 552 525"
-                  fill="none" stroke-width="16" stroke-linecap="round" />
-              </g>
-
-              <!-- LEFT EYE (#mascot-eye-left-path) -->
-              <g id="mascot-eye-left-path" class="eye left">
-                <ellipse class="eye-lid" cx="414" cy="425" rx="38" ry="58" fill="currentColor" />
-                <circle cx="426" cy="406" r="14" fill="#ffffff" />
-                <circle cx="400" cy="445" r="7" fill="#ffffff" />
-              </g>
-
-              <!-- RIGHT EYE (#mascot-eye-right-path) -->
-              <g id="mascot-eye-right-path" class="eye right">
-                <ellipse class="eye-lid" cx="610" cy="425" rx="38" ry="58" fill="currentColor" />
-                <circle cx="622" cy="406" r="14" fill="#ffffff" />
-                <circle cx="596" cy="445" r="7" fill="#ffffff" />
-              </g>
-            </svg>
-          </span>
-          <div>
-            <div class="brand-title-row">
-              <h1>StageType</h1>
-              <button id="vibePill" class="vibe-pill" title="Cycle stage vibe">
-                <span class="vibe-dot"></span>
-                <span id="vibeLabel">Stage Lights</span>
-              </button>
-            </div>
-            <p class="sub">Speak. The room reads along.</p>
-          </div>
+        <div>
+          <h1>StageType</h1>
+          <p class="sub">Speak. The room reads along.</p>
         </div>
         <div class="status-pills">
-          <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Standby</span></span>
-          <span class="pill-badge" id="micPill"><span id="micSource">Laptop mic</span></span>
-          <span class="pill-badge" id="countBadge">0 readers</span>
+          <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Ready</span><span class="pill-sep">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
+          <span class="pill-badge" id="countBadge">Room empty</span>
+          <button id="vibePill" class="vibe-pill" title="Cycle stage vibe">
+            <span class="vibe-dot"></span>
+            <span id="vibeLabel">Stage Lights</span>
+          </button>
         </div>
       </header>
 
-      <!-- The console: set up on the left, share on the right -->
-      <section class="stage-deck">
-        <div class="deck-grid">
-          <div class="deck-col">
-            <div class="panel-section">
-              <span class="section-label">Talk</span>
-              <input id="title" class="text-input" type="text" maxlength="80" autocomplete="off" spellcheck="false"
-                placeholder="Add a title (optional)" aria-label="Talk title">
-              <div class="field-row">
-                <label class="field"><span class="opt-label">Language</span>
-            <select id="lang" class="opt-select" aria-label="Language">
-            <option value="en-AU">English (Australia)</option>
-            <option value="en-GB">English (UK)</option>
-            <option value="en-US">English (US)</option>
-            <option value="en-IN">English (India)</option>
-            <option value="es-ES">Español (España)</option>
-            <option value="es-MX">Español (México)</option>
-            <option value="fr-FR">Français</option>
-            <option value="de-DE">Deutsch</option>
-            <option value="it-IT">Italiano</option>
-            <option value="pt-BR">Português (Brasil)</option>
-            <option value="nl-NL">Nederlands</option>
-            <option value="pl-PL">Polski</option>
-            <option value="tr-TR">Türkçe</option>
-            <option value="ru-RU">Русский</option>
-            <option value="ar-SA">العربية</option>
-            <option value="hi-IN">हिन्दी</option>
-            <option value="id-ID">Bahasa Indonesia</option>
-            <option value="vi-VN">Tiếng Việt</option>
-            <option value="th-TH">ไทย</option>
-            <option value="zh-CN">中文 (普通话)</option>
-            <option value="zh-TW">中文 (台灣)</option>
-            <option value="yue-Hant-HK">粵語 (香港)</option>
-            <option value="ja-JP">日本語</option>
-            <option value="ko-KR">한국어</option>
-            </select>
-          </label>
-                <label class="field"><span class="opt-label">Engine</span>
-            <select id="engine" class="opt-select" aria-label="Speech engine">
-              <option value="browser">Browser, free</option>
-              <option value="deepgram">Deepgram</option>
-            </select>
-          </label>
-              </div>
-              <p id="engineHint" class="hint" hidden></p>
-            </div>
-
-            <div class="panel-section">
-              <span class="section-label">Captions</span>
-              <div class="btn-row">
-                <button id="startBtn" class="mint">Start captions</button>
-                <button id="pauseBtn" class="ground" hidden><span class="btn-label">Pause</span></button>
-                <button id="stopBtn" class="ground" hidden>End talk</button>
-              </div>
-              <p id="notice" class="notice" hidden></p>
-              <input id="typed" class="text-input" type="text" autocomplete="off" spellcheck="true" disabled
-                placeholder="Type a caption, press Enter" aria-label="Type a caption">
-            </div>
-
-            <div class="panel-section">
-              <span class="section-label">Ticker</span>
-              <div class="btn-row">
-                <button id="floatBtn" class="lilac" disabled>Float over slides</button>
-                <button id="screenBtn" class="ground" disabled>Second screen</button>
-              </div>
-              <div class="opt-grid">
-                <span class="opt-label">Size</span>
-                <div class="segmented-control" data-pref="size">
-                  <button class="seg-btn" data-v="28px">Compact</button>
-                  <button class="seg-btn" data-v="38px">Standard</button>
-                  <button class="seg-btn" data-v="50px">Jumbotron</button>
-                </div>
-                <span class="opt-label">Style</span>
-                <div class="segmented-control" data-pref="style">
-                  <button class="seg-btn" data-v="ink">Ink</button>
-                  <button class="seg-btn" data-v="paper">Paper</button>
-                  <button class="seg-btn" data-v="brut">Yellow Brut</button>
-                  <button class="seg-btn" data-v="hemingway">Hemingway</button>
-                </div>
-              </div>
-              <details class="more" id="moreTicker">
-                <summary>More style options</summary>
-                <div class="opt-grid">
-                  <span class="opt-label">Face</span>
-                  <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
-                    <option value="system">System (Helvetica)</option>
-                    <option value="inter">Inter</option>
-                    <option value="atkinson">Atkinson Hyperlegible</option>
-                    <option value="fraunces">Fraunces</option>
-                    <option value="mono">JetBrains Mono</option>
-                  </select>
-                  <span class="opt-label">Weight</span>
-                  <div class="segmented-control" data-pref="weight">
-                    <button class="seg-btn" data-v="400">Regular</button>
-                    <button class="seg-btn" data-v="500">Medium</button>
-                    <button class="seg-btn" data-v="700">Bold</button>
-                  </div>
-                  <span class="opt-label">Lines</span>
-                  <div class="segmented-control" data-pref="depth">
-                    <button class="seg-btn" data-v="1">1</button>
-                    <button class="seg-btn" data-v="2">2</button>
-                    <button class="seg-btn" data-v="3">3</button>
-                  </div>
-                  <span class="opt-label">Flow</span>
-                  <div class="segmented-control" data-pref="flow">
-                    <button class="seg-btn" data-v="live">Live words</button>
-                    <button class="seg-btn" data-v="settled">Settled sentences</button>
-                  </div>
-                  <span class="opt-label">Ring</span>
-                  <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
-                    <button class="ring" data-v="mint" style="--c: var(--mint)" aria-label="Mint ring"></button>
-                    <button class="ring" data-v="pink" style="--c: var(--pink)" aria-label="Pink ring"></button>
-                    <button class="ring" data-v="lilac" style="--c: var(--lilac)" aria-label="Lilac ring"></button>
-                    <button class="ring" data-v="butter" style="--c: var(--butter)" aria-label="Butter ring"></button>
-                    <button class="ring" data-v="none" style="--c: var(--ground)" aria-label="No ring"></button>
-                  </div>
-                </div>
-                <div class="more-actions">
-                  <button id="shuffleTicker" class="shuffle-btn ground" title="Shuffle ticker style and details">Shuffle style</button>
-                </div>
-              </details>
-            </div>
-
-            <div class="panel-section">
-              <span class="section-label">Transcript</span>
-              <div class="transcript-row">
-                <span id="transcriptStat" class="hint">Nothing captioned yet.</span>
-                <div class="btn-row transcript-actions" id="transcriptActions" hidden>
-                  <button id="copyTx" class="ground small" disabled><span class="btn-label">Copy</span></button>
-                  <button id="saveTxTxt" class="ground small" disabled>Text file</button>
-                  <button id="saveTxMd" class="ground small" disabled>Markdown</button>
-                </div>
-              </div>
-              <details id="pastTalks" hidden>
-                <summary class="hint">Previous talks on this machine</summary>
-                <ul id="pastList"></ul>
-              </details>
-            </div>
-          </div>
-
-          <div class="deck-col">
-            <div class="qr-card">
-              <div class="tab-bar">
-                <button class="tab-btn active" id="tabAudience">Reader</button>
-                <button class="tab-btn" id="tabMic">Phone mic</button>
-              </div>
-
-              <div class="qr-body">
-                <div id="qrEmpty">
-                  <svg class="mascot-icon" viewBox="0 0 1024 1024" aria-hidden="true" focusable="false">
-                    <!-- Stage Lights Conical Beam & Ray Accents -->
-                    <g class="mascot-aura">
-                      <polygon points="512,180 180,940 844,940" fill="url(#mascotGrad)" class="mascot-beam" opacity="0.18" />
-                      <path d="M512 40 L512 85 M195 135 L235 175 M829 135 L789 175 M115 365 L165 375 M909 365 L859 375"
-                        stroke="currentColor" stroke-width="18" stroke-linecap="round" />
-                    </g>
-
-                    <!-- Base Plate & Studio Yoke Mount -->
-                    <g class="mascot-yoke" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                      <path
-                        d="M340 915 C340 890 380 880 512 880 C644 880 684 890 684 915 L684 935 C684 955 644 960 512 960 C380 960 340 955 340 935 Z"
-                        fill="currentColor" />
-                      <rect x="472" y="840" width="80" height="46" rx="8" fill="currentColor" />
-                      <path d="M190 515 C190 755 260 850 472 850 L552 850 C764 850 834 755 834 515"
-                        fill="none" stroke="currentColor" stroke-width="40" />
-                      <rect x="156" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                      <circle cx="190" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-                      <rect x="800" y="475" width="68" height="80" rx="20" fill="currentColor" />
-                      <circle cx="834" cy="515" r="14" fill="var(--paper, #fbf1e4)" />
-                    </g>
-
-                    <!-- SOLID SILHOUETTE (#mascot-background) -->
-                    <g id="mascot-background" class="mascot-fill">
-                      <path class="tally-fill" d="M462 145 C462 110 484 90 512 90 C540 90 562 110 562 145 Z" fill="url(#mascotGrad)" />
-                      <path class="capsule-fill"
-                        d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                        fill="url(#mascotGrad)" />
-                      <path
-                        d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                        fill="url(#lensGlow)" />
-                    </g>
-
-                    <!-- CHASSIS OUTLINE (#mascot-body-path) -->
-                    <g id="mascot-body-path" class="mascot-outline" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M458 150 C458 105 482 82 512 82 C542 82 566 105 566 150 Z"
-                        fill="none" stroke-width="24" />
-                      <rect x="444" y="146" width="136" height="24" rx="10" fill="currentColor" stroke="none" />
-                      <path
-                        d="M260 380 C260 220 370 145 512 145 C654 145 764 220 764 380 L764 660 C764 770 654 815 512 815 C370 815 260 770 260 660 Z"
-                        fill="none" stroke-width="28" />
-                      <path
-                        d="M310 390 C310 265 400 205 512 205 C624 205 714 265 714 390 L714 550 C714 625 630 650 512 650 C394 650 310 625 310 550 Z"
-                        fill="none" stroke-width="20" stroke-opacity="0.9" />
-                      <g fill="currentColor" stroke="none">
-                        <rect x="360" y="680" width="304" height="18" rx="9" />
-                        <rect x="390" y="718" width="244" height="18" rx="9" />
-                        <rect x="424" y="755" width="176" height="18" rx="9" />
-                      </g>
-                      <circle cx="340" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                      <circle cx="684" cy="465" r="22" fill="#ffb3d1" fill-opacity="0.4" stroke="none" />
-                      <path d="M472 525 C488 545 536 545 552 525"
-                        fill="none" stroke-width="16" stroke-linecap="round" />
-                    </g>
-
-                    <!-- LEFT EYE (#mascot-eye-left-path) -->
-                    <g id="mascot-eye-left-path" class="eye left">
-                      <ellipse class="eye-lid" cx="414" cy="425" rx="38" ry="58" fill="currentColor" />
-                      <circle cx="426" cy="406" r="14" fill="#ffffff" />
-                      <circle cx="400" cy="445" r="7" fill="#ffffff" />
-                    </g>
-
-                    <!-- RIGHT EYE (#mascot-eye-right-path) -->
-                    <g id="mascot-eye-right-path" class="eye right">
-                      <ellipse class="eye-lid" cx="610" cy="425" rx="38" ry="58" fill="currentColor" />
-                      <circle cx="622" cy="406" r="14" fill="#ffffff" />
-                      <circle cx="596" cy="445" r="7" fill="#ffffff" />
-                    </g>
-                  </svg>
-                  <p>Start captions to show the room QR and join code.</p>
-                </div>
-                <div id="qrGraphic"></div>
-
-                <div>
-                  <p class="qr-talk" id="qrTalk" hidden></p>
-                  <p class="qr-info-title" id="qrTitle">Audience reader</p>
-                  <p class="qr-info-sub" id="qrSub">Scan to follow live captions</p>
-                </div>
-
-                <div class="url-pill" id="urlDisplay" hidden>Standby</div>
-                <div class="join-line" id="joinLine" hidden>or type <b id="joinCode"></b> at <span id="joinHost"></span></div>
-              </div>
-
-              <div class="btn-row qr-actions" id="qrActions" hidden>
-                <button class="ground" id="copyUrlBtn" style="padding:8px 16px;font-size:0.85rem" disabled><span class="btn-label">Copy link</span></button>
-                <button class="ground" id="fsQrBtn" style="padding:8px 16px;font-size:0.85rem" disabled>Project QR</button>
-              </div>
-            </div>
-          </div>
+      <!-- THE TALK BAR: name it, then start it. Two fields fold away once live. -->
+      <section class="bar">
+        <label class="field field-title"><span>Title</span>
+          <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false"
+            placeholder="Optional" aria-label="Talk title">
+        </label>
+        <label class="field field-lang"><span>Language</span>
+          <select id="lang" aria-label="Language">
+                  <option value="en-AU">English (Australia)</option>
+                  <option value="en-GB">English (UK)</option>
+                  <option value="en-US">English (US)</option>
+                  <option value="en-IN">English (India)</option>
+                  <option value="es-ES">Español (España)</option>
+                  <option value="es-MX">Español (México)</option>
+                  <option value="fr-FR">Français</option>
+                  <option value="de-DE">Deutsch</option>
+                  <option value="it-IT">Italiano</option>
+                  <option value="pt-BR">Português (Brasil)</option>
+                  <option value="nl-NL">Nederlands</option>
+                  <option value="pl-PL">Polski</option>
+                  <option value="tr-TR">Türkçe</option>
+                  <option value="ru-RU">Русский</option>
+                  <option value="ar-SA">العربية</option>
+                  <option value="hi-IN">हिन्दी</option>
+                  <option value="id-ID">Bahasa Indonesia</option>
+                  <option value="vi-VN">Tiếng Việt</option>
+                  <option value="th-TH">ไทย</option>
+                  <option value="zh-CN">中文 (普通话)</option>
+                  <option value="zh-TW">中文 (台灣)</option>
+                  <option value="yue-Hant-HK">粵語 (香港)</option>
+                  <option value="ja-JP">日本語</option>
+                  <option value="ko-KR">한국어</option>
+          </select>
+        </label>
+        <label class="field field-engine"><span>Engine</span>
+          <select id="engine" aria-label="Speech engine">
+            <option value="browser">Browser · free</option>
+            <option value="deepgram">Deepgram · relay</option>
+          </select>
+        </label>
+        <div class="control-row">
+          <button id="startBtn">Start captions</button>
+          <button id="pauseBtn" hidden><span class="btn-label">Pause</span></button>
+          <button id="stopBtn" hidden>End</button>
         </div>
+        <p id="engineHint" class="hint" hidden></p>
+        <p id="notice" class="notice" hidden></p>
+      </section>
 
-        <!-- Live Stage Caption Monitor (docked broadcast output) -->
-        <div class="monitor-card">
-          <div class="monitor-header">
-            <span class="section-label">Live ticker</span>
-            <div class="monitor-tags">
-              <span class="monitor-badge" id="monitorStyleBadge">Ink · System</span>
-            </div>
+      <div class="console">
+        <!-- THE STAGE: the product, its dressing, and the transcript under it. -->
+        <section class="card stage">
+          <div class="stage-top">
+            <p class="eyebrow">Stage</p>
+            <span class="badge" id="monitorStyleBadge">Ink · System</span>
           </div>
           <div id="ticker" aria-live="polite"></div>
-        </div>
-
-        <!-- Keyboard Shortcuts Bar (anchored inside console card) -->
-        <div class="deck-footer">
-          <div class="shortcuts-hint">
-            <span><kbd>Space</kbd> Start / pause mic</span>
-            <span><kbd>⌥ + F</kbd> Float over slides</span>
-            <span><kbd>⌥ + Q</kbd> Fullscreen QR</span>
-            <span><kbd>⌥ + R</kbd> Shuffle ticker</span>
-            <span><kbd>Esc</kbd> Close modal</span>
+          <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
+            placeholder="Type a line · Enter" aria-label="Type a caption">
+          <div class="stage-controls">
+            <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
+              <button class="seg-btn" data-v="28px" title="Compact" aria-label="Compact">S</button>
+              <button class="seg-btn" data-v="38px" title="Standard" aria-label="Standard">M</button>
+              <button class="seg-btn" data-v="50px" title="Jumbotron" aria-label="Jumbotron">L</button>
+            </div>
+            <div class="segmented-control swatches" data-pref="style" role="group" aria-label="Ticker style">
+              <button class="seg-btn" data-v="ink" title="Ink" aria-label="Ink">Aa</button>
+              <button class="seg-btn" data-v="paper" title="Paper" aria-label="Paper">Aa</button>
+              <button class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut">Aa</button>
+              <button class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway">Aa</button>
+            </div>
+            <button id="floatBtn" disabled>Float</button>
+            <button id="screenBtn" disabled>Screen</button>
+            <details class="more" id="moreTicker">
+              <summary>More</summary>
+              <div class="opt-grid">
+                <span class="opt-label">Face</span>
+                <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
+                  <option value="system">System (Helvetica)</option>
+                  <option value="inter">Inter</option>
+                  <option value="atkinson">Atkinson Hyperlegible</option>
+                  <option value="fraunces">Fraunces</option>
+                  <option value="mono">JetBrains Mono</option>
+                </select>
+                <span class="opt-label">Weight</span>
+                <div class="segmented-control" data-pref="weight">
+                  <button class="seg-btn" data-v="400">Regular</button>
+                  <button class="seg-btn" data-v="500">Medium</button>
+                  <button class="seg-btn" data-v="700">Bold</button>
+                </div>
+                <span class="opt-label">Lines</span>
+                <div class="segmented-control" data-pref="depth">
+                  <button class="seg-btn" data-v="1">1</button>
+                  <button class="seg-btn" data-v="2">2</button>
+                  <button class="seg-btn" data-v="3">3</button>
+                </div>
+                <span class="opt-label">Flow</span>
+                <div class="segmented-control" data-pref="flow">
+                  <button class="seg-btn" data-v="live">Live words</button>
+                  <button class="seg-btn" data-v="settled">Settled sentences</button>
+                </div>
+                <span class="opt-label">Ring</span>
+                <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Ticker ring colour">
+                  <button class="ring" data-v="mint" aria-label="Teal" style="--c:#2dd4bf"></button>
+                  <button class="ring" data-v="pink" aria-label="Pink" style="--c:#ff6ac2"></button>
+                  <button class="ring" data-v="lilac" aria-label="Violet" style="--c:#a78bfa"></button>
+                  <button class="ring" data-v="butter" aria-label="Amber" style="--c:#ffc74d"></button>
+                  <button class="ring" data-v="none" aria-label="None" style="--c:transparent"></button>
+                </div>
+              </div>
+              <div class="more-actions">
+                <button id="shuffleTicker" class="mini-btn" title="Shuffle ticker style">Shuffle style</button>
+              </div>
+            </details>
           </div>
-        </div>
-      </section>
+          <div class="transcript-bar">
+            <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
+            <div class="transcript-actions" id="transcriptActions" hidden>
+              <button id="copyTx" class="icon" disabled aria-label="Copy transcript" title="Copy transcript">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5" /><path
+                    d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-7A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15" /></svg>
+              </button>
+              <button id="saveTxTxt" class="mini-btn" disabled>.txt</button>
+              <button id="saveTxMd" class="mini-btn" disabled>.md</button>
+            </div>
+          </div>
+          <details id="pastTalks" class="past" hidden>
+            <summary>Earlier talks</summary>
+            <ul id="pastList"></ul>
+          </details>
+        </section>
+
+        <!-- THE ROOM: what a stranger's phone needs, and nothing about the plumbing. -->
+        <section class="card room qr-card">
+          <div class="tab-bar">
+            <button class="tab-btn active" id="tabAudience">Room</button>
+            <button class="tab-btn" id="tabMic">Phone mic</button>
+          </div>
+          <div class="qr-body">
+            <div id="qrEmpty">
+              <div class="qr-slot" aria-hidden="true"><span></span></div>
+              <p>The code appears at Start.</p>
+            </div>
+            <div id="qrGraphic"></div>
+            <p class="qr-talk" id="qrTalk" hidden></p>
+            <div class="join-line" id="joinLine" hidden><b id="joinCode"></b></div>
+            <span id="qrTitle" hidden></span>
+            <span id="qrSub" hidden></span>
+            <span id="joinHost" hidden></span>
+            <div class="url-pill" id="urlDisplay" hidden>Standby</div>
+            <div class="room-actions" id="qrActions" hidden>
+              <button id="copyUrlBtn" disabled aria-label="Copy the room link"><span class="btn-label">Copy link</span></button>
+              <button id="fsQrBtn" disabled aria-label="Show the code full screen">Full screen</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="deck-footer">
+        <span><kbd>Space</kbd> Start / pause mic</span>
+        <span><kbd>⌥ F</kbd> Float</span>
+        <span><kbd>⌥ Q</kbd> Fullscreen QR</span>
+        <span><kbd>Esc</kbd> Close</span>
+      </footer>
     </main>
+
+
 
     <!-- Pre-Talk Fullscreen QR Projector Modal -->
     <div id="fsModal">
       <div class="fs-card">
         <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
           <div style="text-align:left">
-            <p id="fsTalk" style="margin:0 0 2px;font-weight:900;font-size:1.1rem;color:var(--muted)" hidden></p>
-            <h2 id="fsTitle" style="margin:0;font-size:1.8rem;letter-spacing:-0.02em">Scan to read along</h2>
+            <p id="fsTalk" style="margin:0 0 4px;font-weight:600;font-size:13px;color:var(--quiet)" hidden></p>
+            <h2 id="fsTitle" style="margin:0;font-size:1.6rem;letter-spacing:-0.03em">Read along on a phone</h2>
           </div>
-          <button id="closeFsBtn" class="butter" style="padding:8px 16px">Close</button>
+          <button id="closeFsBtn" class="butter">Close</button>
         </div>
-        <div id="fsQr" style="background:#fffef7;padding:16px;border:3px solid var(--line);border-radius:24px;line-height:0"></div>
+        <div id="fsQr"></div>
         <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
         <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
-        <p id="fsNote" style="margin:0;color:var(--muted);font-weight:700">Project on screen before the talk kicks off.</p>
+        <p id="fsNote">Project on screen before the talk kicks off.</p>
       </div>
     </div>
 
@@ -1648,7 +1367,7 @@
       const n = words(transcript);
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
-        : "Nothing captioned yet.";
+        : "Nothing said yet.";
       $("#transcriptActions").hidden = transcript.length === 0;
       for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
     }
@@ -1740,33 +1459,33 @@
     const VIBES = {
       stage: {
         name: "Stage Lights",
-        accent: "#00f5a0",
-        stops: [["0%", "#00f5a0"], ["32%", "#00d9f5"], ["70%", "#7b61ff"], ["100%", "#d946ef"]],
-        liveStops: [["0%", "#ffe135"], ["30%", "#00f5a0"], ["70%", "#00d9f5"], ["100%", "#7b61ff"]],
+        accent: "#ff6ac2",
+        stops: [["0%", "#ff6ac2"], ["40%", "#ff9a85"], ["100%", "#ffcf40"]],
+        liveStops: [["0%", "#2dd4bf"], ["50%", "#ff6ac2"], ["100%", "#ffcf40"]],
       },
       brut: {
         name: "Yellow Brut",
-        accent: "#ffe135",
-        stops: [["0%", "#fff275"], ["35%", "#ffe135"], ["70%", "#ffb703"], ["100%", "#fb8500"]],
-        liveStops: [["0%", "#ffffff"], ["30%", "#ffe135"], ["70%", "#ff8500"], ["100%", "#d90429"]],
+        accent: "#e8a900",
+        stops: [["0%", "#ffd65c"], ["55%", "#e8a900"], ["100%", "#ff8a5c"]],
+        liveStops: [["0%", "#ffe9a3"], ["45%", "#e8a900"], ["100%", "#ff6ac2"]],
       },
       peach: {
         name: "Peach Sunset",
-        accent: "#ff82ca",
-        stops: [["0%", "#ff60e0"], ["35%", "#ff82ca"], ["65%", "#ff9a85"], ["85%", "#ffb060"], ["100%", "#ffcf40"]],
-        liveStops: [["0%", "#0ac5ef"], ["35%", "#2dd4bf"], ["70%", "#4ade80"], ["100%", "#a3e635"]],
+        accent: "#ff8a5c",
+        stops: [["0%", "#ffb3a0"], ["45%", "#ff8a5c"], ["100%", "#e8a900"]],
+        liveStops: [["0%", "#ffd6c2"], ["45%", "#ff8a5c"], ["100%", "#ff6ac2"]],
       },
       cyber: {
         name: "Cyber Violet",
-        accent: "#9333ea",
-        stops: [["0%", "#c084fc"], ["35%", "#9333ea"], ["70%", "#6366f1"], ["100%", "#06b6d4"]],
-        liveStops: [["0%", "#f43f5e"], ["35%", "#ec4899"], ["70%", "#a855f7"], ["100%", "#38bdf8"]],
+        accent: "#a78bfa",
+        stops: [["0%", "#c4a8ff"], ["50%", "#a78bfa"], ["100%", "#ff6ac2"]],
+        liveStops: [["0%", "#d8c8ff"], ["45%", "#a78bfa"], ["100%", "#2dd4bf"]],
       },
       hemingway: {
         name: "Hemingway",
-        accent: "#b6895b",
-        stops: [["0%", "#f7f1e5"], ["35%", "#e7d4b5"], ["65%", "#d2b48c"], ["85%", "#b6895b"], ["100%", "#8c6239"]],
-        liveStops: [["0%", "#ffffff"], ["35%", "#f4ede2"], ["70%", "#ddb892"], ["100%", "#7f5539"]],
+        accent: "#b07a4e",
+        stops: [["0%", "#e7d4b5"], ["55%", "#b07a4e"], ["100%", "#8c6239"]],
+        liveStops: [["0%", "#f2e6d2"], ["45%", "#b07a4e"], ["100%", "#8c6239"]],
       },
     };
     const VIBE_KEYS = Object.keys(VIBES);
@@ -1780,13 +1499,9 @@
       const pill = $("#vibeLabel");
       if (pill) pill.textContent = v.name;
       document.documentElement.style.setProperty("--vibe-accent", v.accent);
-
-      $$("#mascotGrad").forEach((g) => {
-        g.innerHTML = v.stops.map(([off, col]) => `<stop offset="${off}" stop-color="${col}"/>`).join("");
-      });
-      $$("#mascotGradLive").forEach((g) => {
-        g.innerHTML = v.liveStops.map(([off, col]) => `<stop offset="${off}" stop-color="${col}"/>`).join("");
-      });
+      // The second stop lights the far corner of the page, so a vibe is felt as atmosphere
+      // rather than worn as an icon.
+      document.documentElement.style.setProperty("--vibe-accent-2", v.stops.at(-1)?.[1] ?? v.accent);
     }
 
     function cycleVibe() {
@@ -1795,34 +1510,6 @@
     }
 
     $("#vibePill")?.addEventListener("click", cycleVibe);
-    $("#mascotWrap")?.addEventListener("click", cycleVibe);
-    $("#mascotWrap")?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        cycleVibe();
-      }
-    });
-
-    // Eye gaze tracking for mascot
-    let mouseX = 0, mouseY = 0, eyeRaf = null;
-    window.addEventListener("pointermove", (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      if (!eyeRaf) {
-        eyeRaf = requestAnimationFrame(() => {
-          eyeRaf = null;
-          const wrap = $("#mascotWrap")?.getBoundingClientRect();
-          if (!wrap) return;
-          const cx = wrap.left + wrap.width / 2;
-          const cy = wrap.top + wrap.height / 2;
-          const dx = Math.max(-8, Math.min(8, (mouseX - cx) / 32));
-          const dy = Math.max(-5, Math.min(5, (mouseY - cy) / 32));
-          for (const el of $$(".eye")) {
-            el.style.transform = `translate(${dx}px, ${dy}px)`;
-          }
-        });
-      }
-    }, { passive: true });
 
     // Stage ticker preferences: size, face, weight, depth, flow, ring, style. Remembered on this machine.
     const prefs = {
@@ -2109,7 +1796,7 @@
         if (typeof j.listeners === "number") {
           // This console holds one of the stream connections itself; don't count it as an audience member.
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
-          const label = `${others} ${others === 1 ? "reader" : "readers"}`;
+          const label = others === 0 ? "Room empty" : `${others} reading`;
           if ($("#countBadge").textContent !== label) {
             $("#countBadge").textContent = label;
             $("#countBadge").classList.remove("bump");
@@ -2470,7 +2157,7 @@
       renderPastTalks();
 
       $("#liveDot").classList.remove("active");
-      $("#liveText").textContent = "Talk ended";
+      $("#liveText").textContent = "Ended";
       delete document.body.dataset.live;
       $("#startBtn").hidden = false;
       $("#stopBtn").hidden = true;
@@ -2628,7 +2315,7 @@
           store.set("st-engine", "browser");
         }
         if (!isBraveBrowser) {
-          $("#engineHint").textContent = "Deepgram needs a relay API key. Using browser captions.";
+          $("#engineHint").textContent = "Deepgram is off on this relay. Browser speech is free and always on.";
           $("#engineHint").hidden = false;
         }
       }

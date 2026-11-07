@@ -19,7 +19,6 @@
     margin: 0; height: 100%; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
-  body { background-image: radial-gradient(rgba(251,241,228,.09) 1.1px, transparent 1.3px); background-size: 22px 22px; }
   body {
     display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
     padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
@@ -28,15 +27,15 @@
   
   header {
     display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 2px solid rgba(251,241,228,0.15); padding-bottom: 12px;
+    border-bottom: 1px solid rgba(251,241,228,0.1); padding-bottom: 12px;
   }
   .brand-title { font-weight: 900; font-size: 1.15rem; letter-spacing: -0.03em; }
   .brand-title::after { content: "."; color: var(--pink); }
   .brand-sub { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
   
   select {
-    font: 700 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
-    border: 2px solid var(--line); border-radius: 999px; height: 38px; padding: 0 14px;
+    font: 600 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
+    border: 1px solid rgba(251,241,228,0.18); border-radius: 999px; height: 40px; padding: 0 14px;
     cursor: pointer; max-width: 46vw; text-overflow: ellipsis;
   }
   select option { color: #1e1714; }
@@ -52,17 +51,17 @@
   #state.on { color: var(--mint); }
   .dot {
     width: 9px; height: 9px; border-radius: 50%;
-    background: var(--muted); border: 1.5px solid var(--ink);
+    background: var(--muted);
   }
-  #state.on .dot { background: var(--mint); animation: breatheDot 1.4s infinite ease-in-out; }
-  @keyframes breatheDot { 50% { transform: scale(1.3); background: var(--pink); } }
+  #state.on .dot { background: var(--mint); box-shadow: 0 0 12px 1px rgba(184,240,216,.5); animation: breatheDot 2.2s infinite ease-in-out; }
+  @keyframes breatheDot { 50% { transform: scale(1.25); opacity: .55; } }
   #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
   #room b { color: var(--butter); font-weight: 900; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 
   .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .seg { display: flex; flex: 1; border: 2px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg { display: flex; flex: 1; border: 1px solid rgba(251,241,228,0.16); border-radius: 999px; padding: 3px; gap: 2px; background: rgba(251,241,228,0.05); }
   .seg button { flex: 1; height: 30px; border: none; border-radius: 999px; background: transparent; color: var(--ink); font: 800 13px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--spring); }
   .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); background: var(--mint); color: #1e1714; }
   .seg button:disabled { opacity: .4; }
@@ -74,8 +73,8 @@
   /* Live Transcription Echo */
   .echo-container {
     display: flex; flex-direction: column; justify-content: flex-end;
-    background: rgba(251,241,228,0.04); border: 2px solid rgba(251,241,228,0.15);
-    border-radius: 24px; padding: 20px; min-height: 160px; margin-bottom: 16px;
+    background: rgba(251,241,228,0.04); border: 1px solid rgba(251,241,228,0.12);
+    border-radius: 26px; padding: 20px; min-height: 160px; margin-bottom: 16px;
     flex: 1;
   }
   #guide { margin: auto 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 12px; color: var(--muted); font-size: 15px; line-height: 1.45; font-weight: 500; }
@@ -91,7 +90,7 @@
   #echo .last { animation: land .55s ease-out; }
   @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 16px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
   @keyframes caret { to { opacity: 0; } }
-  body.live .echo-container { border-color: var(--mint); box-shadow: 0 0 0 4px rgba(184,240,216,.12); }
+  body.live .echo-container { border-color: rgba(184,240,216,.45); box-shadow: 0 0 30px -10px rgba(184,240,216,.4); }
   .echo-container { transition: border-color .3s, box-shadow .3s; }
   #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
   body:not(.started) #echo:empty::before { content: none; }
@@ -115,14 +114,16 @@
 
   #go {
     position: relative; width: 100%; height: 32vh; min-height: 180px; max-height: 280px;
-    border-radius: 36px; cursor: pointer;
+    border-radius: 32px; cursor: pointer;
     font: 800 clamp(28px, 8.5vw, 42px) var(--swiss); color: #1e1714;
-    background: var(--pink); border: 4px solid var(--line); box-shadow: 0 8px 0 #3a2e28;
+    background: radial-gradient(120% 90% at 50% 0%, #ffc9de 0%, var(--pink) 62%);
+    border: 1px solid rgba(251,241,228,0.16);
+    box-shadow: 0 20px 50px -24px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,254,247,.5);
     transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .2s;
     -webkit-tap-highlight-color: transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   }
-  #go:active { transform: translateY(6px) scale(.98); box-shadow: 0 2px 0 #3a2e28; transition-duration: .06s; }
+  #go:active { transform: scale(.98); box-shadow: inset 0 2px 6px rgba(58,46,40,.18); transition-duration: .06s; }
   #go:focus-visible, #end:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
   #go:disabled { opacity: .5; }
   #go.live { background: var(--mint); }
@@ -131,7 +132,7 @@
   /* End Talk Button */
   #end {
     margin-top: 14px; width: 100%; height: 50px; border-radius: 999px;
-    background: transparent; color: var(--ink); border: 2.5px solid var(--line);
+    background: transparent; color: var(--ink); border: 1px solid rgba(251,241,228,0.2);
     font: 800 16px var(--swiss); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
   }
   #end { transition: transform .22s var(--spring), background .15s, color .15s; }
@@ -198,8 +199,8 @@
   <div class="echo-container">
     <ol id="guide">
       <li><b>Tap Go live</b> and allow the microphone.</li>
-      <li><b>Pocket it,</b> screen facing out, or hold it near your chin.</li>
-      <li><b>Leave the screen on.</b> StageType keeps it awake. Your laptop mic pauses while this one is live.</li>
+      <li><b>Pocket it,</b> screen facing out, or hold it close to the voice.</li>
+      <li><b>Leave the screen on.</b> StageType keeps it awake. The laptop mic pauses while this one is live.</li>
     </ol>
     <div id="echo" aria-live="polite"></div>
   </div>

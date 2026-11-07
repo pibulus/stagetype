@@ -17,12 +17,17 @@ const base = `http://localhost:${relay.addr.port}`;
 const SHOTS = new URL("./screenshots", import.meta.url).pathname;
 await Deno.mkdir(SHOTS, { recursive: true });
 let failed = 0;
+const errors = [];
 const browser = await chromium.launch({
   executablePath: Deno.env.get("CHROMIUM_PATH") || undefined,
   args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
 });
+// Everything below runs inside this guard. A thrown wait (a stale expectation, a page that never
+// settles) used to skip the cleanup at the bottom, leaving Chromium and the relays alive: the
+// process never exited, so CI hung until the job timed out and reported "cancelled" instead of the
+// real failure. Now a broken step fails fast and the run still tears itself down.
+try {
 const ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } });
-const errors = [];
 const track = (page, name) => {
   page.on("pageerror", (e) => errors.push(`[${name}] pageerror: ${e.message}`));
   // A 404 on a room's stream is expected and designed for (ended rooms, wrong join codes, demo ids before a scan).
@@ -50,7 +55,7 @@ ok(await p.evaluate(() => typeof qrcode === "function"), "vendored qrcode.js loa
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
 const url = await p.textContent("#urlDisplay");
-ok(/\/live\/[a-z0-9]{8}$/.test(url), "room opened, audience URL shown: " + url);
+ok(/\/live\/[a-z0-9]{32}$/.test(url), "room opened, audience URL shown: " + url);
 ok((await p.$$eval("#qrGraphic svg", (n) => n.length)) === 1, "QR svg rendered");
 ok(!(await p.$eval("#pauseBtn", (b) => b.hidden)), "pause button visible while live");
 ok(!(await p.isVisible("#startBtn")) && await p.isVisible("#stopBtn"), "start button really hidden while live, end talk shown");
@@ -104,12 +109,12 @@ ok(true, "presenter badge excludes itself: 1 reading");
 // Space pauses (not ends)
 await p.click("body", { position: { x: 5, y: 5 } });
 await p.keyboard.press("Space");
-await p.waitForFunction(() => document.querySelector("#pauseBtn").textContent === "Resume mic");
+await p.waitForFunction(() => document.querySelector("#pauseBtn").textContent === "Resume");
 ok(await p.$eval("#stopBtn", (b) => !b.hidden), "space paused mic, room still open");
 ok(await p.evaluate(() => window.__rec().started === false), "recogniser stopped while paused");
-ok((await p.textContent("#liveText")).includes("paused"), "liveText shows paused");
+ok((await p.textContent("#micSource")).includes("paused"), "mic pill shows paused");
 await p.keyboard.press("Space");
-await p.waitForFunction(() => document.querySelector("#pauseBtn").textContent === "Pause mic");
+await p.waitForFunction(() => document.querySelector("#pauseBtn").textContent === "Pause");
 ok(await p.evaluate(() => window.__rec().started === true), "space resumed: fresh recogniser running");
 
 // Audience reconnect with offset: simulate by reloading, should not duplicate
@@ -132,7 +137,7 @@ ok(true, "audience got end card");
 await new Promise((r) => setTimeout(r, 700));
 await a.setViewportSize({ width: 430, height: 880 });
 await a.screenshot({ path: `${SHOTS}/audience-end.png` });
-ok((await p.textContent("#liveText")) === "Talk ended", "presenter shows Talk ended");
+ok((await p.textContent("#liveText")) === "Ended", "presenter shows Ended");
 ok(await p.$eval("#pauseBtn", (b) => b.hidden), "pause hidden after end");
 
 // Second talk: ticker must be clean
@@ -290,7 +295,7 @@ ok(await mh.isVisible("#guide") && (await mh.$$eval("#guide li", (l) => l.length
 await mh.click("#go");
 await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Phone mic live");
 ok(await p.evaluate(() => window.__rec().started === false && paused === true), "console paused the laptop recogniser when the phone went live");
-ok((await p.textContent("#liveText")) === "Live · Phone mic" && (await p.textContent("#pauseBtn")) === "Resume mic", "console status shows the phone as the mic");
+ok((await p.textContent("#micSource")) === "Phone mic live" && (await p.textContent("#pauseBtn")) === "Resume", "console status shows the phone as the mic");
 ok(!(await mh.isVisible("#guide")), "guide gives way to the echo once live");
 // phone words flow with their source; nothing doubled
 await phone({ text: "From the pocket.", final: true });
@@ -300,7 +305,7 @@ ok((await p.textContent("#ticker")).split("From the pocket.").length === 2, "pho
 await mh.click("#go");
 await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Phone mic paused");
 ok(await p.evaluate(() => paused === true && window.__rec().started === false), "laptop mic stays paused after a deliberate phone pause");
-ok((await p.textContent("#notice")).includes("Resume mic"), "notice tells the presenter how to take over: " + JSON.stringify(await p.textContent("#notice")));
+ok((await p.textContent("#notice")).includes("Resume"), "notice tells the presenter how to take over: " + JSON.stringify(await p.textContent("#notice")));
 // phone back on, then it vanishes: after the server marks it lost the laptop comes back by itself
 await mh.click("#go");
 await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Phone mic live");
@@ -464,11 +469,16 @@ await mp.click("#sample");
 await mp.waitForFunction(() => document.querySelector("#ticker").textContent.includes("Everyone here reads along"), null, { timeout: 15000 });
 ok(true, "sample plays into the bar");
 await mob.close(); await dctx.close();
+} catch (e) {
+  console.error("suite aborted: " + (e?.message ?? e));
+  failed++;
+} finally {
+  await browser.close().catch(() => {});
+  await relay.shutdown();
+  await upstream.shutdown();
+}
 
 console.log(errors.length ? "JS ERRORS:\n" + errors.join("\n") : "no JS errors on any page");
-await browser.close();
-await relay.shutdown();
-await upstream.shutdown();
 if (failed || errors.length) {
   console.error(`\n${failed} failed assertion(s), ${errors.length} JS error(s)`);
   Deno.exit(1);
