@@ -29,8 +29,6 @@
       --mono: ui-monospace, Menlo, Consolas, monospace;
       --spring: cubic-bezier(.2, .9, .3, 1.35);
       --snap: cubic-bezier(.4, 0, .2, 1);
-      --vibe-accent: #ff6ac2;
-      --vibe-accent-2: #ffc74d;
       --vu: 0;
     }
     * {
@@ -617,7 +615,7 @@
     }
     .opt-grid {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 8px 12px;
       align-items: center;
       flex: 1 1 100%;
@@ -654,12 +652,6 @@
       outline: 2px solid var(--ink);
       outline-offset: 2px;
     }
-    .more-actions {
-      display: flex;
-      justify-content: flex-end;
-      width: 100%;
-      flex: 1 1 100%;
-    }
     .mini-btn {
       font: 600 11.5px var(--mono);
       padding: 6px 10px;
@@ -679,28 +671,6 @@
     }
     #floatBtn:hover {
       background: color-mix(in srgb, var(--violet) 36%, var(--surface));
-    }
-
-    .vibe-pill {
-      font: 600 10.5px var(--mono);
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--quiet);
-      background: var(--surface);
-      border: 1px solid var(--hair);
-      padding: 8px 13px;
-    }
-    .vibe-pill:hover {
-      color: var(--ink);
-      background: var(--sand);
-      border-color: transparent;
-    }
-    .vibe-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--vibe-accent);
-      transition: background .3s;
     }
 
     /* ---------- small menus ---------- */
@@ -930,7 +900,7 @@
       width: 9px;
       height: 9px;
       border-radius: 50%;
-      background: var(--vibe-accent);
+      background: var(--pink);
       animation: breatheDot 3.2s ease-in-out infinite;
     }
     #qrEmpty p {
@@ -1137,10 +1107,6 @@
         <div class="status-pills">
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Ready</span><span class="pill-sep">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
           <span class="pill-badge" id="countBadge">Room empty</span>
-          <button id="vibePill" class="vibe-pill" title="Cycle stage vibe">
-            <span class="vibe-dot"></span>
-            <span id="vibeLabel">Stage Lights</span>
-          </button>
         </div>
       </header>
 
@@ -1225,27 +1191,12 @@
             <details class="more" id="moreTicker">
               <summary>More</summary>
               <div class="opt-grid">
-                <span class="opt-label">Face</span>
-                <select id="face" class="opt-select" data-pref="face" aria-label="Ticker typeface">
-                  <option value="system">System (Helvetica)</option>
-                  <option value="inter">Inter</option>
-                  <option value="atkinson">Atkinson Hyperlegible</option>
-                  <option value="fraunces">Fraunces</option>
-                  <option value="mono">JetBrains Mono</option>
-                </select>
-                <span class="opt-label">Weight</span>
-                <div class="segmented-control" data-pref="weight">
-                  <button class="seg-btn" data-v="400">Regular</button>
-                  <button class="seg-btn" data-v="700">Bold</button>
-                </div>
                 <span class="opt-label">Flow</span>
                 <div class="segmented-control" data-pref="flow">
                   <button class="seg-btn" data-v="live">Live words</button>
                   <button class="seg-btn" data-v="settled">Settled sentences</button>
                 </div>
-              </div>
-              <div class="more-actions">
-                <button id="shuffleTicker" class="mini-btn" title="Shuffle ticker style">Shuffle style</button>
+                <button id="shuffleTicker" class="mini-btn" title="Shuffle the look">Shuffle</button>
               </div>
             </details>
           </div>
@@ -1519,88 +1470,37 @@
       }
     }
 
-    // Stage Vibes & Mascot Palettes
-    const VIBES = {
-      stage: {
-        name: "Stage Lights",
-        accent: "#ff6ac2",
-        stops: [["0%", "#ff6ac2"], ["40%", "#ff9a85"], ["100%", "#ffcf40"]],
-        liveStops: [["0%", "#2dd4bf"], ["50%", "#ff6ac2"], ["100%", "#ffcf40"]],
-      },
-      brut: {
-        name: "Yellow Brut",
-        accent: "#e8a900",
-        stops: [["0%", "#ffd65c"], ["55%", "#e8a900"], ["100%", "#ff8a5c"]],
-        liveStops: [["0%", "#ffe9a3"], ["45%", "#e8a900"], ["100%", "#ff6ac2"]],
-      },
-      peach: {
-        name: "Peach Sunset",
-        accent: "#ff8a5c",
-        stops: [["0%", "#ffb3a0"], ["45%", "#ff8a5c"], ["100%", "#e8a900"]],
-        liveStops: [["0%", "#ffd6c2"], ["45%", "#ff8a5c"], ["100%", "#ff6ac2"]],
-      },
-      cyber: {
-        name: "Cyber Violet",
-        accent: "#a78bfa",
-        stops: [["0%", "#c4a8ff"], ["50%", "#a78bfa"], ["100%", "#ff6ac2"]],
-        liveStops: [["0%", "#d8c8ff"], ["45%", "#a78bfa"], ["100%", "#2dd4bf"]],
-      },
-      hemingway: {
-        name: "Hemingway",
-        accent: "#b07a4e",
-        stops: [["0%", "#e7d4b5"], ["55%", "#b07a4e"], ["100%", "#8c6239"]],
-        liveStops: [["0%", "#f2e6d2"], ["45%", "#b07a4e"], ["100%", "#8c6239"]],
-      },
-    };
-    const VIBE_KEYS = Object.keys(VIBES);
-    let currentVibe = store.get("st-vibe") || "stage";
-
-    function applyVibe(k) {
-      currentVibe = k in VIBES ? k : "stage";
-      const v = VIBES[currentVibe];
-      document.documentElement.dataset.vibe = currentVibe;
-      store.set("st-vibe", currentVibe);
-      const pill = $("#vibeLabel");
-      if (pill) pill.textContent = v.name;
-      document.documentElement.style.setProperty("--vibe-accent", v.accent);
-      // The second stop lights the far corner of the page, so a vibe is felt as atmosphere
-      // rather than worn as an icon.
-      document.documentElement.style.setProperty("--vibe-accent-2", v.stops.at(-1)?.[1] ?? v.accent);
-    }
-
     // Native <details> stays open on an outside click; these are popovers, so close them.
     document.addEventListener("click", (e) => {
       for (const m of $$(".menu[open]")) if (!m.contains(e.target)) m.open = false;
     });
 
-    function cycleVibe() {
-      const nextIdx = (VIBE_KEYS.indexOf(currentVibe) + 1) % VIBE_KEYS.length;
-      applyVibe(VIBE_KEYS[nextIdx]);
-    }
-
-    $("#vibePill")?.addEventListener("click", cycleVibe);
-
     // Stage ticker preferences: size, face, weight, depth, flow, ring, style. Remembered on this machine.
     // Size is the only shape control: each step carries its own line count, so the
     // presenter never has to reason about two dials that both just make the bar taller.
     const SIZE_DEPTH = { "28px": "1", "38px": "2", "50px": "3" };
-    // A style carries its own frame.
-    const STYLE_RING = { ink: "mint", paper: "paper", brut: "ink", hemingway: "clay" };
+    const SIZE_NAME = { "28px": "Compact", "38px": "Standard", "50px": "Jumbo" };
+    // A style is a whole look: its own frame, its own face, its own weight. Nobody
+    // assembles a bar out of four independent dials.
+    const STYLE_PRESETS = {
+      ink: { ring: "mint", face: "system", weight: "700", name: "Ink" },
+      paper: { ring: "paper", face: "inter", weight: "500", name: "Paper" },
+      brut: { ring: "ink", face: "system", weight: "700", name: "Yellow Brut" },
+      hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
+    };
     const prefs = {
       size: store.get("st-size") || "38px",
-      face: store.get("st-face") || "system",
-      weight: store.get("st-weight") || "700",
       depth: SIZE_DEPTH[store.get("st-size")] || "2",
       flow: store.get("st-flow") || "live",
-      style: store.get("st-style") || "ink",
+      style: STYLE_PRESETS[store.get("st-style")] ? store.get("st-style") : "ink",
     };
-    const ringFor = () => STYLE_RING[prefs.style] || "none";
+    const presetFor = () => STYLE_PRESETS[prefs.style] || STYLE_PRESETS.ink;
     const tickerUrl = () => {
       if (!room) return "";
       const q = new URLSearchParams({
         style: prefs.style,
-        face: prefs.face,
-        weight: prefs.weight,
+        face: presetFor().face,
+        weight: presetFor().weight,
         depth: prefs.depth,
         flow: prefs.flow,
         ring: "none",
@@ -1609,26 +1509,19 @@
       return `${location.origin}/ticker/${room.id}?${q}`;
     };
     function applyPrefs() {
-      if (prefs.style === "hemingway" && prefs.face !== "fraunces") {
-        prefs.face = "fraunces";
-        store.set("st-face", "fraunces");
-      }
+      const p = presetFor();
       for (const el of tickerEls) {
         el.style.setProperty("--ticker-size", prefs.size);
-        el.style.setProperty("--ticker-face", `var(--face-${prefs.face})`);
-        el.style.setProperty("--ticker-weight", prefs.weight);
+        el.style.setProperty("--ticker-face", `var(--face-${p.face})`);
+        el.style.setProperty("--ticker-weight", p.weight);
         el.style.setProperty("--ticker-depth", prefs.depth);
-        el.dataset.face = prefs.face;
+        el.dataset.face = p.face;
         el.dataset.flow = prefs.flow;
-        el.dataset.ring = ringFor();
+        el.dataset.ring = p.ring;
         el.dataset.style = prefs.style;
       }
       const badge = $("#monitorStyleBadge");
-      if (badge) {
-        const sName = { ink: "Ink", paper: "Paper", brut: "Yellow Brut", hemingway: "Hemingway" }[prefs.style] || prefs.style;
-        const fName = { system: "System", inter: "Inter", atkinson: "Atkinson", fraunces: "Fraunces", mono: "Mono" }[prefs.face] || prefs.face;
-        badge.textContent = `${sName} · ${fName}`;
-      }
+      if (badge) badge.textContent = `${p.name} · ${SIZE_NAME[prefs.size] || ""}`;
       $$("[data-pref]").forEach((group) => {
         const v = prefs[group.dataset.pref];
         if (group.tagName === "SELECT") {
@@ -1643,24 +1536,15 @@
       renderTicker();
     }
 
+    // Shuffle picks a look, a size and a flow. The look already owns its face and weight.
     function shuffleTicker() {
-      const styles = ["ink", "paper", "brut", "hemingway"];
-      const faces = ["system", "inter", "atkinson", "fraunces", "mono"];
-      const weights = ["400", "700"];
-
-      let s = styles[Math.floor(Math.random() * styles.length)];
-      let f = faces[Math.floor(Math.random() * faces.length)];
-      let w = weights[Math.floor(Math.random() * weights.length)];
-
-      if (s === "hemingway" && Math.random() > 0.3) f = "fraunces";
-      if (s === "brut") w = "700";
-
-      prefs.style = s;
-      prefs.face = f;
-      prefs.weight = w;
-      store.set("st-style", s);
-      store.set("st-face", f);
-      store.set("st-weight", w);
+      const styles = Object.keys(STYLE_PRESETS);
+      const sizes = Object.keys(SIZE_DEPTH);
+      prefs.style = styles[Math.floor(Math.random() * styles.length)];
+      prefs.size = sizes[Math.floor(Math.random() * sizes.length)];
+      prefs.depth = SIZE_DEPTH[prefs.size];
+      store.set("st-style", prefs.style);
+      store.set("st-size", prefs.size);
       applyPrefs();
     }
     $("#shuffleTicker")?.addEventListener("click", shuffleTicker);
@@ -2397,7 +2281,6 @@
       }
     }).catch(() => {});
     applyPrefs();
-    applyVibe(currentVibe);
     renderPastTalks();
     updateTranscriptStat();
     resumeRoom();

@@ -166,18 +166,17 @@ ok((await p.textContent("#qrTalk")) === "COMP1010 Week 3" && !(await p.$eval("#q
 ok(await p.$eval("#title", (i) => i.disabled), "title locked while live");
 const url2 = await p.textContent("#urlDisplay"); const room2 = url2.split("/").pop();
 await p.click("#tabMic"); const tok2 = (await p.textContent("#urlDisplay")).split("#")[1]; await p.click("#tabAudience");
-// ticker prefs (the finer ones sit under a disclosure)
+// ticker prefs: a style is a whole look (frame, face, weight), size carries the lines
 await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
-await p.selectOption("#face", "fraunces");
-await p.click('[data-pref="weight"] [data-v="400"]');
 await p.click('[data-pref="size"] [data-v="50px"]');
 await p.click('[data-pref="flow"] [data-v="settled"]');
-const tk = await p.$eval("#ticker", (t) => ({ face: t.dataset.face, flow: t.dataset.flow, ring: t.dataset.ring, ff: getComputedStyle(t).fontFamily, fw: getComputedStyle(t).fontWeight, depth: t.style.getPropertyValue("--ticker-depth") }));
-ok(tk.face === "fraunces" && tk.ff.includes("Fraunces") && tk.fw === "400" && tk.depth === "3" && tk.flow === "settled", "size carries the line count, face and weight stick: " + JSON.stringify(tk));
+await p.click('[data-pref="style"] [data-v="hemingway"]');
+const tk = await p.$eval("#ticker", (t) => ({ face: t.dataset.face, flow: t.dataset.flow, ring: t.dataset.ring, style: t.dataset.style, ff: getComputedStyle(t).fontFamily, fw: getComputedStyle(t).fontWeight, depth: t.style.getPropertyValue("--ticker-depth") }));
+ok(tk.style === "hemingway" && tk.face === "fraunces" && tk.ff.includes("Fraunces") && tk.fw === "400" && tk.depth === "3" && tk.flow === "settled" && tk.ring === "clay", "style preset carries face, weight and frame: " + JSON.stringify(tk));
 await p.click('[data-pref="style"] [data-v="brut"]');
-ok((await p.$eval("#ticker", (t) => t.dataset.ring)) === "ink", "the style carries its own frame");
+ok((await p.$eval("#ticker", (t) => t.dataset.ring)) === "ink", "each style carries its own frame");
 await p.click('[data-pref="style"] [data-v="ink"]');
-ok((await p.evaluate(() => localStorage.getItem("st-face"))) === "fraunces", "ticker prefs persisted");
+ok((await p.evaluate(() => localStorage.getItem("st-style"))) === "ink", "ticker prefs persisted");
 const fontsLoaded = await p.evaluate(async () => { await document.fonts.load("700 20px Fraunces"); return document.fonts.check("700 20px Fraunces"); });
 ok(fontsLoaded, "Fraunces webfont actually loads from /vendor/fonts");
 const a2 = await ctx.newPage(); track(a2, "audience-title");
