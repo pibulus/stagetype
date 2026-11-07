@@ -68,7 +68,7 @@ deno task dev
 
 * **Stage Console:** Open [`http://localhost:8787`](http://localhost:8787) in Chrome or Edge. Give the talk a title, pick a language and an engine, hit **Start captions**. The QR card fills in with the audience link and a four-letter code.
 * **Audience Reader:** Scan the generated QR code or navigate to `http://<your-lan-ip>:8787/live/<roomId>`.
-* **Phone Lapel Mic:** Toggle the tab to **Phone lapel mic** and scan with your phone.
+* **Phone Lapel Mic:** The room card carries one code. Hit **Mic** for the pairing code, scan it with your own phone, pocket it; the phone inherits the talk's language and engine.
 * **Second screen or OBS:** Under Stage Ticker, **Open on a second screen** opens `/ticker/<roomId>?…` with your current bar prefs. In OBS add it as a browser source and size it as a strip, for example 1920 × 180.
 * **Floating over Keynote needs Chrome or Edge.** The float uses Document Picture-in-Picture, which Safari and Firefox don't have. In those, use the standalone ticker page on a second display instead.
 

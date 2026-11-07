@@ -83,7 +83,7 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - One process, one machine (in-memory rooms). `Dockerfile` + `fly.toml` (never scale to zero). Not Deno Deploy / multi-isolate until rooms move to KV.
 
 ## 🎛️ Console layout (keep it this lean)
-- Header pills: Live state · mic source · reading count. Left column, top to bottom: **This Talk** (title, language, engine: everything set before Start), **Voice** (Start / Pause / End, notice, the typing box), **Stage Ticker** (Float, Second screen, Size, Style; face/weight/lines/flow/ring under a disclosure), **Transcript** (stat, Copy/.txt/.md, Previous talks). Right column: the QR card, with a ghost empty state before a talk.
+- Top: the talk bar (title, language, engine, one action) which collapses to the title plus Pause/End once live. Then two cards of matched height: **Stage** (ticker, which doubles as the typing field, then size, four style chips, Display, More = flow + shuffle, transcript strip with Export) and **Room** (one QR for the room, the four-letter code, Copy link / Full screen / Mic). The lapel mic pairing card lives in the modal behind **Mic** because it carries the write key.
 - Gone on purpose: the quickstart strip, the VU meter and Test mic button (the ghost is the meter), the Screen Overlay blurb. Don't bring them back; add guidance to empty states instead.
 
 ## 🗺️ Strategy
