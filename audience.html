@@ -361,17 +361,18 @@ let startedAt = 0;
 const TALK_KEY = `stl-talk-${roomId}`;
 function loadSaved() { try { return JSON.parse(localStorage.getItem(TALK_KEY)); } catch { return null; } }
 let saveTimer = null;
+function writeTalk(ended = false) {
+  const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
+  store.set(TALK_KEY, JSON.stringify(rec));
+  let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
+  idx = idx.filter((t) => t.id !== roomId);
+  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, updatedAt: rec.updatedAt, ended });
+  while (idx.length > 20) { const old = idx.pop(); try { localStorage.removeItem(`stl-talk-${old.id}`); } catch {} }
+  store.set("stl-talks", JSON.stringify(idx));
+}
 function saveTalk(ended = false) {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
-    store.set(TALK_KEY, JSON.stringify(rec));
-    let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
-    idx = idx.filter((t) => t.id !== roomId);
-    idx.unshift({ id: roomId, title: talkTitle, words: totalWords, updatedAt: rec.updatedAt, ended });
-    while (idx.length > 20) { const old = idx.pop(); try { localStorage.removeItem(`stl-talk-${old.id}`); } catch {} }
-    store.set("stl-talks", JSON.stringify(idx));
-  }, ended ? 0 : 800);
+  saveTimer = setTimeout(() => writeTalk(ended), ended ? 0 : 800);
 }
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
@@ -464,7 +465,9 @@ feed.addEventListener("click", (e) => {
   }
   if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(12);
   paintStars();
-  saveTalk();
+  // A kept line has to survive the tab closing a second later, so write it now.
+  clearTimeout(saveTimer);
+  writeTalk(false);
 });
 
 function addLine(text, animate = true) {

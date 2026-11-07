@@ -406,6 +406,17 @@ await ar.waitForFunction(() => document.querySelector("#state").textContent === 
 await fetch(`${base}/api/room/${roomR}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokR}` }, body: JSON.stringify({ text: "Delta.", final: true }) });
 await ar.waitForFunction(() => document.querySelectorAll("#feed p:not(#interim)").length === 4);
 ok((await ar.$$eval("#feed p:not(#interim)", (n) => n.map((x) => x.textContent).join(" "))) === "Alpha. Beta. Gamma. Delta.", "reader reload mid-talk restores its copy and merges the backlog without duplicates");
+
+// ---- The reader keeps what matters: links become taps, a tap keeps a line
+await fetch(`${base}/api/room/${roomR}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokR}` }, body: JSON.stringify({ text: "Slides live at madebypablo.app/decks and the source is https://github.com/pibulus/stagetype", final: true }) });
+await ar.waitForFunction(() => document.querySelectorAll("#feed a").length === 2);
+ok(true, "links inside a caption become taps");
+await ar.locator("#feed p.line").nth(1).click();
+ok(await ar.$eval("#feed p.line.starred", (n) => !!n), "tap keeps a line");
+ok((await ar.$$eval("#feed a", (n) => n.map((a) => a.href))).every((h) => h.startsWith("https://")), "link targets carry a scheme");
+await ar.reload();
+await ar.waitForFunction(() => document.querySelectorAll("#feed p.line").length === 5);
+ok(await ar.$eval("#feed p.line.starred", (n) => !!n), "kept lines survive a reload");
 await p.click("#stopBtn");
 
 // ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere
