@@ -64,6 +64,11 @@
   #savedList b { font-size: 15px; font-weight: 800; }
   #savedList small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; margin-top: 2px; }
   #savedList .live { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: color-mix(in srgb, var(--mint) 80%, #fffef7); border: 1px solid rgba(58, 46, 40, 0.08); border-radius: 999px; padding: 3px 9px; }
+  #exportAll {
+    margin-top: 10px; width: auto; height: 34px; padding: 0 14px;
+    font-size: 12.5px; font-weight: 600; background: transparent; border-color: rgba(58, 46, 40, 0.14); color: var(--muted);
+  }
+  #exportAll:active { transform: scale(.97); }
   footer { font-size: 13px; color: var(--muted); font-weight: 600; }
   footer a { color: inherit; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
@@ -85,6 +90,7 @@
   <section id="saved" hidden>
     <h2>Saved on this phone</h2>
     <ul id="savedList"></ul>
+    <button id="exportAll" class="quiet">Export all as one file</button>
   </section>
   <footer>Or scan the QR code with your camera · <a href="https://talktype.app">StageType</a></footer>
 </main>
@@ -130,6 +136,29 @@ try {
       li.append(a); list.append(li);
     }
     document.querySelector("#saved").hidden = false;
+
+    // Safari can clear site data when a tab goes untouched for a few weeks, and a semester of
+    // lectures is worth more than a nudge. One tap takes the whole shelf as a single file.
+    document.querySelector("#exportAll").onclick = () => {
+      const parts = [];
+      for (const t of talks) {
+        let rec = null;
+        try { rec = JSON.parse(localStorage.getItem(`stl-talk-${t.id}`)); } catch {}
+        if (!rec?.lines?.length) continue;
+        const when = new Date(rec.updatedAt || t.updatedAt).toLocaleDateString();
+        parts.push(`# ${rec.title || "Untitled talk"}\n\n_${when} · ${t.words} words · StageType_\n\n${rec.lines.join("\n\n")}`);
+      }
+      if (!parts.length) return;
+      const url = URL.createObjectURL(new Blob([parts.join("\n\n---\n\n") + "\n"], { type: "text/markdown" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stagetype-shelf-${new Date().toISOString().split("T")[0]}.md`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const btn = document.querySelector("#exportAll");
+      btn.textContent = "Saved";
+      setTimeout(() => (btn.textContent = "Export all as one file"), 1500);
+    };
   }
 } catch {}
 </script>

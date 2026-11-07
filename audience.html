@@ -120,6 +120,14 @@
     box-decoration-break: clone; -webkit-box-decoration-break: clone;
   }
   #feed p.line-in { animation: lineIn .42s var(--spring); }
+  /* Tap a settled line to keep it. The mark is a margin rule, not a highlighter wash. */
+  #feed p.line { cursor: pointer; transition: opacity .6s ease, border-color .2s ease, padding .25s var(--spring); border-left: 3px solid transparent; margin-left: -14px; padding-left: 11px; }
+  #feed p.line.starred { border-left-color: var(--pill); }
+  #feed p.line.star-pop { animation: starPop .36s var(--spring); }
+  @keyframes starPop { 40% { transform: translateX(3px); } }
+  #feed a { color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+  #feed a:active { opacity: .6; }
+  @media print { #feed p.line { border-left: 0; margin-left: 0; padding-left: 0; } }
   @keyframes lineIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes sweep { to { background-size: 100% 45%; } }
   
@@ -168,6 +176,12 @@
   @keyframes cardIn { from { transform: translateY(16px) scale(.98); opacity: 0; } }
   #endCard h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.03em; font-weight: 900; }
   #endCard p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+  #linksTray { margin: 0 0 18px; text-align: left; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 14px; padding: 12px 14px; }
+  #linksTray[hidden] { display: none; }
+  #linksTray h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  #linksList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #linksList a { color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+  #keptLine[hidden] { display: none; }
   #endCard .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   #endCard .actions button { flex: 1 1 130px; height: 46px; }
 
@@ -262,6 +276,11 @@
 <section id="endCard" role="status" hidden>
   <h2>Talk ended</h2>
   <p class="sub">The transcript stays on this phone. Reopen this link any time, or find it under Saved talks at <span id="joinHost"></span>. Take a copy along too.</p>
+  <p class="sub" id="keptLine" hidden></p>
+  <div id="linksTray" hidden>
+    <h3>Links from this talk</h3>
+    <ul id="linksList"></ul>
+  </div>
   <div class="actions">
     <button class="copy-btn">Copy transcript</button>
     <button id="saveTxt">Save .txt</button>
@@ -345,7 +364,7 @@ let saveTimer = null;
 function saveTalk(ended = false) {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended };
+    const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
     store.set(TALK_KEY, JSON.stringify(rec));
     let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
     idx = idx.filter((t) => t.id !== roomId);
@@ -370,26 +389,112 @@ function updateStats() {
   $("#statsPill").textContent = `${words} word${words === 1 ? "" : "s"}`;
 }
 
+// Links in a caption become taps: a pasted reading list or syllabus link lands as a card,
+// and the end card collects them.
+const LINK_RE = /(?:https?:\/\/[^\s<>"']+|www\.[^\s<>"']+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*)?)/gi;
+const links = [];
+function linkTarget(raw) {
+  const href = /^https?:/i.test(raw) ? raw : `https://${raw.replace(/^www\./i, "")}`;
+  try {
+    const u = new URL(href);
+    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+function fillCaption(node, text) {
+  let last = 0;
+  for (const m of text.matchAll(LINK_RE)) {
+    const raw = m[0];
+    const href = linkTarget(raw);
+    if (!href) continue;
+    if (m.index > last) node.append(text.slice(last, m.index));
+    const a = document.createElement("a");
+    a.href = href;
+    a.textContent = raw;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    node.append(a);
+    if (!links.includes(href)) links.push(href);
+    last = m.index + raw.length;
+  }
+  if (last < text.length) node.append(text.slice(last));
+  if (!node.childNodes.length) node.textContent = text;
+  if (links.length) renderLinks();
+}
+function renderLinks() {
+  const tray = $("#linksTray"), list = $("#linksList");
+  if (!tray || !list) return;
+  tray.hidden = !links.length;
+  list.replaceChildren(...links.map((href) => {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = href;
+    a.textContent = href.replace(/^https?:\/\/(www\.)?/, "");
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    li.append(a);
+    return li;
+  }));
+}
+
+// Tap a settled line to keep it. Highlights ride along into every export.
+const stars = new Set();
+function paintStars() {
+  $$("#feed p.line").forEach((p) => p.classList.toggle("starred", stars.has(Number(p.dataset.i))));
+  const kept = $("#keptLine");
+  if (!kept) return;
+  kept.hidden = stars.size === 0;
+  kept.textContent = stars.size
+    ? `${stars.size} line${stars.size === 1 ? "" : "s"} kept · they lead the saved copy`
+    : "";
+}
+feed.addEventListener("click", (e) => {
+  if (e.target.closest("a")) return;
+  const p = e.target.closest("p.line");
+  if (!p) return;
+  if (!window.getSelection()?.isCollapsed) return;
+  const i = Number(p.dataset.i);
+  if (stars.has(i)) stars.delete(i);
+  else {
+    stars.add(i);
+    p.classList.remove("star-pop");
+    void p.offsetWidth;
+    p.classList.add("star-pop");
+  }
+  if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(12);
+  paintStars();
+  saveTalk();
+});
+
 function addLine(text, animate = true) {
   $("#waiting")?.remove();
   feed.querySelector("p.fresh")?.classList.remove("fresh");
   const p = document.createElement("p");
-  p.className = animate ? "fresh line-in" : "fresh";
+  p.className = animate ? "fresh line line-in" : "fresh line";
+  p.dataset.i = String(linesArr.length);
   const span = document.createElement("span");
-  span.textContent = text;
+  fillCaption(span, text);
   p.append(span);
   feed.insertBefore(p, interimEl);
   linesArr.push(text);
   updateStats();
+  paintStars();
   if (animate) saveTalk();
 }
 
 const transcript = () => linesArr.join("\n\n");
+const kept = () => [...stars].sort((a, b) => a - b).map((i) => linesArr[i]).filter(Boolean);
+const withKept = () => {
+  const k = kept();
+  if (!k.length) return transcript();
+  return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${transcript()}`;
+};
 
 async function copyTranscript(btn) {
   const orig = btn.textContent;
   try {
-    await navigator.clipboard.writeText(transcript());
+    await navigator.clipboard.writeText(withKept());
     btn.textContent = "Copied!";
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(30);
   } catch {
@@ -409,14 +514,17 @@ function download(filename, content, type) {
 
 $("#saveTxt").onclick = () => {
   const head = talkTitle ? `${talkTitle}\n${new Date().toLocaleDateString()}\n\n` : "";
-  download(`${fileStem()}.txt`, head + transcript(), "text/plain");
+  download(`${fileStem()}.txt`, head + withKept(), "text/plain");
 };
 
 $("#saveMd").onclick = () => {
   const now = new Date();
   const dateStr = now.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  const k = kept();
+  const keptSection = k.length ? `## Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n` : "";
+  const linkSection = links.length ? `## Links\n\n${links.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
   const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: StageType, room \`${roomId}\`\n\n---\n\n`;
-  download(`${fileStem()}.md`, frontmatter + transcript() + "\n", "text/markdown");
+  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + transcript() + "\n", "text/markdown");
 };
 
 const triggerPrint = () => window.print();
@@ -434,6 +542,8 @@ if (saved?.lines?.length) {
   applyRoom({ title: saved.title });
   startedAt = saved.startedAt || 0;
   saved.lines.forEach((t) => addLine(t, false));
+  for (const i of saved.stars || []) stars.add(i);
+  paintStars();
   seen = saved.seen || saved.lines.length;
   setState("saved", "Saved on this phone");
 }
@@ -476,6 +586,7 @@ function talkOver(label, state = "ended") {
   setState(state, label);
   $("#jump").hidden = true;
   if (linesArr.length) {
+    paintStars();
     $("#endCard").hidden = false;
     saveTalk(true);
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);
