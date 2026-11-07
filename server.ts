@@ -8,6 +8,9 @@ type Chunk = { text?: unknown; final?: unknown; ping?: unknown; source?: unknown
 type Source = "mic" | "phone" | "typed";
 const SOURCES = new Set<string>(["mic", "phone", "typed"]);
 type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
+// An image shared into the room: the full frame for the phone that taps it, and a small thumb that
+// rides along in the event so every phone can paint the catch without fetching anything.
+type Asset = { id: string; seq: number; at: number; full: Uint8Array; type: string; thumb: string };
 type Room = {
   token: string;
   code: string; // four-letter join code people can type instead of scanning
@@ -19,6 +22,8 @@ type Room = {
   closed: boolean;
   audioSessions: Set<() => void>;
   listeners: Set<Listener>;
+  assets: Map<string, Asset>;
+  assetBytes: number;
   touched: number;
   startedAt: number;
 };
@@ -43,6 +48,13 @@ const deepgramKey = () => Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 const deepgramUrl = () => Deno.env.get("DEEPGRAM_URL") ?? DEEPGRAM_DEFAULT_URL;
 const deepgramModel = () => Deno.env.get("DEEPGRAM_MODEL") ?? "nova-3";
 const PHONE_LOST_MS = 45_000;
+// Images: compressed on the presenter's device before they ever reach the relay. Caps are per room.
+const MAX_ASSET_BYTES = 2_000_000;
+const MAX_THUMB_CHARS = 90_000; // data URL length; the thumb rides in the SSE event
+const MAX_ASSETS = 40;
+const MAX_ASSET_TOTAL = 24_000_000;
+const MAX_BACKLOG_ASSETS = 12;
+const ALLOWED_IMAGE_TYPES = new Set(["image/webp", "image/jpeg", "image/png"]);
 // The live demo on /demo: every visitor gets a signed-noise room id that only becomes a room when a
 // phone scans it. Set STAGETYPE_SECRET in production so demo QR codes survive a restart.
 const SECRET = Deno.env.get("STAGETYPE_SECRET") ?? crypto.randomUUID() + crypto.randomUUID();
@@ -195,6 +207,43 @@ function pushChunk(room: Room, chunk: { text: string; final: boolean; source: So
   }
 }
 
+function base64(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(out);
+}
+
+function assetEvent(a: Asset) {
+  return { id: a.id, seq: a.seq, at: a.at, thumb: a.thumb };
+}
+
+// Oldest first out the door: a room holds a bounded number of images and bytes.
+function trimAssets(room: Room) {
+  while (room.assets.size > MAX_ASSETS || room.assetBytes > MAX_ASSET_TOTAL) {
+    const oldest = [...room.assets.values()].sort((x, y) => x.seq - y.seq)[0];
+    if (!oldest) return;
+    room.assets.delete(oldest.id);
+    room.assetBytes -= oldest.full.length;
+  }
+}
+
+function addAsset(room: Room, full: Uint8Array, type: string, thumb: Uint8Array) {
+  const asset: Asset = {
+    id: id(24),
+    seq: room.offset + room.lines.length,
+    at: Date.now(),
+    full,
+    type,
+    thumb: `data:${type};base64,${base64(thumb)}`,
+  };
+  room.touched = asset.at;
+  room.assets.set(asset.id, asset);
+  room.assetBytes += full.length;
+  trimAssets(room);
+  send(room, "asset", assetEvent(asset));
+  return asset;
+}
+
 function setPhone(room: Room, live: boolean, lost: boolean) {
   if (room.phone.live === live) return;
   room.phone.live = live;
@@ -328,6 +377,8 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
       closed: false,
       audioSessions: new Set(),
       listeners: new Set(),
+      assets: new Map(),
+      assetBytes: 0,
       touched: now,
       startedAt: now,
     });
@@ -358,6 +409,49 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
     deepgramSession(r, socket, source, lang);
     return response;
+  }
+
+  // An image shared into the room. Multipart so the full frame and its thumb arrive in one go.
+  const assetPost = path.match(/^\/api\/room\/([a-z0-9]+)\/asset$/);
+  if (assetPost && req.method === "POST") {
+    const r = rooms.get(assetPost[1]);
+    if (!r) return json({ error: "room gone" }, 404);
+    if (!tokenOk(req.headers.get("authorization"), r.token)) return json({ error: "nope" }, 403);
+    if (r.demo) return json({ error: "not in the demo" }, 403);
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      return json({ error: "expected a form" }, 400);
+    }
+    const full = form.get("full");
+    const thumb = form.get("thumb");
+    if (!(full instanceof File) || !(thumb instanceof File)) return json({ error: "need full and thumb" }, 400);
+    const type = full.type || "image/webp";
+    if (!ALLOWED_IMAGE_TYPES.has(type)) return json({ error: "images only" }, 415);
+    if (full.size === 0 || full.size > MAX_ASSET_BYTES) return json({ error: "too big" }, 413);
+    if (thumb.size > 120_000) return json({ error: "thumb too big" }, 413);
+    const fullBytes = new Uint8Array(await full.arrayBuffer());
+    const thumbBytes = new Uint8Array(await thumb.arrayBuffer());
+    const asset = addAsset(r, fullBytes, type, thumbBytes);
+    if (asset.thumb.length > MAX_THUMB_CHARS) {
+      r.assets.delete(asset.id);
+      r.assetBytes -= fullBytes.length;
+      return json({ error: "thumb too big" }, 413);
+    }
+    return json({ id: asset.id, seq: asset.seq, thumb: asset.thumb });
+  }
+
+  // A phone taps a thumb: hand it the full frame. Immutable and cacheable, no auth (the room id is the secret).
+  const assetGet = path.match(/^\/api\/room\/([a-z0-9]+)\/asset\/([a-z0-9]+)$/);
+  if (assetGet) {
+    if (!rooms.has(assetGet[1])) await materialiseDemo(assetGet[1], url.searchParams.get("s"));
+    const r = rooms.get(assetGet[1]);
+    const asset = r?.assets.get(assetGet[2]);
+    if (!r || !asset) return json({ error: "no such image" }, 404);
+    return new Response(asset.full as unknown as BodyInit, {
+      headers: { "content-type": asset.type, "cache-control": "public, max-age=3600, immutable" },
+    });
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
@@ -408,6 +502,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
           startedAt: room.startedAt,
           title: room.title,
           phone: room.phone.live,
+          assets: [...room.assets.values()].sort((a, b) => a.seq - b.seq).slice(-MAX_BACKLOG_ASSETS).map(assetEvent),
         });
         c.enqueue(enc.encode(`retry: 2000\n${dec.decode(hello)}`));
         const ping = setInterval(() => {
@@ -586,6 +681,8 @@ async function materialiseDemo(id: string, sig: string | null) {
     closed: false,
     audioSessions: new Set(),
     listeners: new Set(),
+    assets: new Map(),
+    assetBytes: 0,
     touched: now,
     startedAt: now,
     demo: exp,

@@ -134,6 +134,23 @@
   :root[data-loose="1"] #feed { line-height: 1.95; }
   :root[data-loose="1"] #feed p { letter-spacing: .025em; word-spacing: .16em; margin-bottom: 1.1em; }
 
+  /* The catch: an image lands where it was shared, between the captions. */
+  #feed figure.catch { margin: 0 0 1em; }
+  #feed figure.catch img {
+    display: block; width: 100%; height: auto; max-height: 58vh; object-fit: contain; border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+    background: color-mix(in srgb, var(--ink) 5%, transparent); cursor: zoom-in;
+  }
+  #feed figure.catch.line-in { animation: lineIn .42s var(--spring); }
+  #feed .before-join { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+  #lightbox {
+    position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--ink) 96%, transparent); backdrop-filter: blur(6px); padding: 16px;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 92vh; border-radius: 10px; }
+
   #interim {
     color: var(--ink); opacity: 1; border-radius: 8px; padding: 2px 6px; margin: -2px -6px;
     background: color-mix(in srgb, var(--pill) 35%, transparent); transition: background .2s ease;
@@ -272,6 +289,7 @@
   <p id="interim" aria-live="off"></p>
 </main>
 <button id="jump" hidden>Jump to live</button>
+<div id="lightbox" role="dialog" aria-label="Shared image"><img alt=""></div>
 
 <section id="endCard" role="status" hidden>
   <h2>Talk ended</h2>
@@ -471,6 +489,42 @@ feed.addEventListener("click", (e) => {
   writeTalk(false);
 });
 
+// An image is live only: it lives as long as the room does, and never rides in the saved copy.
+function addAsset({ id, thumb }, animate = true, beforeJoin = false) {
+  $("#waiting")?.remove();
+  feed.querySelector("p.fresh")?.classList.remove("fresh");
+  if (beforeJoin && !$("#feed .before-join")) {
+    const label = document.createElement("p");
+    label.className = "before-join";
+    label.textContent = "Shared earlier in this talk";
+    feed.insertBefore(label, interimEl);
+  }
+  const fig = document.createElement("figure");
+  fig.className = animate ? "catch line-in" : "catch";
+  const img = document.createElement("img");
+  img.src = thumb;
+  img.alt = "Image shared during the talk";
+  img.loading = "lazy";
+  img.dataset.asset = id;
+  fig.append(img);
+  feed.insertBefore(fig, interimEl);
+  follow();
+}
+
+const lightbox = $("#lightbox");
+const lightboxImg = lightbox.querySelector("img");
+feed.addEventListener("click", (e) => {
+  const img = e.target.closest("figure.catch img");
+  if (!img) return;
+  lightboxImg.src = `/api/room/${roomId}/asset/${img.dataset.asset}`;
+  lightbox.classList.add("open");
+});
+lightbox.onclick = () => {
+  lightbox.classList.remove("open");
+  lightboxImg.removeAttribute("src");
+};
+addEventListener("keydown", (e) => { if (e.key === "Escape") lightbox.onclick(); });
+
 function addLine(text, animate = true) {
   $("#waiting")?.remove();
   feed.querySelector("p.fresh")?.classList.remove("fresh");
@@ -560,11 +614,12 @@ es.addEventListener("open", () => setState("live", "Live"));
 // `seen` is an absolute sequence number. The server trims old lines from its backlog and tells us
 // how many it dropped (`offset`), so a reconnect after a long talk never double-prints or skips lines.
 es.addEventListener("backlog", (e) => {
-  const { lines, offset = 0, ...info } = JSON.parse(e.data);
+  const { lines, offset = 0, assets = [], ...info } = JSON.parse(e.data);
   applyRoom(info);
   if (info.startedAt) startedAt = info.startedAt;
   lines.slice(Math.max(0, seen - offset)).forEach((t) => addLine(t, false));
   seen = Math.max(seen, offset + lines.length);
+  for (const a of assets) addAsset(a, false, true);
   if (linesArr.length) saveTalk();
   follow();
 });
@@ -577,6 +632,10 @@ es.addEventListener("final", (e) => {
   }
   interimEl.textContent = "";
   follow();
+});
+
+es.addEventListener("asset", (e) => {
+  addAsset(JSON.parse(e.data));
 });
 
 es.addEventListener("interim", (e) => {

@@ -429,3 +429,76 @@ Deno.test("demo rooms: nothing until a signed scan, then small, short and typing
   assert(!rooms.has(mint.id));
   for (const r of [ra, b.body!.getReader(), c.body!.getReader()]) await r.cancel().catch(() => {});
 });
+
+Deno.test("assets: an image needs the write token, rides out as a thumb, and comes back whole", async () => {
+  const { id, token } = await mkRoom();
+  const full = new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]);
+  const thumb = new Uint8Array([1, 2, 3]);
+  const form = (type: string, body = full) => {
+    const f = new FormData();
+    f.append("full", new File([body], "full.webp", { type }));
+    f.append("thumb", new File([thumb], "thumb.webp", { type }));
+    return f;
+  };
+
+  const { reader, read } = await openStream(id);
+  await read(); // backlog
+
+  // no token, no image
+  assertEquals((await handler(new Request(`${base}/api/room/${id}/asset`, { method: "POST", body: form("image/png") }))).status, 403);
+  // not an image
+  assertEquals(
+    (await handler(
+      new Request(`${base}/api/room/${id}/asset`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form("text/html"),
+      }),
+    )).status,
+    415,
+  );
+
+  const ok = await handler(
+    new Request(`${base}/api/room/${id}/asset`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: form("image/webp"),
+    }),
+  );
+  assertEquals(ok.status, 200);
+  const saved = await ok.json() as { id: string; thumb: string };
+  assert(saved.thumb.startsWith("data:image/webp;base64,"));
+
+  // the room hears about it with the thumb inline, so no phone has to fetch to paint
+  const event = await read();
+  assert(event.includes("event: asset") && event.includes(saved.id) && event.includes("data:image/webp;base64,"));
+
+  // and the full frame comes back on demand, cacheable
+  const got = await handler(new Request(`${base}/api/room/${id}/asset/${saved.id}`));
+  assertEquals(got.status, 200);
+  assertEquals(got.headers.get("content-type"), "image/webp");
+  assert(got.headers.get("cache-control")?.includes("immutable"));
+  assertEquals(new Uint8Array(await got.arrayBuffer()), full);
+  assertEquals((await handler(new Request(`${base}/api/room/${id}/asset/${"0".repeat(24)}`))).status, 404);
+
+  // a late joiner's backlog carries the recent thumbs
+  const late = await openStream(id);
+  assert((await late.read()).includes('"assets":[{"id"'));
+  await late.reader.cancel();
+
+  // oversize is refused before it lands in memory
+  const tooBig = new Uint8Array(2_000_001);
+  assertEquals(
+    (await handler(
+      new Request(`${base}/api/room/${id}/asset`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form("image/webp", tooBig),
+      }),
+    )).status,
+    413,
+  );
+
+  await reader.cancel();
+  await del(`/api/room/${id}`, token);
+});

@@ -718,6 +718,41 @@
     #floatBtn:hover {
       background: color-mix(in srgb, var(--violet) 36%, var(--surface));
     }
+    /* No room, no image sharing. */
+    #shareImageBtn:disabled {
+      display: none;
+    }
+
+    /* Images shared into the room */
+    .asset-tray {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 12px;
+      border-top: 1px solid var(--hair-soft);
+      flex-wrap: wrap;
+    }
+    .asset-tray[hidden] {
+      display: none;
+    }
+    .asset-tray img {
+      width: 34px;
+      height: 34px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--hair);
+      display: block;
+    }
+    .asset-tray span {
+      font-size: 11.5px;
+      color: var(--quiet);
+      font-weight: 500;
+      margin-left: 2px;
+    }
+    .stage.drop {
+      outline: 2px dashed color-mix(in srgb, var(--pink) 55%, transparent);
+      outline-offset: -6px;
+    }
 
     /* ---------- small menus ---------- */
     .menu {
@@ -1217,6 +1252,8 @@
                 <button id="screenBtn" disabled>Second screen</button>
               </div>
             </details>
+            <button id="shareImageBtn" disabled title="Share an image with the room">Image</button>
+            <input id="imageFile" type="file" accept="image/*" hidden>
             <details class="more" id="moreTicker">
               <summary>More</summary>
               <div class="opt-grid">
@@ -1229,6 +1266,7 @@
               </div>
             </details>
           </div>
+          <div class="asset-tray" id="assetTray" hidden></div>
           <div class="transcript-bar">
             <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
             <div class="transcript-actions" id="transcriptActions" hidden>
@@ -1577,6 +1615,92 @@
       applyPrefs();
     }
     $("#shuffleTicker")?.addEventListener("click", shuffleTicker);
+
+    // Images are compressed here, on this machine, before the relay ever sees them: a 12 MP phone
+    // photo leaves as a ~250 KB WebP, EXIF and all stripped, plus a 320px thumb for the catch.
+    function encodeCanvas(src, max, quality) {
+      const scale = Math.min(1, max / Math.max(src.width, src.height));
+      const w = Math.round(src.width * scale);
+      const h = Math.round(src.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(src, 0, 0, w, h);
+      return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/webp", quality));
+    }
+
+    let sharing = false;
+    async function shareImage(file) {
+      if (!room || sharing || !file?.type?.startsWith("image/")) return;
+      sharing = true;
+      $("#shareImageBtn").disabled = true;
+      try {
+        const bitmap = await createImageBitmap(file);
+        const [full, thumb] = await Promise.all([encodeCanvas(bitmap, 1280, 0.7), encodeCanvas(bitmap, 320, 0.6)]);
+        bitmap.close?.();
+        if (!full || !thumb) throw new Error("could not encode");
+        const form = new FormData();
+        form.append("full", full, "full.webp");
+        form.append("thumb", thumb, "thumb.webp");
+        const res = await fetch(`/api/room/${room.id}/asset`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${room.token}` },
+          body: form,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const saved = await res.json();
+        addTrayImage(saved.thumb);
+      } catch (err) {
+        notice(`Couldn't share that image (${err.message}).`);
+      } finally {
+        sharing = false;
+        $("#shareImageBtn").disabled = !room;
+      }
+    }
+
+    function addTrayImage(thumb) {
+      const tray = $("#assetTray");
+      const img = document.createElement("img");
+      img.src = thumb;
+      img.alt = "Image shared with the room";
+      tray.append(img);
+      let count = tray.querySelector("span");
+      if (!count) {
+        count = document.createElement("span");
+        tray.append(count);
+      }
+      const n = tray.querySelectorAll("img").length;
+      count.textContent = `${n} shared`;
+      tray.hidden = false;
+    }
+
+    $("#shareImageBtn").onclick = () => $("#imageFile").click();
+    $("#imageFile").onchange = (e) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (file) shareImage(file);
+    };
+    // Paste or drop a picture anywhere on the stage.
+    const stageCard = $(".stage");
+    stageCard?.addEventListener("paste", (e) => {
+      const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
+      if (!item) return;
+      e.preventDefault();
+      shareImage(item.getAsFile());
+    });
+    stageCard?.addEventListener("dragover", (e) => {
+      if (!room) return;
+      e.preventDefault();
+      stageCard.classList.add("drop");
+    });
+    stageCard?.addEventListener("dragleave", () => stageCard.classList.remove("drop"));
+    stageCard?.addEventListener("drop", (e) => {
+      stageCard.classList.remove("drop");
+      if (!room) return;
+      e.preventDefault();
+      const file = [...(e.dataTransfer?.files ?? [])].find((f) => f.type.startsWith("image/"));
+      if (file) shareImage(file);
+    });
 
     // Typed captions: the room is a chat room, and this is the simplest way in.
     let typedTimer = null;
@@ -2104,6 +2228,7 @@
       renderTicker();
       updateQR();
       $("#qrHint").hidden = false;
+      $("#shareImageBtn").disabled = false;
       $("#title").disabled = true;
       $("#typed").disabled = false;
       $("#screenBtn").disabled = false;
