@@ -430,16 +430,19 @@ await p.evaluate(async () => {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 });
 await p.evaluate(() => globalThis.dispatchEvent(new Event("focus")));
+await p.waitForFunction(() => !document.querySelector("#clipChip").hidden);
+ok((await ar.$$eval("#feed figure.catch", (n) => n.length)) === 0, "coming back to the window offers the image, it does not send it");
+await p.click("#clipChip");
 await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 1);
-ok(true, "a copied screenshot lands on the phones");
+ok(true, "sharing the clipboard image lands it on the phones");
 await p.evaluate(() => globalThis.dispatchEvent(new Event("focus")));
 await new Promise((r) => setTimeout(r, 600));
-ok((await ar.$$eval("#feed figure.catch", (n) => n.length)) === 1, "the same screenshot is not sent twice");
+ok(await p.$eval("#clipChip", (n) => n.hidden), "the same screenshot is not offered twice");
 await ar.click("#feed figure.catch img");
 ok(await ar.$eval("#lightbox", (n) => n.classList.contains("open")), "tapping the image opens the full frame");
 await ar.click("#lightbox");
 // pull it back: the wrong screenshot leaves every phone
-await p.click("#assetTray img");
+await p.click("#assetTray .tray-thumb");
 await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 0);
 ok(true, "pulling a picture back removes it from the phones");
 await p.click("#stopBtn");

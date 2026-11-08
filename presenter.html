@@ -774,6 +774,27 @@
     .asset-tray img[hidden] {
       display: none;
     }
+    .clip-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px 5px 5px;
+      border: 1px solid color-mix(in srgb, var(--pink) 45%, var(--hair));
+      background: color-mix(in srgb, var(--pink) 10%, var(--surface));
+      border-radius: 999px;
+      font: 600 12px var(--swiss);
+      color: var(--ink);
+    }
+    .clip-chip[hidden] {
+      display: none;
+    }
+    .clip-chip img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--hair);
+    }
     .stage.drop {
       outline: 2px dashed color-mix(in srgb, var(--pink) 55%, transparent);
       outline-offset: -6px;
@@ -1316,6 +1337,10 @@
             </details>
           </div>
           <div class="asset-tray" id="assetTray" hidden>
+            <button class="clip-chip" id="clipChip" hidden>
+              <img alt="" id="clipThumb">
+              <span>Share the clipboard image</span>
+            </button>
             <span id="pasteHint">Copy a screenshot, then ⌘V on this page.</span>
           </div>
           <div class="transcript-bar">
@@ -1716,7 +1741,7 @@
 
     function addTrayImage(thumb, assetId) {
       const tray = $("#assetTray");
-      const hint = $("#pasteHint");
+      if (assetId && tray.querySelector(`.tray-thumb[data-asset="${assetId}"]`)) return;
       const button = document.createElement("button");
       button.className = "tray-thumb";
       button.dataset.asset = assetId;
@@ -1729,6 +1754,19 @@
       button.append(img);
       tray.append(button);
       tray.hidden = false;
+      paintTray();
+    }
+
+    function removeTrayThumb(assetId) {
+      $(`#assetTray .tray-thumb[data-asset="${assetId}"]`)?.remove();
+      paintTray();
+    }
+
+    function clearTray() {
+      const tray = $("#assetTray");
+      tray.querySelectorAll(".tray-thumb").forEach((b) => b.remove());
+      $("#clipChip").hidden = true;
+      tray.hidden = true;
       paintTray();
     }
 
@@ -1827,12 +1865,42 @@
       shareImage(file);
     });
 
-    // A copy made in another app lands here the moment the console comes back into focus.
-    addEventListener("focus", () => {
-      if (room && clipboardReadGranted) sharesFreshClipboard();
-    });
+    // Coming back to the console never sends anything by itself. It looks, and offers:
+    // a screenshot of a private DM on the clipboard should not walk into a room of eighty.
+    let clipPending = null;
+    let clipObjectUrl = null;
+    function hideClipChip() {
+      clipPending = null;
+      $("#clipChip").hidden = true;
+      if (clipObjectUrl) URL.revokeObjectURL(clipObjectUrl);
+      clipObjectUrl = null;
+    }
+    function showClipChip(file) {
+      clipPending = file;
+      if (clipObjectUrl) URL.revokeObjectURL(clipObjectUrl);
+      clipObjectUrl = URL.createObjectURL(file);
+      $("#clipThumb").src = clipObjectUrl;
+      $("#clipChip").hidden = false;
+      $("#assetTray").hidden = false;
+    }
+    async function peekClipboard() {
+      if (!room || !clipboardReadGranted) return;
+      const file = await clipboardImage();
+      if (!file) return hideClipChip();
+      const hash = await hashBytes(file);
+      if (hash === lastClipHash) return hideClipChip();
+      showClipChip(file);
+    }
+    $("#clipChip").onclick = async () => {
+      if (!clipPending || !room) return;
+      const file = clipPending;
+      lastClipHash = await hashBytes(file);
+      hideClipChip();
+      shareImage(file);
+    };
+    addEventListener("focus", peekClipboard);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && room && clipboardReadGranted) sharesFreshClipboard();
+      if (document.visibilityState === "visible") peekClipboard();
     });
 
     const stageCard = $(".stage");
@@ -1987,7 +2055,8 @@
       sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
       sseSource.addEventListener("backlog", (e) => {
-        const { lines, offset = 0, phone } = JSON.parse(e.data);
+        const { lines, offset = 0, phone, assets = [] } = JSON.parse(e.data);
+        for (const a of assets) addTrayImage(a.thumb, a.id);
         if (lines && lines.length > 0) {
           finals = lines.slice(-50);
           // A resumed console may have missed lines while it was away: append what the relay has past our count.
@@ -2030,6 +2099,16 @@
       sseSource.addEventListener("source", (e) => {
         const { source, live, lost } = JSON.parse(e.data);
         if (source === "phone") onPhone(live, lost);
+      });
+
+      // Images: the relay is the source of truth, so the tray refills after a reload and empties
+      // when a picture is pulled back.
+      sseSource.addEventListener("asset", (e) => {
+        const { id, thumb } = JSON.parse(e.data);
+        addTrayImage(thumb, id);
+      });
+      sseSource.addEventListener("asset-gone", (e) => {
+        removeTrayThumb(JSON.parse(e.data).id);
       });
     }
 
@@ -2476,6 +2555,8 @@
       $("#stopBtn").hidden = true;
       $("#pauseBtn").hidden = true;
       $("#floatBtn").disabled = true;
+      $("#shareImageBtn").disabled = true;
+      clearTray();
       $("#engine").disabled = false;
       $("#qrEmpty").hidden = false;
       $("#urlDisplay").hidden = true;
