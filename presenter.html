@@ -1464,6 +1464,7 @@
     let paused = false;
     let phoneLive = false;
     let transcript = []; // every final line of this talk, in room order, for export. `finals` is just the ticker's tail.
+    let transcriptTimes = []; // when each line landed, so exports can paragraph by pause
     let saveTimer = null;
     let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
 
@@ -1480,13 +1481,30 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
+    // The same pause rule as the reader: eight seconds of silence starts a paragraph, so the
+    // export reads like a draft instead of a column of one-sentence lines.
+    const prose = (lines, times = []) => {
+      const paras = [];
+      let para = [];
+      for (let i = 0; i < lines.length; i++) {
+        const gap = i > 0 && times[i] && times[i - 1] ? times[i] - times[i - 1] : 0;
+        if (gap > 8000 && para.length) {
+          paras.push(para.join(" "));
+          para = [];
+        }
+        para.push(lines[i]);
+      }
+      if (para.length) paras.push(para.join(" "));
+      return paras.join("\n\n");
+    };
     const asMarkdown = (t) =>
       `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${
         new Date(t.startedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
       }\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${
-        t.lines.join("\n\n")
+        prose(t.lines, t.times)
       }\n`;
-    const asText = (t) => (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + t.lines.join("\n\n");
+    const asText = (t) =>
+      (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + prose(t.lines, t.times);
 
     // The transcript survives on this machine: saved under the room id as lines arrive, listed under
     // Previous talks, and the open room itself is remembered for this tab so a reload mid-talk resumes.
@@ -2083,7 +2101,10 @@
           // A resumed console may have missed lines while it was away: append what the relay has past our count.
           const have = transcript.length;
           if (have < offset + lines.length) {
-            transcript.push(...lines.slice(Math.max(0, have - offset)));
+            const fresh = lines.slice(Math.max(0, have - offset));
+            transcript.push(...fresh);
+            const now = Date.now();
+            for (let i = 0; i < fresh.length; i++) transcriptTimes.push(now);
             saveTalk();
           }
           renderTicker();
@@ -2100,6 +2121,7 @@
           finals.push(text);
           if (finals.length > 50) finals.shift();
           transcript.push(text);
+          transcriptTimes.push(Date.now());
           saveTalk();
         }
         interim = "";
@@ -2426,6 +2448,7 @@
       // First talk on this machine: the title already knows the names worth getting right.
       if (!$("#keyterms").value.trim() && title) $("#keyterms").value = termsFrom(title);
       transcript = [];
+      transcriptTimes = [];
       attachRoom(created);
     }
 
@@ -2453,8 +2476,10 @@
       try {
         const rec = JSON.parse(localStorage.getItem(`st-talk-${saved.id}`));
         transcript = rec?.lines || [];
+        transcriptTimes = rec?.times || [];
       } catch {
         transcript = [];
+        transcriptTimes = [];
       }
       attachRoom(saved);
       notice("Picked the talk back up after a reload. Phones never noticed.");

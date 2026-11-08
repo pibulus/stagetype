@@ -94,6 +94,23 @@ Next, in order:
 8. **Diarisation and speaker names** for panels: Deepgram's streaming diarizer tags Speaker 0, 1, and the console lets you name them.
 9. **Mac host app** wrapping `/ticker/:id`, with on-device speech.
 
+## What we refuse
+
+The room is quiet on purpose. Every one of these would turn a caption lens into an engagement product, and each one was asked for by a real organiser:
+
+- **Audience Q&A.** The moment readers write back to the stage, the presenter needs a moderation queue, a profanity filter and a second screen, and the calm is gone. Questions stay out loud, where they belong.
+- **Emoji reactions floating up the ticker.** The ticker is the talk, not a scoreboard.
+- **AI summaries for late joiners.** The transcript is the record. A summary is a different product arguing with the speaker about what they said.
+- **Accounts, cloud recordings, sponsor slots on captions.** Not now, not later; it is the reason the tool is easy to say yes to.
+
+## The local mode (designed, not built)
+
+Chrome's Web Speech API sends audio to Google, and dies when the venue wifi does. But the relay only needs a JSON POST with the write token, so a twenty-line `deno task listen-local` that pipes `whisper-stream` (or macOS on-device `SFSpeechRecognizer`) into `POST /api/room/:id` with `{ text, final, source }` gives a basement, a tent or a community hall a fully offline StageType with audio that never leaves the machine. The catch is a local model install; the relay needs no change.
+
+## Multi-mic (parked)
+
+Two phones as two mics on a panel needs per-phone identity, a label ("Host", "Guest"), and a handoff rule for each; the current hand-off assumes one pocket mic. Worth doing after the take-home pack, not before.
+
 ## Money: one Passport for the family
 
 Free, right in the browser: browser speech, a floating bar, a fullscreen ticker, a live room. Every reader is free forever, with their own type, theme, kept lines and downloads.
