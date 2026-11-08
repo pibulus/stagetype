@@ -2,6 +2,18 @@
 
 A living note of the product and business thinking behind StageType, so decisions don't evaporate between sessions. Update it when a decision is made or reversed.
 
+## Where it sits (8 Nov 2026)
+
+Working, local, not deployed. `deno task dev`, then open http://localhost:8787.
+
+**The ten-second test:** land on the console. A sample talk types itself into the stage (`SAMPLE`). The room card says *"Start captions and the code lands in this square."* Click it (or Start), the QR appears, a phone camera reads it, and the phone scrolls the words in its own font and size. Say something; watch it land in three places.
+
+**What is real:** console (talk bar, stage with x-ray styles, room card, transcript, image tray), phone reader (four themes, five faces, keep-a-line, live links, take-home card with share/copy/.md/print), phone mic with handoff, standalone ticker, join codes, `/demo`, live images via clipboard with compression on the device and a pull-back, everything local-first with no accounts.
+
+**What is deliberately not:** no server storage (rooms keep 400 lines + 40 images in memory and die), no audio stored, no accounts, no landing page in front of the console, no native app yet.
+
+**The next three, in order:** the take-home pack (links and a deck that the presenter places, rather than only links that happen to be spoken); deploy (one lane, `fly.toml` ready, no domain yet, no Deepgram key wired); the mic handshake (request-and-approve, so the reader page can become the mic without handing out the write key).
+
 ## The one-line position
 
 **Wordly is the one you book a demo for. StageType is the one you just open.**
