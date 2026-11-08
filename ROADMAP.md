@@ -67,13 +67,13 @@ StageType is MIT today. MIT lets anyone host it and sell it back to our customer
 
 ## Build order
 
-Done: captions, phone lapel mic with handoff, audience reader with themes and type, join codes, typing into the stage bar, standalone ticker, persistence on every device, Deepgram through the relay, hosting recipe, the live demo at `/demo`, the flat console with a sample talk in the stage, kept lines on the reader, live links collected into a take-home card, shelf export.
+Done: captions, phone lapel mic with handoff, audience reader with themes and type, join codes, typing into the stage bar, standalone ticker, persistence on every device, Deepgram through the relay, hosting recipe, the live demo at `/demo`, the flat console with a sample talk in the stage, kept lines on the reader, live links collected into a take-home card, shelf export, live image sharing (clipboard watcher, compression on the presenter's device, the catch in every feed, pull-back).
 
 Next, in order:
 
 0. **The take-home pack, finished.** Presenters attach a few links, a deck, a syllabus, their notes, either before Start or while bags are being packed; every reader's end card grows a section for them. The typing bar already recognises links and pins them, so this is mostly a place to put them that isn't a caption.
 1. **The Live Knowledge Loop & Showbag ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)).** Connect the fleet loop: StageType thermal weighting → ProMapper topic clusters & action items → Slide-o-Matic auto-generated slide deck via compressed `gz.` URLs. The audience end card becomes the interactive Showbag (transcript, deck link, ProMap, links, ethical trading card).
-2. **Distinct Identity & Mascot.** StageType gets its own character (Spotlight Luminaire / Retro Broadcast capsule) adhering to the `softstack-mascot` eye-tracking contract, and its own "Stage Lights" palette (Electric Lime, Cyber Cyan, Stage Violet, Hot Magenta) breaking away from TalkType peach.
+2. ~~Distinct Identity & Mascot.~~ Closed: the console is type-led and the mascot is retired (CLAUDE.md, "No mascot"). The palette broke away from TalkType peach in the flat pass: cream, ink, hot pink, amber, teal, violet.
 3. **Ambient Presence & Thermal Map (No Text, No Numbers).** Audience taps create organic bioluminescent glows/auras rather than noisy chat/counters. Invisible thermal map weights the post-talk slide deck synthesis.
 4. **Live translation.** Each reader picks a language; each final line is translated once per language on the relay (DeepL or a small model) and fanned out. Deepgram doesn't translate; its multilingual mode only *recognises* many spoken languages.
 5. **Passes & Palestine Support.** Supporter passes ($19–$29) unlocking hosted engines with ethical donation per sale.

@@ -34,21 +34,23 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
   - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live }` announces/heartbeats the phone (lost after 45 s of silence, checked every 5 s)
   - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title, phone }`, `interim { text, source }`, `final { text, seq, source }`, `source { source, live, lost }`, `end`
   - `DELETE /api/room/:id` (Bearer auth) -> ends talk and flushes room
-- Invariants: token compared in constant time; push body ≤ 16 KB; backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
+- Invariants: token compared in constant time; push body ≤ 16 KB; images ≤ 2 MB with a ≤ 90k-char thumb, 40 a room, 24 MB a room, validated before anything is broadcast; join-code lookups rate limited; backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
 
 ## 🎨 Design System & Aesthetic Laws
-- **Soft Neo Toybrut**:
-  - Ground: `#fffef7`
-  - Paper: `#fbf1e4`
+- **Soft Neo Toybrut** (console tokens; the reader keeps its own theme pairs):
+  - Ground: `#fff6e6`
+  - Surface: `#fffdf5`
+  - Sand (the room card): `#fdf1e0`
   - Ink: `#1e1714`
-  - Line: `#3a2e28`
-  - Pastels: Pink `#ffb3d1`, Mint `#b8f0d8`, Lilac `#d9c8ff`, Butter `#fff0a8`
+  - Hairlines: `rgba(58,46,40,.10)` / `.06`
+  - Accents: pink `#ff6ac2`, coral `#ff8a5c`, amber `#ffc74d`, teal `#2dd4bf`, violet `#a78bfa`
 - **Zero absolute white (`#fff`) or absolute black (`#000`)** across body and UI surfaces.
 - **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
 - `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
-- **No mascot.** The console, the demo landing and the join page are type-led: a wordmark, a vibe pill, nothing smiling at the presenter. Lumen lives in git history, not on screen.
+- **No mascot.** The console, the demo landing and the join page are type-led: a wordmark, a status pill, nothing smiling at the presenter. Lumen lives in git history, not on screen.
 - **Flat, not screen print, not skeuomorph.** Cards are warm `--surface` on a warm `--ground`, separated by a 1px sepia hairline (`--hair`). No drop shadows, no gradients, no glows on surfaces: the depth comes from colour blocking (the room card is `--sand`) and from type weight. The ticker's ring is a flat 3px border in the ring colour, not a glow.
-- **One palette, flat fills.** Hot pink `#ff6ac2` is the only "go" colour, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float. Everything else is cream, sand and ink. No ambient gradient washes, no dot grid behind running text.
+- **One palette, flat fills.** Hot pink `#ff6ac2` is the only "go" colour on the console, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float. Everything else is cream, sand and ink. Audience CTAs (join, demo) may wear mint. No dot grid behind running text.
+- **Light lives on the page, never on a surface.** The console is flat, full stop. `/demo`, `/join` and the mic page may keep one soft corner light behind their content; a card, button, input or image frame never gets a gradient or a glow.
 - **Layout before decoration.** The talk bar runs full width on top (title, language, engine, one action), then two cards of matched height: the stage on the left, the room (QR + code) on the right. Balance is the brief; ornament is not.
 - **Auto-sent means pull-back-able.** Anything that reaches forty phones without a second glance needs an undo: the console's tray thumbnails are buttons, and DELETE on the asset broadcasts `asset-gone` so the figure leaves every feed and the byte budget is returned.
 - **Images are a catch, not a gallery.** A shared picture lands in the reader's transcript where it was shared, live only, capped at 58vh, tap for the full frame. They are compressed in the console (1280 WebP q0.7 + 320 thumb) before upload, so the relay never sees a 12 MP photo, and they die with the room: no image ever enters the saved copy.
@@ -57,7 +59,7 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - **Motto: juicy, sticky, fresh.** The vibe lives in aesthetics of utility, in what we offer, and in how things feel to touch. Never in gags.
   - Juicy: every button squishes on press and lifts on hover with `--spring` (`cubic-bezier(.2,.9,.3,1.35)`); the newest caption glows in; the audience's fresh line gets a highlighter sweep; interim text carries a caret. Each of these tells the reader something.
   - Sticky: small, honest feedback. Count badge bumps when it changes, step numbers carry a pastel chip, the mic page says how many words were captioned.
-  - Fresh: warm cream ground with a stage light in the corner, one accent per state (mint = live, pink = attention, lilac = phone mic), lots of air. No gradients on text surfaces, no glassmorphism beyond a translucent pill.
+  - Fresh: warm cream ground, one accent per state (mint = live, pink = attention, lilac = phone mic), lots of air. No gradients on text surfaces, no glassmorphism.
   - Classy is the ceiling. No confetti, no "That's a wrap", no "Nice one", no idle nudges. If a flourish needs a switch to turn it off, it shouldn't exist. Copy is warm and factual.
   - Landing animations on inline caption text must be wrap-safe (opacity/text-shadow only, never `inline-block` + transform).
   - Everything respects `prefers-reduced-motion`.
@@ -74,13 +76,13 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - **Handoff rule.** Phone live ⇒ console pauses the laptop recogniser (`pausedByPhone`). Phone paused ⇒ laptop stays paused, notice explains. Phone lost ⇒ laptop resumes only if it was paused by the phone. The presenter can always override with Space / Resume mic. The mic page heartbeats every 20 s while live and sends `live:false` on pause, End talk (via stop), and `pagehide` (keepalive fetch, not sendBeacon, so the token stays in a header).
 
 ## 🧠 Mental Model
-- **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box, Deepgram through the relay; later a native app). `pushChunk()` in server.ts is the single entry point for words; the Deepgram session and HTTP pushes both call it. Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and never sees audio. New capability should be a new source or a new display, not a new server feature.
+- **A talk is a chat room.** Sources send lines in (laptop mic, phone mic, the typing box, Deepgram through the relay; later a native app). `pushChunk()` in server.ts is the single entry point for words; the Deepgram session and HTTP pushes both call it. Displays read them out (audience reader, console ticker, PiP float, `/ticker/:id`, OBS). Keep `server.ts` dumb: it relays text and image bytes, proxies audio to Deepgram, and stores no audio. New capability should be a new source or a new display, not a new server feature.
 - The typing box sends interim on input (250 ms debounce) and final on Enter. Space in the box types a space; the global Space shortcut ignores inputs.
 
 ## 💾 Persistence (client side only)
-- Reader: `stl-talk-<roomId>` = `{ id, title, lines, seen, startedAt, updatedAt, ended }`, index `stl-talks` (last 20). Restored on load; `seen` keeps the backlog offset logic exact. Room gone + saved copy ⇒ state "Saved on this phone" with the export card.
-- Console: `st-talk-<roomId>` same shape plus `code`, index `st-talks` (last 10, shown under Previous talks). `transcript[]` is every final in room order; `finals[]` is only the ticker tail. The open room is in `sessionStorage` `st-room` (tab-scoped, token never leaves the tab) and `resumeRoom()` picks it up on load if the relay still has it.
-- Server keeps nothing beyond the open room's last 400 lines. Keep it that way.
+- Reader: `stl-talk-<roomId>` = `{ id, title, lines, seen, startedAt, updatedAt, ended, stars }`, index `stl-talks` (last 20, each with words/kept/links). Restored on load; `seen` keeps the backlog offset logic exact. Room gone + saved copy ⇒ state "Saved on this phone" with the export card.
+- Console: `st-talk-<roomId>` same shape plus `code`, index `st-talks` (last 10, shown under Earlier talks). `transcript[]` is every final in room order; `finals[]` is only the ticker tail. The open room is in `sessionStorage` `st-room` (tab-scoped, token never leaves the tab) and `resumeRoom()` picks it up on load if the relay still has it.
+- Server keeps nothing beyond the open room's last 400 lines and its images (40 / 24 MB), all in memory. Keep it that way.
 
 ## 🚀 Hosting
 - One process, one machine (in-memory rooms). `Dockerfile` + `fly.toml` (never scale to zero). Not Deno Deploy / multi-isolate until rooms move to KV.

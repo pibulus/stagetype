@@ -1,6 +1,6 @@
 # Architecture
 
-StageType is a chat room. **Sources** send lines in, the **relay** fans them out, **displays** read them. The relay only ever sees text, keeps nothing beyond an open room's last 400 lines, and runs as one small Deno process.
+StageType is a chat room. **Sources** send lines in, the **relay** fans them out, **displays** read them. The relay keeps the open room's last 400 lines and up to 40 images (24 MB), never writes any of it to disk, and runs as one small Deno process.
 
 ```
   SOURCES                            RELAY                              DISPLAYS
@@ -39,6 +39,8 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 
 Images travel as `asset { id, seq, thumb }` events with the 320 px thumb inlined as a data URL, so every phone paints the catch without a fetch; `backlog` carries the last twelve thumbs. Frames are compressed on the presenter's device and die with the room.
 
+Backlog carries `assets` (the last twelve thumbs) as well as lines. Cap the room at 40 images and 24 MB; eviction broadcasts `asset-gone`.
+
 `offset` is how many old lines the server has already trimmed from the backlog (it keeps the last 400), so a phone that reconnects mid-talk can line up exactly where it left off.
 
 ## Speech engines
@@ -50,7 +52,7 @@ The relay is a chat room and the speech engine is just a source. Two ship:
 | **Browser** | Chrome / Edge / Safari's own recogniser | free | Zero setup. Chrome and Edge send the audio to Google, Safari to Apple. Accuracy is fine, punctuation patchy. |
 | **Deepgram** | The relay streams your mic to Deepgram | under a cent a minute | Punctuation, smart formatting, 30-plus languages, ~300 ms. Needs a key on the relay. |
 
-Pick the engine on the console (This Talk → Engine) or on the phone mic page. With Deepgram the page captures 16 kHz PCM in an AudioWorklet and streams it over a WebSocket to `/api/room/:id/audio`; the relay holds the key, forwards to Deepgram, and turns each finished utterance into an ordinary room push. The browser never sees the key and the relay never stores audio.
+Pick the engine in the console's talk bar or on the phone mic page. With Deepgram the page captures 16 kHz PCM in an AudioWorklet and streams it over a WebSocket to `/api/room/:id/audio`; the relay holds the key, forwards to Deepgram, and turns each finished utterance into an ordinary room push. The browser never sees the key and the relay never stores audio.
 
 To turn it on, give the relay a key:
 
@@ -67,7 +69,7 @@ fly secrets set DEEPGRAM_API_KEY=dg_…         # on Fly
 * **On the console.** The presenter keeps the full transcript (not just the ticker's tail), can copy or save it as .txt or .md at any point, and finds the last ten talks under **Previous talks** on that machine.
 * **Through a reload.** If the console tab reloads mid-talk, it picks the same room back up, restores the transcript, and starts listening again. Phones never notice.
 
-Nothing is stored on the server beyond the last 400 lines of an open room. That's the sovereign part: the copies live with the people who were in the room.
+Nothing is written to disk, and nothing survives the room: 400 lines of text plus the images still inside the caps. That's the sovereign part: the copies live with the people who were in the room.
 
 ## Security and privacy
 
@@ -75,7 +77,7 @@ Nothing is stored on the server beyond the last 400 lines of an open room. That'
 * **URL Fragment Token Security:** The administrative write token for the phone lapel mic is passed in the URL hash `#fragment` (e.g. `/mic/401dd18c#token`). Browsers never transmit `#fragments` over HTTP, preventing credentials from leaking into server access logs, reverse proxies, or referral headers. **Don't project the lapel-mic QR:** anyone who scans it can write captions into your room. Scan it from the console yourself; the fullscreen projector view is for the audience QR.
 * **Abuse limits:** room creation is limited to 10 rooms per minute per client IP; the room ID is 128 bits of randomness; listeners per room, backlog length and push body size are capped; and the write token is compared in constant time.
 * **Deepgram cost limits:** at most 8 relay-side speech sessions can run at once, with at most 2 per room and a 4-hour maximum per session. Ending or sweeping a room closes its client and upstream speech sockets.
-* **The relay never sees audio.** Only text reaches the server. The speech-to-text itself is the browser's Web Speech API, which in Chrome and Edge streams your microphone audio to Google's recognition service and in Safari to Apple's. If a talk must stay fully on-device, that's the piece to swap (see [ROADMAP.md](../ROADMAP.md)). The console's level animation, the ghost, is computed locally with a Web Audio `AnalyserNode` and never leaves the tab.
+* **The relay never stores audio.** With the browser engine no audio leaves the device at all; with Deepgram the relay proxies PCM to Deepgram and holds nothing beyond the frames in flight (a short queue while the upstream socket opens). The speech-to-text itself is the browser's Web Speech API, which in Chrome and Edge streams your microphone audio to Google's recognition service and in Safari to Apple's. If a talk must stay fully on-device, that's the piece to swap (see [ROADMAP.md](../ROADMAP.md)). There is no level meter any more: the ghost was retired with the mascot pass.
 * **No CDN at runtime.** The QR encoder and the fonts are vendored under `vendor/`, so every page works on venue wifi with no internet and nothing third-party loads into any page.
 * **Signed demo ids.** `/demo` rooms use `signed_noise.ts`: HMAC-signed random ids that are stored nowhere and only become rooms when a phone opens them. Made-up ids never verify.
 
@@ -85,7 +87,7 @@ See [SECURITY.md](../SECURITY.md) for reporting.
 
 ```
 stagetype/
-├── server.ts         # Zero-dependency Deno HTTP + SSE fan-out relay (~420 lines)
+├── server.ts         # Zero-dependency Deno HTTP + SSE fan-out relay (rooms, assets, Deepgram proxy)
 ├── server_test.ts    # Unit tests: rooms, SSE, limits, handoff, Deepgram session, demo, signing
 ├── presenter.html    # Stage console: talk setup, voice, stage ticker, transcript, QR card
 ├── audience.html     # Mobile reader: themes, dyslexic spacing, transcript export

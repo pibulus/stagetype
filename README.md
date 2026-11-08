@@ -21,7 +21,7 @@ Part of the **TalkType** family.
 
 ---
 
-**Try it:** open `/demo` on a laptop, scan the code with your phone, type. The code is yours alone and only becomes a room when you scan it.
+**Try it:** open `/demo` on a laptop, scan the code with a phone, type. The code is private and only becomes a room when it is scanned.
 
 ---
 
@@ -71,7 +71,7 @@ deno task dev
 * **Stage Console:** Open [`http://localhost:8787`](http://localhost:8787) in Chrome or Edge. Give the talk a title, pick a language and an engine, hit **Start captions**. The QR card fills in with the audience link and a four-letter code.
 * **Audience Reader:** Scan the generated QR code or navigate to `http://<your-lan-ip>:8787/live/<roomId>`.
 * **Phone Lapel Mic:** The room card carries one code. Hit **Mic** for the pairing code, scan it with your own phone, pocket it; the phone inherits the talk's language and engine.
-* **Second screen or OBS:** Under Stage Ticker, **Open on a second screen** opens `/ticker/<roomId>?…` with your current bar prefs. In OBS add it as a browser source and size it as a strip, for example 1920 × 180.
+* **Second screen or OBS:** Under Stage → Display, **Second screen** opens `/ticker/<roomId>?…` with the current bar prefs. In OBS add it as a browser source and size it as a strip, for example 1920 × 180.
 * **Floating over Keynote needs Chrome or Edge.** The float uses Document Picture-in-Picture, which Safari and Firefox don't have. In those, use the standalone ticker page on a second display instead.
 
 ## ⌨️ Keyboard Shortcuts (Stage Console)
@@ -81,6 +81,7 @@ deno task dev
 | <kbd>Space</kbd> | Start captions, then pause / resume the laptop mic (never ends the talk) |
 | <kbd>⌥ + F</kbd> | Float the ticker over slides (Document Picture-in-Picture, Chrome or Edge) |
 | <kbd>⌥ + Q</kbd> | Open Fullscreen QR Projector modal |
+| <kbd>⌥ + R</kbd> | Shuffle the ticker look |
 | <kbd>Esc</kbd> | Dismiss Fullscreen modal |
 
 ## 📚 Documentation
