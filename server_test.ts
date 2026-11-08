@@ -605,3 +605,13 @@ Deno.test("join codes: lookups are rate limited per address", async () => {
   }
   assert(limited > 0, "the 130th lookup from one address should be refused");
 });
+
+Deno.test("sweep clears expired rate-limit buckets", async () => {
+  const addr = fromAddr("198.51.100.7");
+  let last = 0;
+  for (let i = 0; i < 130; i++) last = (await handler(new Request(`${base}/api/join/ZZZZ`), addr)).status;
+  assertEquals(last, 429);
+  // a window later the address is welcome again, and the stored bucket went with the sweep
+  sweep(Date.now() + 2 * 60_000);
+  assertEquals((await handler(new Request(`${base}/api/join/ZZZZ`), addr)).status, 404);
+});

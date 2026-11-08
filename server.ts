@@ -784,6 +784,10 @@ export function sweep(now: number = Date.now()): void {
   for (const [k, r] of rooms) {
     if (now - r.touched > ROOM_TTL_MS || (r.demo && now > r.demo)) endRoom(k, r);
   }
+  // Rate-limit buckets hold client addresses; they belong to a window, not to the process.
+  for (const buckets of [roomCreateBuckets, joinBuckets]) {
+    for (const [k, b] of buckets) if (b.resetAt <= now) buckets.delete(k);
+  }
 }
 
 const PORT = Number(Deno.env.get("PORT") ?? 8787);

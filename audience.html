@@ -534,6 +534,8 @@ addEventListener("keydown", (e) => { if (e.key === "Escape") lightbox.onclick();
 
 function addLine(text, animate = true) {
   $("#waiting")?.remove();
+  // The "earlier" label is a separator for the backlog block only: the next live line ends it.
+  $("#feed .before-join")?.remove();
   feed.querySelector("p.fresh")?.classList.remove("fresh");
   const p = document.createElement("p");
   p.className = animate ? "fresh line line-in" : "fresh line";
