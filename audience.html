@@ -195,14 +195,26 @@
   #endCard[hidden] { display: none; }
   #endCard { position: relative; overflow: hidden; animation: cardIn .5s var(--spring); }
   @keyframes cardIn { from { transform: translateY(16px) scale(.98); opacity: 0; } }
-  #endCard h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.03em; font-weight: 900; }
-  #endCard p.sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+  #endCard h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.035em; font-weight: 900; line-height: 1.1; }
+  #endCard p.sub { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+  #endCard p.sub:last-of-type { margin-bottom: 18px; }
+  /* The kept lines are the keepsake: give them the width and the marker. */
+  #keptQuotes { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; }
+  #keptQuotes blockquote {
+    margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--pill);
+    font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
+  }
+  #keptQuotes .more { font-size: 12px; color: var(--muted); font-weight: 600; padding-left: 14px; }
   #linksTray { margin: 0 0 18px; text-align: left; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 14px; padding: 12px 14px; }
   #linksTray[hidden] { display: none; }
   #linksTray h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
   #linksList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  #linksList a { color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
-  #keptLine[hidden] { display: none; }
+  #linksList a {
+    display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); border-radius: 999px;
+    color: var(--ink); font-weight: 600; font-size: 13.5px; text-decoration: none;
+  }
+  #linksList a:active { transform: scale(.98); }
   #endCard .actions { display: flex; flex-wrap: wrap; gap: 10px; }
   #endCard .actions button { flex: 1 1 130px; height: 46px; }
 
@@ -296,17 +308,17 @@
 <div id="lightbox" role="dialog" aria-label="Shared image"><img alt=""></div>
 
 <section id="endCard" role="status" hidden>
-  <h2>Talk ended</h2>
+  <h2 id="endTitle">Talk ended</h2>
   <p class="sub" id="endStats" hidden></p>
-  <p class="sub">The transcript stays on this phone. Reopen this link any time, or find it under Saved talks at <span id="joinHost"></span>. Take a copy along too.</p>
-  <p class="sub" id="keptLine" hidden></p>
+  <div id="keptQuotes" hidden></div>
   <div id="linksTray" hidden>
     <h3>Links from this talk</h3>
     <ul id="linksList"></ul>
   </div>
+  <p class="sub" id="endWhere">Saved on this phone. Reopens from this link.</p>
   <div class="actions">
+    <button id="shareTranscript" hidden>Share</button>
     <button class="copy-btn">Copy transcript</button>
-    <button id="saveTxt">Save .txt</button>
     <button id="saveMd">Save .md</button>
     <button id="cardPrintBtn">Print / PDF</button>
   </div>
@@ -350,7 +362,6 @@ function applyPrefs() {
   $$("#flowSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === flow)));
 }
 applyPrefs();
-$("#joinHost").textContent = `${location.host}/join`;
 
 $("#bigger").onclick = () => { size = Math.min(56, size + 3); store.set("stl-size", size); applyPrefs(); };
 $("#smaller").onclick = () => { size = Math.max(14, size - 3); store.set("stl-size", size); applyPrefs(); };
@@ -389,7 +400,7 @@ function writeTalk(ended = false) {
   store.set(TALK_KEY, JSON.stringify(rec));
   let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
   idx = idx.filter((t) => t.id !== roomId);
-  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, updatedAt: rec.updatedAt, ended });
+  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, kept: stars.size, links: links.length, updatedAt: rec.updatedAt, ended });
   while (idx.length > 20) { const old = idx.pop(); try { localStorage.removeItem(`stl-talk-${old.id}`); } catch {} }
   store.set("stl-talks", JSON.stringify(idx));
 }
@@ -466,12 +477,6 @@ function renderLinks() {
 const stars = new Set();
 function paintStars() {
   $$("#feed p.line").forEach((p) => p.classList.toggle("starred", stars.has(Number(p.dataset.i))));
-  const kept = $("#keptLine");
-  if (!kept) return;
-  kept.hidden = stars.size === 0;
-  kept.textContent = stars.size
-    ? `${stars.size} line${stars.size === 1 ? "" : "s"} kept · they lead the saved copy`
-    : "";
 }
 feed.addEventListener("click", (e) => {
   if (e.target.closest("a")) return;
@@ -583,11 +588,6 @@ function download(filename, content, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-$("#saveTxt").onclick = () => {
-  const head = talkTitle ? `${talkTitle}\n${new Date().toLocaleDateString()}\n\n` : "";
-  download(`${fileStem()}.txt`, head + withKept(), "text/plain");
-};
-
 $("#saveMd").onclick = () => {
   const now = new Date();
   const dateStr = now.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -673,12 +673,44 @@ function talkOver(label, state = "ended") {
   $("#jump").hidden = true;
   if (linesArr.length) {
     paintStars();
+    $("#endTitle").textContent = talkTitle || "Talk ended";
     const stats = $("#endStats");
-    const bits = [`${totalWords} word${totalWords === 1 ? "" : "s"}`];
+    const when = new Date(startedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    const bits = [when, `${totalWords} word${totalWords === 1 ? "" : "s"}`];
     if (stars.size) bits.push(`${stars.size} kept`);
     if (links.length) bits.push(`${links.length} link${links.length === 1 ? "" : "s"}`);
     stats.textContent = bits.join(" · ");
     stats.hidden = false;
+
+    // The kept lines lead, as quotes: this is the part worth screenshotting.
+    const keptNow = kept();
+    const quotes = $("#keptQuotes");
+    quotes.replaceChildren(...keptNow.slice(0, 3).map((text) => {
+      const q = document.createElement("blockquote");
+      q.textContent = text;
+      return q;
+    }));
+    if (keptNow.length > 3) {
+      const more = document.createElement("span");
+      more.className = "more";
+      more.textContent = `+${keptNow.length - 3} more, in the saved copy`;
+      quotes.append(more);
+    }
+    quotes.hidden = keptNow.length === 0;
+
+    // Share only where a share sheet exists; Copy is the desktop answer.
+    const share = $("#shareTranscript");
+    if (navigator.share) {
+      share.hidden = false;
+      share.onclick = () => {
+        navigator.share({
+          title: talkTitle || "StageType transcript",
+          text: (keptNow[0] ? `“${keptNow[0]}”\n\n` : "") + (talkTitle ? `${talkTitle} — ` : "") + transcript(),
+        }).catch(() => {});
+      };
+    }
+
+    $("#endWhere").textContent = "Saved on this phone. Reopens from this link.";
     $("#endCard").hidden = false;
     saveTalk(true);
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);

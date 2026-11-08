@@ -965,6 +965,18 @@
     #qrEmpty[hidden] {
       display: none;
     }
+    #qrEmpty {
+      cursor: pointer;
+      border-radius: 16px;
+      transition: background .18s;
+    }
+    #qrEmpty:hover {
+      background: color-mix(in srgb, var(--surface) 55%, transparent);
+    }
+    #qrEmpty:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--pink) 45%, transparent);
+      outline-offset: 2px;
+    }
     .qr-slot {
       width: 92px;
       height: 92px;
@@ -972,7 +984,19 @@
       border: 1px dashed rgba(58, 46, 40, 0.22);
       display: grid;
       place-items: center;
-      background: var(--surface);
+      /* A ghost QR grid, so the square reads as "a code goes here", not as a broken image. */
+      background-color: var(--surface);
+      background-image:
+        linear-gradient(rgba(58, 46, 40, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(58, 46, 40, 0.06) 1px, transparent 1px);
+      background-size: 8px 8px;
+      background-position: center;
+    }
+    .qr-sub-hint {
+      font-size: 11.5px;
+      color: var(--quiet);
+      font-weight: 500;
+      margin-top: -6px;
     }
     .qr-slot span {
       width: 9px;
@@ -1189,7 +1213,7 @@
       <header>
         <div>
           <h1>StageType</h1>
-          <p class="sub">Speak. The room reads along.</p>
+          <p class="sub">Speak. Every phone in the room reads along.</p>
         </div>
         <div class="status-pills">
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Ready</span><span class="pill-sep">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
@@ -1316,9 +1340,10 @@
         <!-- THE ROOM: what a stranger's phone needs, and nothing about the plumbing. -->
         <section class="card room qr-card">
           <div class="qr-body">
-            <div id="qrEmpty">
+            <div id="qrEmpty" role="button" tabindex="0" aria-label="Start captions and show the room code">
               <div class="qr-slot" aria-hidden="true"><span></span></div>
-              <p>The code appears at Start.</p>
+              <p>Start captions and the code lands in this square.</p>
+              <span class="qr-sub-hint">A phone camera does the rest.</span>
             </div>
             <div id="qrGraphic"></div>
             <p class="qr-talk" id="qrTalk" hidden></p>
@@ -2234,7 +2259,7 @@
       "Every room has a back row.",
       "Tonight the back row reads along, in its own type, own size, own light.",
       "Speak at the desk. The words land on the phones, the ticker, the screen behind.",
-      "Start captions, and this sample gives way to the room.",
+      "Somewhere in the back row, a phone lights up.",
     ];
     let ghostTimer = null, ghostLine = 0, ghostChars = 0, ghostHold = 0;
     function ghostPaint() {
@@ -2472,6 +2497,15 @@
     }
 
     $("#startBtn").onclick = () => openRoom();
+    $("#qrEmpty").onclick = () => {
+      if (!room) openRoom();
+    };
+    $("#qrEmpty").onkeydown = (e) => {
+      if (!room && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        openRoom();
+      }
+    };
     $("#stopBtn").onclick = () => handleTalkEnded(true);
     $("#pauseBtn").onclick = () => setPaused(!paused);
 
@@ -2512,11 +2546,22 @@
     };
 
     // Float Ticker via Document Picture-in-Picture with sleek popup fallback
+    // The floating bar is sized to what it holds: wide, and tall enough for the chosen font and
+    // line count, so a 50px Jumbotron never arrives in a 160px letterbox.
+    function floatBox() {
+      const size = Number(prefs.size.replace("px", "")) || 38;
+      const lines = Number(prefs.depth) || 2;
+      const height = Math.round(lines * size * 1.35 + 64);
+      const width = Math.round(Math.min(1440, Math.max(720, innerWidth - 120)));
+      return { width, height };
+    }
+
     const floatTickerWindow = async () => {
       if (!room) return;
+      const box = floatBox();
       if ("documentPictureInPicture" in window) {
         try {
-          const pip = await documentPictureInPicture.requestWindow({ width: 1100, height: 160 });
+          const pip = await documentPictureInPicture.requestWindow({ width: box.width, height: box.height });
           const fonts = pip.document.createElement("link");
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
@@ -2528,8 +2573,10 @@
 
           const t = pip.document.createElement("div");
           t.id = "ticker";
-          t.style.cssText =
-            "position:static;transform:none;width:100vw;height:100vh;max-height:none;border-radius:0;box-shadow:none;--ticker-size:clamp(22px,5.2vw,50px);padding:16px 28px;";
+          t.style.cssText = [
+            "position:static;transform:none;width:100vw;height:100vh;max-height:none",
+            "border-radius:0;box-shadow:none;border:0;padding:16px 28px",
+          ].join(";");
           pip.document.body.append(t);
           tickerEls.push(t);
           applyRoomStyle();
@@ -2547,8 +2594,8 @@
       }
 
       // Universal fallback: minimal floating popup window for Brave, Safari, Firefox
-      const w = Math.min(1100, Math.round(screen.availWidth * 0.88));
-      const h = 180;
+      const w = Math.min(box.width, Math.round(screen.availWidth * 0.92));
+      const h = box.height;
       const left = Math.round((screen.availWidth - w) / 2);
       const top = Math.max(20, Math.round(screen.availHeight - h - 50));
       const pop = window.open(
@@ -2594,10 +2641,7 @@
           $("#engine").value = "browser";
           store.set("st-engine", "browser");
         }
-        if (!isBraveBrowser) {
-          $("#engineHint").textContent = "Deepgram is off on this relay. Browser speech is free and always on.";
-          $("#engineHint").hidden = false;
-        }
+        // The engine select already says what is on offer; no banner needed on a first visit.
       }
     }).catch(() => {});
     applyPrefs();

@@ -63,10 +63,10 @@
   #savedList a:active { transform: scale(.99); box-shadow: none; }
   #savedList b { font-size: 15px; font-weight: 800; }
   #savedList small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; margin-top: 2px; }
-  #savedList .live { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; background: color-mix(in srgb, var(--mint) 80%, #fffef7); border: 1px solid rgba(58, 46, 40, 0.08); border-radius: 999px; padding: 3px 9px; }
+  #savedList .live { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
   #exportAll {
-    margin-top: 10px; width: auto; height: 34px; padding: 0 14px;
-    font-size: 12.5px; font-weight: 600; background: transparent; border-color: rgba(58, 46, 40, 0.14); color: var(--muted);
+    margin-top: 10px; width: auto; height: 44px; padding: 0 18px;
+    font-size: 13px; font-weight: 600; background: transparent; border-color: rgba(58, 46, 40, 0.14); color: var(--muted);
   }
   #exportAll:active { transform: scale(.97); }
   footer { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -89,8 +89,9 @@
   </form>
   <section id="saved" hidden>
     <h2>Saved on this phone</h2>
+    <p class="shelf-line">Talks this phone read along with. Any one reopens.</p>
     <ul id="savedList"></ul>
-    <button id="exportAll" class="quiet">Export all as one file</button>
+    <button id="exportAll" class="quiet">Take the shelf</button>
   </section>
   <footer>Or scan the QR code with your camera · <a href="https://talktype.app">StageType</a></footer>
 </main>
@@ -136,7 +137,7 @@ try {
         t.kept ? `${t.kept} kept` : "",
       ].filter(Boolean).join(" · ");
       text.append(b, small); a.append(text);
-      if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "In progress"; a.append(tag); }
+      if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "in progress"; a.append(tag); }
       li.append(a); list.append(li);
     }
     document.querySelector("#saved").hidden = false;
@@ -161,7 +162,7 @@ try {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       const btn = document.querySelector("#exportAll");
       btn.textContent = "Saved";
-      setTimeout(() => (btn.textContent = "Export all as one file"), 1500);
+      setTimeout(() => (btn.textContent = "Take the shelf"), 1500);
     };
   }
 } catch {}
