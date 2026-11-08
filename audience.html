@@ -127,7 +127,11 @@
   @keyframes starPop { 40% { transform: translateX(3px); } }
   #feed a { color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
   #feed a:active { opacity: .6; }
-  @media print { #feed p.line { border-left: 0; margin-left: 0; padding-left: 0; } }
+  @media print {
+    #feed p.line { border-left: 0; margin-left: 0; padding-left: 0; }
+    /* Images are live only: they never leave the room, including on paper. */
+    #feed figure.catch, #feed .before-join { display: none; }
+  }
   @keyframes lineIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes sweep { to { background-size: 100% 45%; } }
   
