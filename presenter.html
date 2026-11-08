@@ -692,6 +692,12 @@
       width: auto;
       background-color: var(--surface);
     }
+    .keyterms {
+      width: 100%;
+      max-width: 320px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
     .ring-row {
       display: flex;
       gap: 6px;
@@ -1327,6 +1333,10 @@
             <details class="more" id="moreTicker">
               <summary>More</summary>
               <div class="opt-grid">
+                <span class="opt-label">Names</span>
+                <input id="keyterms" class="opt-select keyterms" type="text" maxlength="300"
+                  placeholder="Pibulus, SoftStack, Fraunces" aria-label="Names and words to get right"
+                  autocomplete="off" spellcheck="false">
                 <span class="opt-label">Flow</span>
                 <div class="segmented-control" data-pref="flow">
                   <button class="seg-btn" data-v="live">Live words</button>
@@ -1632,6 +1642,13 @@
       brut: { ring: "ink", face: "system", weight: "700", name: "Yellow Brut" },
       hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
     };
+    const termsFrom = (text) =>
+      text.split(/[^\p{L}\p{N}'-]+/u)
+        .filter((w) => w.length >= 3 && /\p{Lu}/u.test(w))
+        .slice(0, 8)
+        .join(", ");
+    const keyterms = () =>
+      $("#keyterms").value.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 20);
     const prefs = {
       size: store.get("st-size") || "38px",
       depth: SIZE_DEPTH[store.get("st-size")] || "2",
@@ -1976,7 +1993,11 @@
     const roomUrl = () => `${lanBase}/live/${room.id}`;
     // The lapel mic inherits the talk's language and engine at scan time, so the phone
     // never asks the same two questions a second time.
-    const micUrl = () => `${lanBase}/mic/${room.id}?${new URLSearchParams({ lang: $("#lang").value, engine: engine() })}#${room.token}`;
+    const micUrl = () => {
+      const q = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
+      for (const term of keyterms()) q.append("keyterm", term);
+      return `${lanBase}/mic/${room.id}?${q}#${room.token}`;
+    };
 
     // The card always carries the room code. The mic pairing code is a modal away.
     function updateQR() {
@@ -2169,6 +2190,7 @@
           token: room.token,
           source: "mic",
           lang: $("#lang").value,
+          keyterms: keyterms(),
           onError: (msg) => {
             dg = null;
             notice(`Deepgram: ${msg}`);
@@ -2401,6 +2423,8 @@
         return;
       }
       created.startedAt = Date.now();
+      // First talk on this machine: the title already knows the names worth getting right.
+      if (!$("#keyterms").value.trim() && title) $("#keyterms").value = termsFrom(title);
       transcript = [];
       attachRoom(created);
     }
@@ -2725,6 +2749,8 @@
         // The engine select already says what is on offer; no banner needed on a first visit.
       }
     }).catch(() => {});
+    $("#keyterms").value = store.get("st-keyterms") || "";
+    $("#keyterms").addEventListener("change", () => store.set("st-keyterms", $("#keyterms").value));
     applyPrefs();
     renderPastTalks();
     updateTranscriptStat();

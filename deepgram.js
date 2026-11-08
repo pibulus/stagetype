@@ -25,7 +25,7 @@ class Pcm16Downsampler extends AudioWorkletProcessor {
 }
 registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
 
-  async function start({ roomId, token, source = "mic", lang = "en", onInterim, onFinal, onError, onReady, onLevel }) {
+  async function start({ roomId, token, source = "mic", lang = "en", keyterms = [], onInterim, onFinal, onError, onReady, onLevel }) {
     if (!window.AudioWorkletNode || !window.WebSocket) throw new Error("this browser can't stream audio");
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -37,7 +37,9 @@ registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
     const mute = ctx.createGain(); mute.gain.value = 0; // the graph only runs when it reaches the destination
     srcNode.connect(node); node.connect(mute); mute.connect(ctx.destination);
 
-    const wsUrl = `${location.origin.replace(/^http/, "ws")}/api/room/${roomId}/audio?source=${source}&lang=${encodeURIComponent(lang)}`;
+    const terms = keyterms.filter(Boolean).slice(0, 20)
+      .map((t) => `&keyterm=${encodeURIComponent(t)}`).join("");
+    const wsUrl = `${location.origin.replace(/^http/, "ws")}/api/room/${roomId}/audio?source=${source}&lang=${encodeURIComponent(lang)}${terms}`;
     const ws = new WebSocket(wsUrl, ["bearer", token]);
     ws.binaryType = "arraybuffer";
     let stopped = false;

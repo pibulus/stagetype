@@ -1,4 +1,4 @@
-import { checkPhones, handler, lanIp, newCode, rooms, sweep } from "./server.ts";
+import { checkPhones, handler, keytermsFrom, lanIp, newCode, rooms, sweep } from "./server.ts";
 import { mockDeepgram } from "./e2e/mock_deepgram.ts";
 
 import { assert, assertEquals } from "@std/assert";
@@ -166,13 +166,17 @@ Deno.test({
       bad.onerror = () => {};
     });
 
-    const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token]);
+    const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU&keyterm=Pibulus&keyterm=SoftStack`, ["bearer", token]);
     ws.binaryType = "arraybuffer";
     const got: string[] = [];
     ws.onmessage = (e) => got.push(String(e.data));
     await new Promise<void>((r) => {
       ws.onopen = () => r();
     });
+    const queries = (dg as unknown as { queries: string[] }).queries;
+    for (let i = 0; i < 50 && queries.length === 0; i++) await new Promise((r) => setTimeout(r, 10));
+    const upstream = queries.at(-1) ?? "";
+    assert(upstream.includes("keyterm=Pibulus") && upstream.includes("keyterm=SoftStack"), "the names reach Deepgram: " + upstream);
     while (!got.some((g) => g.includes("ready"))) await new Promise((r) => setTimeout(r, 10));
     const chunk = new Int16Array(1600).buffer;
     for (let i = 0; i < 6; i++) ws.send(chunk);
@@ -614,4 +618,10 @@ Deno.test("sweep clears expired rate-limit buckets", async () => {
   // a window later the address is welcome again, and the stored bucket went with the sweep
   sweep(Date.now() + 2 * 60_000);
   assertEquals((await handler(new Request(`${base}/api/join/ZZZZ`), addr)).status, 404);
+});
+
+Deno.test("deepgram: names are sanitised into keyterms", () => {
+  const url = new URL(`${base}/?keyterm=Pibulus&keyterm=SoftStack%20Radio&keyterm=${"x".repeat(80)}&keyterm=Pibulus&keyterm=%3Cscript%3E`);
+  assertEquals(keytermsFrom(url), ["Pibulus", "SoftStack Radio", "x".repeat(40), "script"]);
+  assertEquals(keytermsFrom(new URL(base)), []);
 });

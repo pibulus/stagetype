@@ -372,7 +372,7 @@ fetch("/api/engines").then((r) => r.json()).then((e) => {
 async function startDeepgram() {
   try {
     dg = await StageTypeDeepgram.start({
-      roomId, token, source: "phone", lang: $("#lang").value,
+      roomId, token, source: "phone", lang: $("#lang").value, keyterms: qp.getAll("keyterm"),
       onInterim: (i) => render(i),
       onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); render(""); },
       onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },

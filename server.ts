@@ -436,7 +436,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "bearer" });
     const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
     const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
-    deepgramSession(r, socket, source, lang);
+    deepgramSession(r, socket, source, lang, keytermsFrom(url));
     return response;
   }
 
@@ -578,7 +578,22 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
 // One client socket in, one Deepgram socket out. Deepgram sends interim results, then is_final
 // segments, then speech_final at the end of an utterance; we show interims as they come, gather the
 // finalised segments, and push one clean final line per utterance (or on UtteranceEnd).
-function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string) {
+// Names the talk keeps saying: the presenter's own, the project, the jargon. Nova-3 takes these as
+// repeated `keyterm` params; earlier models called the same idea `keywords`.
+const MAX_KEYTERMS = 20;
+const MAX_KEYTERM_CHARS = 40;
+export function keytermsFrom(url: URL): string[] {
+  const out: string[] = [];
+  for (const raw of [...url.searchParams.getAll("keyterm"), ...url.searchParams.getAll("keywords")]) {
+    for (const part of raw.split(",")) {
+      const term = part.trim().replace(/[^\p{L}\p{N} '\-.&]/gu, "").slice(0, MAX_KEYTERM_CHARS);
+      if (term && out.length < MAX_KEYTERMS && !out.includes(term)) out.push(term);
+    }
+  }
+  return out;
+}
+
+function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string, keyterms: string[] = []) {
   const params = new URLSearchParams({
     model: deepgramModel(),
     language: lang,
@@ -592,6 +607,10 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     utterance_end_ms: "1200",
     vad_events: "false",
   });
+  if (keyterms.length) {
+    const field = deepgramModel().startsWith("nova-3") ? "keyterm" : "keywords";
+    for (const term of keyterms) params.append(field, term);
+  }
   let up: WebSocket;
   try {
     up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);

@@ -135,6 +135,11 @@
   @keyframes lineIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes sweep { to { background-size: 100% 45%; } }
   
+  /* On the dark themes a 55% pink wash drags the text under 4.5:1; 26% keeps the sweep readable. */
+  :root[data-theme="espresso"] #feed p.fresh span,
+  :root[data-theme="night"] #feed p.fresh span {
+    background-image: linear-gradient(color-mix(in srgb, var(--pill) 26%, transparent), color-mix(in srgb, var(--pill) 26%, transparent));
+  }
   :root[data-loose="1"] #feed { line-height: 1.95; }
   :root[data-loose="1"] #feed p { letter-spacing: .025em; word-spacing: .16em; margin-bottom: 1.1em; }
 
@@ -386,6 +391,7 @@ $("#jump").onclick = () => {
 const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight }); };
 
 const linesArr = [];
+const lineTimes = [];
 let totalWords = 0;
 let talkTitle = "";
 let startedAt = 0;
@@ -396,7 +402,7 @@ const TALK_KEY = `stl-talk-${roomId}`;
 function loadSaved() { try { return JSON.parse(localStorage.getItem(TALK_KEY)); } catch { return null; } }
 let saveTimer = null;
 function writeTalk(ended = false) {
-  const rec = { id: roomId, title: talkTitle, lines: linesArr, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
+  const rec = { id: roomId, title: talkTitle, lines: linesArr, times: lineTimes, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
   store.set(TALK_KEY, JSON.stringify(rec));
   let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
   idx = idx.filter((t) => t.id !== roomId);
@@ -554,17 +560,34 @@ function addLine(text, animate = true) {
   p.append(span);
   feed.insertBefore(p, interimEl);
   linesArr.push(text);
+  lineTimes.push(Date.now());
   updateStats();
   paintStars();
   if (animate) saveTalk();
 }
 
 const transcript = () => linesArr.join("\n\n");
+// A talk is not a list of sentences: an eight-second breath is a paragraph break. Good enough to
+// read as an essay draft without a summariser anywhere near it.
+const prose = () => {
+  const paras = [];
+  let para = [];
+  for (let i = 0; i < linesArr.length; i++) {
+    const gap = i > 0 && lineTimes[i] && lineTimes[i - 1] ? lineTimes[i] - lineTimes[i - 1] : 0;
+    if (gap > 8000 && para.length) {
+      paras.push(para.join(" "));
+      para = [];
+    }
+    para.push(linesArr[i]);
+  }
+  if (para.length) paras.push(para.join(" "));
+  return paras.join("\n\n");
+};
 const kept = () => [...stars].sort((a, b) => a - b).map((i) => linesArr[i]).filter(Boolean);
 const withKept = () => {
   const k = kept();
   if (!k.length) return transcript();
-  return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${transcript()}`;
+  return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${prose()}`;
 };
 
 async function copyTranscript(btn) {
@@ -595,7 +618,7 @@ $("#saveMd").onclick = () => {
   const keptSection = k.length ? `## Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n` : "";
   const linkSection = links.length ? `## Links\n\n${links.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
   const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: StageType, room \`${roomId}\`\n\n---\n\n`;
-  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + transcript() + "\n", "text/markdown");
+  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + prose() + "\n", "text/markdown");
 };
 
 const triggerPrint = () => window.print();
@@ -612,7 +635,10 @@ const saved = loadSaved();
 if (saved?.lines?.length) {
   applyRoom({ title: saved.title });
   startedAt = saved.startedAt || 0;
-  saved.lines.forEach((t) => addLine(t, false));
+  saved.lines.forEach((t, i) => {
+    addLine(t, false);
+    if (saved.times?.[i]) lineTimes[lineTimes.length - 1] = saved.times[i];
+  });
   for (const i of saved.stars || []) stars.add(i);
   paintStars();
   seen = saved.seen || saved.lines.length;

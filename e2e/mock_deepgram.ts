@@ -2,8 +2,10 @@
 // shapes. After the 3rd audio chunk: an interim. 6th: a speech_final line. 12th: an is_final segment
 // closed by UtteranceEnd, the other way an utterance ends.
 export function mockDeepgram(port = 8790, key = "test-key") {
-  return Deno.serve({ port, hostname: "127.0.0.1", onListen() {} }, (req) => {
+  const seen: string[] = [];
+  const server = Deno.serve({ port, hostname: "127.0.0.1", onListen() {} }, (req) => {
     if (req.headers.get("upgrade") !== "websocket") return new Response("mock deepgram");
+    seen.push(new URL(req.url).search);
     if ((req.headers.get("sec-websocket-protocol") ?? "").split(",")[1]?.trim() !== key) return new Response("bad key", { status: 401 });
     const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "token" });
     const results = (transcript: string, is_final: boolean, speech_final: boolean) =>
@@ -26,6 +28,8 @@ export function mockDeepgram(port = 8790, key = "test-key") {
     };
     return response;
   });
+  // The query string of every upstream attempt, so a test can prove what the relay asked for.
+  return Object.assign(server, { queries: seen });
 }
 
 if (import.meta.main) mockDeepgram();
