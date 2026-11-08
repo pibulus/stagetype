@@ -399,8 +399,14 @@
       width: 100%;
     }
     #ticker .prev {
-      opacity: 0.5;
+      opacity: 0.62;
       font-weight: max(300, calc(var(--ticker-weight, 700) - 300));
+    }
+    /* Light bars need more contrast for the previous line than a dark one does. */
+    #ticker[data-style="paper"] .prev,
+    #ticker[data-style="brut"] .prev,
+    #ticker[data-style="hemingway"] .prev {
+      opacity: 0.78;
     }
     #ticker .fresh-lead {
       color: var(--surface);
@@ -439,12 +445,17 @@
       border-top: 1px solid rgba(255, 253, 245, 0.14);
       border-radius: 0;
       background: transparent;
-      color: var(--surface);
+      color: inherit;
       font: 500 14px var(--swiss);
       box-shadow: none;
     }
     #ticker #typed::placeholder {
-      color: rgba(255, 253, 245, 0.4);
+      color: color-mix(in srgb, currentColor 55%, transparent);
+    }
+    #ticker[data-style="paper"] #typed,
+    #ticker[data-style="brut"] #typed,
+    #ticker[data-style="hemingway"] #typed {
+      border-top-color: rgba(58, 46, 40, 0.16);
     }
     #ticker #typed:focus {
       outline: none;
@@ -735,12 +746,23 @@
     .asset-tray[hidden] {
       display: none;
     }
-    .asset-tray img {
+    .asset-tray .tray-thumb {
       width: 34px;
       height: 34px;
-      object-fit: cover;
+      padding: 0;
       border-radius: 8px;
       border: 1px solid var(--hair);
+      overflow: hidden;
+      background: none;
+      box-shadow: none;
+    }
+    .asset-tray .tray-thumb:hover {
+      border-color: color-mix(in srgb, var(--ink) 30%, var(--hair));
+    }
+    .asset-tray img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       display: block;
     }
     .asset-tray span {
@@ -1231,7 +1253,7 @@
             <p class="eyebrow">Stage <span class="ghost-chip" id="ghostChip" hidden>sample</span></p>
             <span class="badge" id="monitorStyleBadge">Ink · Standard</span>
           </div>
-          <div id="ticker" aria-live="polite">
+          <div id="ticker" role="group" aria-label="Live caption preview">
             <div class="ticker-text"></div>
             <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
               placeholder="Type a line · Enter" aria-label="Type a caption">
@@ -1625,8 +1647,8 @@
     // photo leaves as a ~250 KB WebP, EXIF and all stripped, plus a 320px thumb for the catch.
     function encodeCanvas(src, max, quality) {
       const scale = Math.min(1, max / Math.max(src.width, src.height));
-      const w = Math.round(src.width * scale);
-      const h = Math.round(src.height * scale);
+      const w = Math.max(1, Math.round(src.width * scale));
+      const h = Math.max(1, Math.round(src.height * scale));
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
@@ -1637,6 +1659,10 @@
     let sharing = false;
     async function shareImage(file) {
       if (!room || sharing || !file?.type?.startsWith("image/")) return;
+      if (file.size > 40_000_000) {
+        notice("That image is over 40 MB. Crop it first, or paste a screenshot instead.");
+        return;
+      }
       sharing = true;
       $("#shareImageBtn").disabled = true;
       try {
@@ -1666,20 +1692,24 @@
     function addTrayImage(thumb, assetId) {
       const tray = $("#assetTray");
       const hint = $("#pasteHint");
+      const button = document.createElement("button");
+      button.className = "tray-thumb";
+      button.dataset.asset = assetId;
+      button.title = "Pull this picture back";
+      button.setAttribute("aria-label", "Pull back the last image shared");
+      button.onclick = () => pullBack(assetId);
       const img = document.createElement("img");
       img.src = thumb;
-      img.alt = "Image shared with the room";
-      img.dataset.asset = assetId;
-      img.title = "Pull this picture back";
-      img.onclick = () => pullBack(assetId);
-      tray.append(img);
+      img.alt = "";
+      button.append(img);
+      tray.append(button);
       tray.hidden = false;
       paintTray();
     }
 
     function paintTray() {
       const tray = $("#assetTray");
-      const n = tray.querySelectorAll("img").length;
+      const n = tray.querySelectorAll(".tray-thumb").length;
       $("#pasteHint").textContent = n
         ? `${n} shared · tap a picture to pull it back`
         : "Copy a screenshot, then ⌘V on this page.";
@@ -1687,9 +1717,9 @@
 
     async function pullBack(assetId) {
       if (!room) return;
-      const img = $(`#assetTray img[data-asset="${assetId}"]`);
-      const src = img?.src;
-      img?.remove();
+      const button = $(`#assetTray .tray-thumb[data-asset="${assetId}"]`);
+      const src = button?.querySelector("img")?.src;
+      button?.remove();
       paintTray();
       try {
         const res = await fetch(`/api/room/${room.id}/asset/${assetId}`, {
@@ -1866,6 +1896,7 @@
       $("#urlDisplay").textContent = targetUrl;
       $("#joinLine").hidden = !room.code;
       $("#joinCode").textContent = room.code || "";
+      $("#joinCode").setAttribute("aria-label", `Room code ${(room.code || "").split("").join(" ")}`);
       $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
     }
 

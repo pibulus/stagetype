@@ -51,6 +51,8 @@ const PHONE_LOST_MS = 45_000;
 // Images: compressed on the presenter's device before they ever reach the relay. Caps are per room.
 const MAX_ASSET_BYTES = 2_000_000;
 const MAX_THUMB_CHARS = 90_000; // data URL length; the thumb rides in the SSE event
+const MAX_THUMB_BYTES = 66_000; // raw bytes; base64 adds a third, and the data URL cap above wins
+const MAX_UPLOAD_BYTES = 2_600_000; // content-length ceiling checked before the form is parsed
 const MAX_ASSETS = 40;
 const MAX_ASSET_TOTAL = 24_000_000;
 const MAX_BACKLOG_ASSETS = 12;
@@ -65,6 +67,10 @@ const DEMO_MAX_LISTENERS = 3; // a live phone that goes this long without a push
 export const rooms: Map<string, Room> = new Map();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
 const roomCreateBuckets = new Map<string, { count: number; resetAt: number }>();
+// Join-code lookups: four letters is 280k guesses, so the door needs a limit as much as the room does.
+const joinBuckets = new Map<string, { count: number; resetAt: number }>();
+const JOIN_WINDOW_MS = 60_000;
+const JOIN_LIMIT = 120;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -138,6 +144,20 @@ function roomCreateClientKey(req: Request, info?: Deno.ServeHandlerInfo): string
   const addr = info?.remoteAddr;
   return addr?.transport === "tcp" ? addr.hostname : null;
 }
+function takeJoinSlot(key: string, now = Date.now()): number | null {
+  let bucket = joinBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    bucket = { count: 0, resetAt: now + JOIN_WINDOW_MS };
+    joinBuckets.set(key, bucket);
+  }
+  bucket.count++;
+  if (bucket.count > JOIN_LIMIT) return bucket.resetAt - now;
+  if (joinBuckets.size > MAX_ROOM_CREATE_BUCKETS) {
+    for (const [k, b] of joinBuckets) if (b.resetAt <= now) joinBuckets.delete(k);
+  }
+  return null;
+}
+
 function takeRoomCreateSlot(key: string, now = Date.now()): number | null {
   let bucket = roomCreateBuckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
@@ -224,17 +244,19 @@ function trimAssets(room: Room) {
     if (!oldest) return;
     room.assets.delete(oldest.id);
     room.assetBytes -= oldest.full.length;
+    // A phone still holding that thumb would fetch a 404, so tell the room it is gone.
+    send(room, "asset-gone", { id: oldest.id });
   }
 }
 
-function addAsset(room: Room, full: Uint8Array, type: string, thumb: Uint8Array) {
+function addAsset(room: Room, full: Uint8Array, type: string, thumb: string) {
   const asset: Asset = {
     id: id(24),
     seq: room.offset + room.lines.length,
     at: Date.now(),
     full,
     type,
-    thumb: `data:${type};base64,${base64(thumb)}`,
+    thumb,
   };
   room.touched = asset.at;
   room.assets.set(asset.id, asset);
@@ -324,6 +346,13 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return Response.redirect(new URL(roomId ? `/live/${roomId}` : `/join?nope=${code}`, url), 302);
   }
   if (get && /^\/api\/join\/[A-Za-z]{4}$/.test(path)) {
+    const key = roomCreateClientKey(req, info);
+    if (key && takeJoinSlot(key) !== null) {
+      return new Response(JSON.stringify({ error: "too many code lookups from this address" }), {
+        status: 429,
+        headers: { "content-type": "application/json", "retry-after": "60" },
+      });
+    }
     const roomId = codes.get(path.slice(10).toUpperCase());
     return roomId ? json({ id: roomId }) : json({ error: "no talk with that code" }, 404);
   }
@@ -418,6 +447,9 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     if (!r) return json({ error: "room gone" }, 404);
     if (!tokenOk(req.headers.get("authorization"), r.token)) return json({ error: "nope" }, 403);
     if (r.demo) return json({ error: "not in the demo" }, 403);
+    // Refuse an oversized upload before buffering it: parsing the form is where the memory goes.
+    const declared = Number(req.headers.get("content-length") ?? 0);
+    if (declared > MAX_UPLOAD_BYTES) return json({ error: "too big" }, 413);
     let form: FormData;
     try {
       form = await req.formData();
@@ -430,15 +462,12 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const type = full.type || "image/webp";
     if (!ALLOWED_IMAGE_TYPES.has(type)) return json({ error: "images only" }, 415);
     if (full.size === 0 || full.size > MAX_ASSET_BYTES) return json({ error: "too big" }, 413);
-    if (thumb.size > 120_000) return json({ error: "thumb too big" }, 413);
+    if (thumb.size === 0 || thumb.size > MAX_THUMB_BYTES) return json({ error: "thumb too big" }, 413);
     const fullBytes = new Uint8Array(await full.arrayBuffer());
-    const thumbBytes = new Uint8Array(await thumb.arrayBuffer());
-    const asset = addAsset(r, fullBytes, type, thumbBytes);
-    if (asset.thumb.length > MAX_THUMB_CHARS) {
-      r.assets.delete(asset.id);
-      r.assetBytes -= fullBytes.length;
-      return json({ error: "thumb too big" }, 413);
-    }
+    const thumbUrl = `data:${type};base64,${base64(new Uint8Array(await thumb.arrayBuffer()))}`;
+    // Every check lands before the broadcast: nothing may reach a phone and then be taken away.
+    if (thumbUrl.length > MAX_THUMB_CHARS) return json({ error: "thumb too big" }, 413);
+    const asset = addAsset(r, fullBytes, type, thumbUrl);
     return json({ id: asset.id, seq: asset.seq, thumb: asset.thumb });
   }
 
@@ -458,13 +487,18 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
 
   // A phone taps a thumb: hand it the full frame. Immutable and cacheable, no auth (the room id is the secret).
   const assetGet = path.match(/^\/api\/room\/([a-z0-9]+)\/asset\/([a-z0-9]+)$/);
-  if (assetGet) {
+  if (get && assetGet) {
     if (!rooms.has(assetGet[1])) await materialiseDemo(assetGet[1], url.searchParams.get("s"));
     const r = rooms.get(assetGet[1]);
     const asset = r?.assets.get(assetGet[2]);
     if (!r || !asset) return json({ error: "no such image" }, 404);
     return new Response(asset.full as unknown as BodyInit, {
-      headers: { "content-type": asset.type, "cache-control": "public, max-age=3600, immutable" },
+      // Short and private: a picture pulled back or a room ended must not survive in a disk cache.
+      headers: {
+        "content-type": asset.type,
+        "cache-control": "private, max-age=60",
+        "x-content-type-options": "nosniff",
+      },
     });
   }
 

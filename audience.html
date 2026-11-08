@@ -490,7 +490,10 @@ feed.addEventListener("click", (e) => {
 });
 
 // An image is live only: it lives as long as the room does, and never rides in the saved copy.
+const seenAssets = new Set();
 function addAsset({ id, thumb }, animate = true, beforeJoin = false) {
+  if (seenAssets.has(id)) return;
+  seenAssets.add(id);
   $("#waiting")?.remove();
   feed.querySelector("p.fresh")?.classList.remove("fresh");
   if (beforeJoin && !$("#feed .before-join")) {
@@ -520,6 +523,10 @@ feed.addEventListener("click", (e) => {
   lightbox.classList.add("open");
 });
 lightbox.onclick = () => {
+  lightbox.classList.remove("open");
+  lightboxImg.removeAttribute("src");
+};
+lightboxImg.onerror = () => {
   lightbox.classList.remove("open");
   lightboxImg.removeAttribute("src");
 };

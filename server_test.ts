@@ -473,11 +473,11 @@ Deno.test("assets: an image needs the write token, rides out as a thumb, and com
   const event = await read();
   assert(event.includes("event: asset") && event.includes(saved.id) && event.includes("data:image/webp;base64,"));
 
-  // and the full frame comes back on demand, cacheable
+  // and the full frame comes back on demand, briefly cached
   const got = await handler(new Request(`${base}/api/room/${id}/asset/${saved.id}`));
   assertEquals(got.status, 200);
   assertEquals(got.headers.get("content-type"), "image/webp");
-  assert(got.headers.get("cache-control")?.includes("immutable"));
+  assert(got.headers.get("cache-control")?.includes("private"));
   assertEquals(new Uint8Array(await got.arrayBuffer()), full);
   assertEquals((await handler(new Request(`${base}/api/room/${id}/asset/${"0".repeat(24)}`))).status, 404);
 
@@ -530,4 +530,78 @@ Deno.test("assets: the presenter can pull one back", async () => {
 
   await reader.cancel();
   await del(`/api/room/${id}`, token);
+});
+
+Deno.test("assets: a bad thumb is refused before anything is broadcast or evicted", async () => {
+  const { id, token } = await mkRoom();
+  const bigThumb = new Uint8Array(70_000); // base64 pushes this past MAX_THUMB_CHARS
+  const form = new FormData();
+  form.append("full", new File([new Uint8Array([1, 2, 3])], "f.webp", { type: "image/webp" }));
+  form.append("thumb", new File([bigThumb], "t.webp", { type: "image/webp" }));
+  const res = await handler(
+    new Request(`${base}/api/room/${id}/asset`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    }),
+  );
+  assertEquals(res.status, 413);
+  // the room never saw it: no asset, no bytes, no broadcast
+  assertEquals(rooms.get(id)!.assets.size, 0);
+  assertEquals(rooms.get(id)!.assetBytes, 0);
+  await del(`/api/room/${id}`, token);
+});
+
+Deno.test("assets: the oldest goes quietly and the room is told", async () => {
+  const { id, token } = await mkRoom();
+  let firstId = "";
+  for (let i = 0; i < 41; i++) {
+    const form = new FormData();
+    form.append("full", new File([new Uint8Array([i])], "f.webp", { type: "image/webp" }));
+    form.append("thumb", new File([new Uint8Array([i])], "t.webp", { type: "image/webp" }));
+    const saved = await (await handler(
+      new Request(`${base}/api/room/${id}/asset`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form,
+      }),
+    )).json() as { id: string };
+    if (i === 0) firstId = saved.id;
+  }
+  const room = rooms.get(id)!;
+  assertEquals(room.assets.size, 40);
+  assertEquals(room.assets.has(firstId), false);
+  await del(`/api/room/${id}`, token);
+});
+
+Deno.test("assets: the frame is GET only, nosniff, and not cached for an hour", async () => {
+  const { id, token } = await mkRoom();
+  const form = new FormData();
+  form.append("full", new File([new Uint8Array([7])], "f.webp", { type: "image/webp" }));
+  form.append("thumb", new File([new Uint8Array([7])], "t.webp", { type: "image/webp" }));
+  const saved = await (await handler(
+    new Request(`${base}/api/room/${id}/asset`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    }),
+  )).json() as { id: string };
+
+  const got = await handler(new Request(`${base}/api/room/${id}/asset/${saved.id}`));
+  assertEquals(got.headers.get("x-content-type-options"), "nosniff");
+  assert(got.headers.get("cache-control")?.includes("private"));
+  // a POST to the same path must not hand out the picture
+  const posted = await handler(new Request(`${base}/api/room/${id}/asset/${saved.id}`, { method: "POST" }));
+  assert(posted.status === 404 || posted.status === 405);
+  await del(`/api/room/${id}`, token);
+});
+
+Deno.test("join codes: lookups are rate limited per address", async () => {
+  const addr = fromAddr("203.0.113.9");
+  let limited = 0;
+  for (let i = 0; i < 130; i++) {
+    const res = await handler(new Request(`${base}/api/join/ABCD`), addr);
+    if (res.status === 429) limited++;
+  }
+  assert(limited > 0, "the 130th lookup from one address should be refused");
 });
