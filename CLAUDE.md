@@ -4,12 +4,13 @@
 
 ## 🏃 Quick Start & Commands
 ```bash
-deno task dev      # Start development server with auto-reload (port 8787)
-deno task start    # Start production server
-deno task test     # Unit tests (server_test.ts)
-deno task check    # TypeScript type-checking
-deno task ci       # fmt --check + lint + check + test: run before every commit
-deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMIUM_PATH or Playwright's install
+deno task dev           # Start development server with auto-reload (port 8787)
+deno task start         # Start production server
+deno task listen-local  # Pipe stdin / whisper-stream to a room over LAN without internet
+deno task test          # Unit tests (server_test.ts)
+deno task check         # TypeScript type-checking
+deno task ci            # fmt --check + lint + check + test: run before every commit
+deno task e2e           # Browser suite (e2e/browser_test.js), needs Chromium: CHROMIUM_PATH or Playwright's install
 ```
 
 ## 📁 Where things live
@@ -31,32 +32,31 @@ deno task e2e      # Browser suite (e2e/browser_test.js), needs Chromium: CHROMI
 - Engines: `GET /api/engines` -> `{ browser, deepgram }`; `WS /api/room/:id/audio?source=&lang=` with subprotocol `["bearer", token]` streams PCM16 @ 16 kHz to Deepgram via the relay. Env: `DEEPGRAM_API_KEY` (off without it), `DEEPGRAM_MODEL` (nova-3), `DEEPGRAM_URL` (tests point it at a mock).
 - Room Lifecycle API:
   - `POST /api/room` (optional `{ title }`) -> `{ id, token, title, code }`; codes are 4 letters from ABCDEFGHJKLMNPRSTUVWXYZ, blocklisted words skipped, unique among open rooms, released on end (capped at 1000 open rooms; title ≤ 80 chars)
-  - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live }` announces/heartbeats the phone (lost after 45 s of silence, checked every 5 s)
-  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, offset, startedAt, title, phone }`, `interim { text, source }`, `final { text, seq, source }`, `source { source, live, lost }`, `end`
+  - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed, speaker?, phone? }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live, phone? }` announces/heartbeats a phone session in `room.phones` (up to 8 concurrent phones, lost after 45 s of silence, checked every 5 s)
+  - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, speakers?, offset, startedAt, title, phone }`, `interim { text, source, speaker? }`, `final { text, seq, source, speaker? }`, `source { source, live, lost, phones }`, `end`
   - `DELETE /api/room/:id` (Bearer auth) -> ends talk and flushes room
-- Invariants: token compared in constant time; push body ≤ 16 KB; images ≤ 2 MB with a ≤ 90k-char thumb, 40 a room, 24 MB a room, validated before anything is broadcast; join-code lookups rate limited; backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
+- Invariants: token compared in constant time (`sameToken`); push body ≤ 16 KB; images ≤ 2 MB with a ≤ 90k-char thumb, 40 a room, 24 MB a room, validated before anything is broadcast; join-code lookups rate limited (`takeJoinSlot`, capped at 10k buckets); backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep (Deno's test sanitizer enforces this).
 
 ## 🎨 Design System & Aesthetic Laws
 - **Soft Neo Toybrut** (console tokens; the reader keeps its own theme pairs):
-  - Ground: `#fff6e6`
+  - Ground: `#fff6e6` (plus 4 Page Atmospheres cycled via `#vibePill`: Peach Sunset, Stage Lights, Warm Paper, Night Ink)
   - Surface: `#fffdf5`
   - Sand (the room card): `#fdf1e0`
   - Ink: `#1e1714`
-  - Hairlines: `rgba(58,46,40,.10)` / `.06`
+  - Borders & Shadows: `2px solid var(--line)` with `4px 4px 0 var(--line)` hard offset shadows on `.bar` and `.card`; `1.5px solid var(--line)` with `2px 2px 0` on controls and custom `.stage-select` popovers
   - Accents: pink `#ff6ac2`, coral `#ff8a5c`, amber `#ffc74d`, teal `#2dd4bf`, violet `#a78bfa`
 - **Zero absolute white (`#fff`) or absolute black (`#000`)** across body and UI surfaces.
 - **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
 - `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
 - **No mascot.** The console, the demo landing and the join page are type-led: a wordmark, a status pill, nothing smiling at the presenter. Lumen lives in git history, not on screen.
-- **Flat, not screen print, not skeuomorph.** Cards are warm `--surface` on a warm `--ground`, separated by a 1px sepia hairline (`--hair`). No drop shadows, no gradients, no glows on surfaces: the depth comes from colour blocking (the room card is `--sand`) and from type weight. The ticker's ring is a flat 3px border in the ring colour, not a glow.
-- **One palette, flat fills.** Hot pink `#ff6ac2` is the only "go" colour on the console, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float. Everything else is cream, sand and ink. Audience CTAs (join, demo) may wear mint. No dot grid behind running text.
-- **Light lives on the page, never on a surface.** The console is flat, full stop. `/demo`, `/join` and the mic page may keep one soft corner light behind their content; a card, button, input or image frame never gets a gradient or a glow.
-- **Layout before decoration.** The talk bar runs full width on top (title, language, engine, one action), then two cards of matched height: the stage on the left, the room (QR + code) on the right. Balance is the brief; ornament is not.
-- **Auto-sent means pull-back-able.** Anything that reaches forty phones without a second glance needs an undo: the console's tray thumbnails are buttons, and DELETE on the asset broadcasts `asset-gone` so the figure leaves every feed and the byte budget is returned.
-- **Images are a catch, not a gallery.** A shared picture lands in the reader's transcript where it was shared, live only, capped at 58vh, tap for the full frame. They are compressed in the console (1280 WebP q0.7 + 320 thumb) before upload, so the relay never sees a 12 MP photo, and they die with the room: no image ever enters the saved copy.
+- **Tactile Neo-Toybrut hardware framing.** The console is centered in the viewport (`min-height: 100dvh`) as a balanced hardware deck. Cards wear crisp `2px` warm sepia borders and `4px 4px 0` offset shadows; `#ticker` is locked to a fixed `220px` height (`overflow: hidden`, bottom-anchored) so multi-line wraps never push controls downward. Native `<select>` elements are progressively enhanced into `.stage-select` spring popovers while keeping `<select>` synced in DOM for accessibility and tests.
+- **One palette, intentional accents.** Hot pink `#ff6ac2` is the primary "go" colour on the console, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float and lapel-mic QR accent. Audience CTAs (join, demo) may wear mint. No dot grid behind running text.
+- **Layout before decoration.** The talk bar runs full width on top (title + `#wordsChip`, language, engine, one action), then two cards of matched height: the stage on the left, the room (QR + code + `Room | Phone mic` tabs) on the right.
+- **Auto-sent means pull-back-able.** Anything that reaches forty phones without a second glance needs an undo: the console's tray thumbnails are buttons, and DELETE on the asset broadcasts `asset-gone` so the figure leaves every feed (and reconnects reconcile `assets` against the live set).
+- **Images are a catch, not a gallery.** A shared picture lands in the reader's transcript where it was shared, live only, capped at 58vh, tap for the full frame. They are compressed in the console (1280 WebP q0.7 + 320 thumb, with `bitmap.close()` in `finally`) before upload, so the relay never sees a 12 MP photo, and they die with the room: no image ever enters the saved copy.
 - **Offering beats sending.** Coming back to the console with a screenshot on the clipboard shows a chip (thumbnail + "Share the clipboard image"); it never broadcasts by itself. A private DM or a password manager on the clipboard must not walk into a room of eighty. ⌘V, drag-drop and the file picker are the explicit paths.
-- **Names ride along.** The `Names to get right` field (More, seeded from the talk title on the first Start) goes to Deepgram as repeated `keyterm` params (or `keywords` before nova-3) and into the phone-mic pairing QR. Sanitised server-side: 20 terms, 40 chars.
-- **Exports are prose.** Both the console and the reader paragraph by pause (8 s) rather than one line per paragraph. The saved copy keeps line times so a reload does not lose the paragraphs.
+- **Names ride along.** The `Names to get right` field (More, seeded from the talk title on the first Start or via `?title=&words=` URL query params) goes to Deepgram as repeated `keyterm` params (or `keywords` before nova-3), runs client-side via `applyRoomWords()` for Browser STT (including CamelCase compounds), and rides into the phone-mic pairing QR. Sanitised server-side: 20 terms, 40 chars.
+- **Exports are prose.** Both the console and the reader paragraph by pause (8 s) and sentence-grouped fallback (~420 chars broken at `.!?`), weave speaker transitions (`**Host:**`), and extract `## Links Mentioned`. The saved copy keeps line times and speakers so a reload does not lose the structure.
 - **The clipboard is the fastest source.** Paste anywhere on the console, or click Image with a screenshot already copied. Coming back to the window only *offers* the clipboard. Browsers cannot watch the clipboard in the background, so a true watcher (send on ⌘C, while another app has focus) is a native-app job, not a web one.
 - **Control budget: one dial per idea.** Size carries its own line count; the style carries its own frame colour; the microphone inherits the talk's language and engine from the QR query and only overrides on the phone. A control that duplicates another one gets deleted, not hidden in a submenu.
 - **Motto: juicy, sticky, fresh.** The vibe lives in aesthetics of utility, in what we offer, and in how things feel to touch. Never in gags.

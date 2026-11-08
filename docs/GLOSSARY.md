@@ -41,6 +41,15 @@ The presentation viewport pattern: the last few finalised lines (S = 1, M = 2, L
 #### 🔑 Fragment Token Security
 The security design where presenter authorization tokens ride strictly inside the URL hash `#fragment` (e.g. `/mic/401dd18c#token`). Browsers never transmit URL fragments over HTTP requests, preventing room administrative tokens from leaking into server access logs, reverse proxies, or referral headers.
 
+#### 🏷️ Room Words (`keyterm` / `applyRoomWords`)
+Optional proper-noun and jargon primer entered under **More → Names** (or seeded via `?title=&words=` / auto-extracted from the talk title). Sent to Deepgram as repeated `keyterm` (`nova-3`) or `keywords` (`nova-2`) query parameters, and applied client-side via `applyRoomWords()` for Browser SpeechRecognition.
+
+#### 🗣️ Multi-Voice Speaker Tagging (`speaker`)
+Optional speaker label (`Host`, `Guest`) set on `/mic` or via `deno task listen-local --speaker`. Travels with each finalized line so the audience reader and Markdown/text essay exports prefix speaker turn transitions automatically.
+
+#### 📡 Zero-Internet LAN Pipe (`scripts/listen-local.ts`)
+CLI bridge (`deno task listen-local`) that verifies the pairing URL, announces itself as a live external mic with a 20s heartbeat, strips Whisper timestamps/blank-audio markers from `stdin` or `--cmd`, and posts finalized lines to `/api/room/:id`.
+
 ---
 
 ### Shortcuts & Controls

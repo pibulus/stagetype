@@ -7,10 +7,11 @@ StageType is a chat room. **Sources** send lines in, the **relay** fans them out
   ───────                            ─────                              ────────
   Laptop mic (browser speech)  ┐                                    ┌  Audience phones  /live/:id
   Phone lapel mic   /mic/:id   ├─ POST /api/room/:id ─┐        ┌───┤  Console ticker and PiP float
-  Typing box on the console    ┘                      ▼        │    ├  Standalone ticker /ticker/:id
-  Deepgram (audio over WS) ──── /api/room/:id/audio ─► server.ts ──┤  OBS browser source
-                                                    pushChunk()│    └  Demo page      /demo
-                                                   in memory   └── SSE /api/room/:id/stream
+  Local CLI pipe  listen-local │                      ▼        │    ├  Standalone ticker /ticker/:id
+  Typing box on the console    ┘                  server.ts ───┤    ├  OBS browser source
+  Deepgram (audio over WS) ──── /api/room/:id/audio ─►         │    └  Demo page      /demo
+                                                  pushChunk()  │
+                                                  in memory    └── SSE /api/room/:id/stream
 ```
 
 Everything that adds words goes through `pushChunk()` in `server.ts`. New capability should be a new source or a new display, not a new server feature.
@@ -24,8 +25,8 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `GET` | `/j/:code` | none | Short link: 302 to `/live/:id`, or to `/join?nope=CODE` |
 | `GET` | `/join` | none | Type-the-code page (also served at `/live`) |
 | `GET` | `/ticker/:id` | none | The bar on its own; prefs in the query string |
-| `POST` | `/api/room/:id` | Bearer token | Push `{ text, final, source }`; `source` is `mic` (default), `phone` or `typed`. `{ ping: true }` is a keepalive that broadcasts nothing. `{ ping: true, source: "phone", live: true\|false }` announces the phone mic and heartbeats it while live |
-| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, offset, startedAt, title, phone }`, then `interim { text, source }`, `final { text, seq, source }`, `source { source: "phone", live, lost }` on handoffs, `end` |
+| `POST` | `/api/room/:id` | Bearer token | Push `{ text, final, source, speaker?, phone? }`; `source` is `mic` (default), `phone` or `typed`. `{ ping: true }` is a keepalive that broadcasts nothing. `{ ping: true, source: "phone", live: true\|false, phone? }` announces a phone mic session in `room.phones` (up to 8 concurrent phones) and heartbeats it while live |
+| `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, speakers?, offset, startedAt, title, phone }`, then `interim { text, source, speaker? }`, `final { text, seq, source, speaker? }`, `source { source: "phone", live, lost, phones }` on handoffs, `end` |
 | `POST` | `/api/room/:id/asset` | Bearer token | Share an image: multipart `full` + `thumb` (WebP/JPEG/PNG), 2 MB and 40 images a room, not in demo rooms |
 | `GET` | `/api/room/:id/asset/:assetId` | none | The full frame, immutable and cacheable. The room id is the secret |
 | `DELETE` | `/api/room/:id/asset/:assetId` | Bearer token | Pull a picture back; every listener gets `asset-gone { id }` |
@@ -35,7 +36,7 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `GET` | `/demo` | none | The live demo: a private signed QR per visitor |
 | `GET` | `/api/demo/mint` | none | `{ id, sig, exp, token }`. Stores nothing |
 | `GET` | `/api/demo/:id?s=sig` | signature | `{ alive, listeners }` |
-| `WS` | `/api/room/:id/audio?source=mic\|phone&lang=xx` | subprotocol `bearer, <token>` | 16 kHz mono PCM in; `{ ready }`, `{ interim }`, `{ final }`, `{ error }` JSON back; send `{ "type": "stop" }` to finish |
+| `WS` | `/api/room/:id/audio?source=mic\|phone&lang=xx&keyterm=…&speaker=…` | subprotocol `bearer, <token>` | 16 kHz mono PCM in; forwards up to 20 sanitised `keyterm`/`keywords` terms to Deepgram and tags utterances with `speaker`; `{ ready }`, `{ interim }`, `{ final }`, `{ error }` JSON back; send `{ "type": "stop" }` to finish |
 
 Images travel as `asset { id, seq, thumb }` events with the 320 px thumb inlined as a data URL, so every phone paints the catch without a fetch; `backlog` carries the last twelve thumbs. Frames are compressed on the presenter's device and die with the room.
 
@@ -102,6 +103,8 @@ stagetype/
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
 ├── vendor/fonts/     # Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono as woff2 (Latin + Latin Ext)
 ├── deepgram.js       # Browser side of the Deepgram source: AudioWorklet PCM capture + WebSocket to the relay
+├── scripts/
+│   └── listen-local.ts # Zero-internet LAN caption pipe (stdin or --cmd whisper-stream -> POST /api/room/:id)
 ├── deno.json         # Task runner & compiler options
 ├── Dockerfile        # One process, one box; used by fly.toml or any Docker host
 ├── fly.toml          # A single never-sleeping Fly machine

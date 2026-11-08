@@ -208,7 +208,36 @@ ok((await p.$eval("#ticker .interim", (e) => getComputedStyle(e).display)) === "
 await a2.setViewportSize({ width: 430, height: 880 });
 await a2.screenshot({ path: `${SHOTS}/audience-prefs.png` });
 await p.screenshot({ path: `${SHOTS}/presenter-prefs.png` });
+await p.click("#vibePill");
+ok((await p.evaluate(() => document.documentElement.dataset.vibe)) === "stage", "vibe pill cycles page atmosphere");
+await p.click("#vibePill"); await p.click("#vibePill"); await p.click("#vibePill");
+ok((await p.$$eval(".stage-select", (n) => n.length)) === 3, "custom Neo-Toybrut .stage-select popovers wrap selects");
+// keyboard navigation on .stage-select: ArrowDown opens and selects next option, Escape closes and restores focus
+await p.focus(".face-wrap .stage-select-btn");
+const faceBefore = await p.inputValue("#faceSelect");
+await p.keyboard.press("ArrowDown");
+const faceAfter = await p.inputValue("#faceSelect");
+ok(faceAfter !== faceBefore && (await p.getAttribute(".face-wrap .stage-select-btn", "aria-expanded")) === "true", ".stage-select ArrowDown opens menu and advances selection");
+await p.keyboard.press("Escape");
+ok((await p.getAttribute(".face-wrap .stage-select-btn", "aria-expanded")) === "false" && await p.evaluate(() => document.activeElement?.classList.contains("stage-select-btn")), ".stage-select Escape closes menu and restores focus");
+// fixed-height #ticker geometry check across lines
+const geomBefore = await p.evaluate(() => ({ h: document.querySelector("#ticker").getBoundingClientRect().height, barTop: document.querySelector(".typed-bar").getBoundingClientRect().top }));
+await push2({ text: "Long jumbo line one that wraps inside the fixed monitor box without shifting controls below.", final: true });
+await push2({ text: "Long jumbo line two that also wraps inside the fixed monitor box.", final: true });
+const geomAfter = await p.evaluate(() => ({ h: document.querySelector("#ticker").getBoundingClientRect().height, barTop: document.querySelector(".typed-bar").getBoundingClientRect().top }));
+ok(geomBefore.h === 220 && geomAfter.h === 220 && Math.abs(geomBefore.barTop - geomAfter.barTop) < 0.5, "fixed-height #ticker causes zero vertical layout shift");
+// QR tab switches to Phone mic and resets to Room on End
+await p.click("#qrTabMic");
+ok((await p.getAttribute("#qrGraphic", "data-mode")) === "mic", "QR tab switches to mic mode");
+ok((await p.evaluate(() => applyRoomWords("welcome to stage type and soft stack", ["StageType", "SoftStack"]))) === "welcome to StageType and SoftStack", "client-side Room Words primer fixes proper nouns and CamelCase compounds");
+await push2({ text: "Panel question.", final: true, speaker: "Host" });
+await a2.waitForFunction(() => document.querySelector("#feed .speaker-tag")?.textContent === "Host");
+ok(true, "speaker transition renders .speaker-tag badge on reader");
+// prose() parity between presenter and audience across speaker turns
+const [pProse, aProse] = await Promise.all([p.evaluate(() => prose(transcript, transcriptTimes, transcriptSpeakers, true)), a2.evaluate(() => prose(true))]);
+ok(pProse === aProse && pProse.includes("**Host:** Panel question."), "presenter and audience prose() match on speaker transitions");
 await p.click("#stopBtn");
+ok((await p.getAttribute("#qrGraphic", "data-mode")) === "room", "QR tab resets to room mode on End");
 await a2.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await a2.textContent("#state")) === "Talk ended", "ends with 'Talk ended'");
 ok((await a2.$$eval(".confetti", (n) => n.length)) === 0, "no confetti anywhere");
@@ -412,6 +441,7 @@ await fetch(`${base}/api/room/${roomR}`, { method: "POST", headers: { "content-t
 await ar.waitForFunction(() => document.querySelectorAll("#feed a").length === 2);
 ok(true, "links inside a caption become taps");
 await ar.locator("#feed p.line").nth(1).click();
+await ar.locator("#feed p.line").nth(2).click();
 ok(await ar.$eval("#feed p.line.starred", (n) => !!n), "tap keeps a line");
 ok((await ar.$$eval("#feed a", (n) => n.map((a) => a.href))).every((h) => h.startsWith("https://")), "link targets carry a scheme");
 await ar.reload();
@@ -446,6 +476,21 @@ await p.click("#assetTray .tray-thumb");
 await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").length === 0);
 ok(true, "pulling a picture back removes it from the phones");
 await p.click("#stopBtn");
+await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
+// pointer drag-to-reorder on kept quotes + reload persistence
+const qBoxes = await ar.$$("#keptQuotes blockquote");
+if (qBoxes.length === 2) {
+  const b0 = await qBoxes[0].boundingBox();
+  const b1 = await qBoxes[1].boundingBox();
+  await ar.mouse.move(b1.x + 20, b1.y + b1.height / 2);
+  await ar.mouse.down();
+  await ar.mouse.move(b0.x + 20, b0.y + b0.height / 2, { steps: 5 });
+  await ar.mouse.up();
+}
+ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "pointer drag reorders kept quotes on reader end card");
+await ar.reload();
+await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
+ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "reordered kept quotes survive reader reload");
 
 // ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere
 await p.evaluate(() => { localStorage.removeItem("st-engine"); });

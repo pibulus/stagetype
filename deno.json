@@ -6,9 +6,10 @@
   "tasks": {
     "dev": "deno run -A --watch server.ts",
     "start": "deno run --allow-net --allow-read --allow-env --allow-sys=networkInterfaces server.ts",
+    "listen-local": "deno run --allow-net --allow-env scripts/listen-local.ts",
     "test": "deno test -A --sanitize-ops --sanitize-resources server_test.ts",
     "e2e": "deno run -A e2e/browser_test.js",
-    "check": "deno check server.ts server_test.ts signed_noise.ts e2e/mock_deepgram.ts",
+    "check": "deno check server.ts server_test.ts signed_noise.ts e2e/mock_deepgram.ts scripts/listen-local.ts",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "ci": "deno fmt --check && deno lint && deno task check && deno task test"
@@ -23,13 +24,15 @@
     "lineWidth": 140,
     "include": [
       "*.ts",
-      "e2e/*.ts"
+      "e2e/*.ts",
+      "scripts/*.ts"
     ]
   },
   "lint": {
     "include": [
       "*.ts",
-      "e2e/"
+      "e2e/",
+      "scripts/"
     ]
   },
   "imports": {

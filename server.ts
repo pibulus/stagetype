@@ -4,7 +4,7 @@ import * as noise from "./signed_noise.ts";
 // Zero deps. Rooms live in memory; a restart ends every talk.
 // ponytail: single-process in-memory rooms, move to Deno KV/Redis only if this ever runs on >1 instance.
 
-type Chunk = { text?: unknown; final?: unknown; ping?: unknown; source?: unknown; live?: unknown };
+type Chunk = { text?: unknown; final?: unknown; ping?: unknown; source?: unknown; live?: unknown; speaker?: unknown; phone?: unknown };
 type Source = "mic" | "phone" | "typed";
 const SOURCES = new Set<string>(["mic", "phone", "typed"]);
 type Listener = { ctrl: ReadableStreamDefaultController<Uint8Array>; ping: ReturnType<typeof setInterval> };
@@ -16,8 +16,10 @@ type Room = {
   code: string; // four-letter join code people can type instead of scanning
   title: string; // shown on every phone and in the export; "" when the presenter left it blank
   lines: string[]; // finalized sentences, the backlog late joiners get
+  speakers: string[]; // optional speaker label per line ("" when untagged), aligned with `lines`
   offset: number; // how many lines have been shifted out of `lines` (so seq = offset + index)
-  phone: { live: boolean; seen: number }; // the lapel mic: live while it heartbeats, lost after PHONE_LOST_MS
+  phone: { live: boolean; seen: number }; // aggregate lapel mic state: live while any paired phone heartbeats
+  phones: Map<string, number>; // active phone session IDs -> last heartbeat timestamp (up to MAX_PHONES)
   demo?: number; // demo rooms only: when they expire. Small, short, typing and browser speech only.
   closed: boolean;
   audioSessions: Set<() => void>;
@@ -34,6 +36,11 @@ const MAX_LISTENERS = 500;
 const MAX_BACKLOG = 400;
 const MAX_CHUNK = 2_000; // chars kept per final line
 const MAX_TITLE = 80;
+const MAX_SPEAKER = 24;
+const MAX_PHONES = 8;
+export const cleanSpeaker = (raw: unknown): string =>
+  typeof raw === "string" ? raw.slice(0, 128).replace(/[^\p{L}\p{N} ._-]/gu, "").trim().slice(0, MAX_SPEAKER) : "";
+const cleanPhoneId = (raw: unknown): string => typeof raw === "string" && /^[a-z0-9_-]{1,32}$/i.test(raw) ? raw : "default";
 const MAX_BODY = 16_384; // bytes accepted per push
 const PING_MS = 20_000;
 const DEEPGRAM_KEEPALIVE_MS = 5_000; // Deepgram drops a silent socket after ~10 s
@@ -147,14 +154,15 @@ function roomCreateClientKey(req: Request, info?: Deno.ServeHandlerInfo): string
 function takeJoinSlot(key: string, now = Date.now()): number | null {
   let bucket = joinBuckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
+    if (joinBuckets.size >= MAX_ROOM_CREATE_BUCKETS) {
+      for (const [k, b] of joinBuckets) if (b.resetAt <= now) joinBuckets.delete(k);
+      if (joinBuckets.size >= MAX_ROOM_CREATE_BUCKETS) return JOIN_WINDOW_MS;
+    }
     bucket = { count: 0, resetAt: now + JOIN_WINDOW_MS };
     joinBuckets.set(key, bucket);
   }
+  if (bucket.count >= JOIN_LIMIT) return Math.max(1, bucket.resetAt - now);
   bucket.count++;
-  if (bucket.count > JOIN_LIMIT) return bucket.resetAt - now;
-  if (joinBuckets.size > MAX_ROOM_CREATE_BUCKETS) {
-    for (const [k, b] of joinBuckets) if (b.resetAt <= now) joinBuckets.delete(k);
-  }
   return null;
 }
 
@@ -176,13 +184,16 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 // Constant-time compare so a token can't be guessed a byte at a time from response timing.
-function tokenOk(header: string | null, token: string): boolean {
-  const a = enc.encode(header ?? "");
-  const b = enc.encode(`Bearer ${token}`);
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+export function sameToken(aStr: string, bStr: string): boolean {
+  const a = enc.encode(aStr);
+  const b = enc.encode(bStr);
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
   return diff === 0;
+}
+function tokenOk(header: string | null, token: string): boolean {
+  return sameToken(header ?? "", `Bearer ${token}`);
 }
 
 function frame(event: string, data: unknown): Uint8Array {
@@ -206,24 +217,28 @@ function send(room: Room, event: string, data: unknown) {
 }
 
 // The one way words enter a room. HTTP pushes and relay-side speech engines both come through here.
-function pushChunk(room: Room, chunk: { text: string; final: boolean; source: Source }) {
+function pushChunk(room: Room, chunk: { text: string; final: boolean; source: Source; speaker?: string; phoneId?: string }) {
   const text = chunk.text.trim().slice(0, MAX_CHUNK);
+  const speaker = cleanSpeaker(chunk.speaker);
   room.touched = Date.now();
   if (chunk.source === "phone") {
-    room.phone.seen = room.touched;
-    setPhone(room, true, false);
+    touchPhone(room, chunk.phoneId ?? "default", true, room.touched);
   }
   if (chunk.final) {
     if (text) {
       room.lines.push(text);
+      room.speakers.push(speaker);
       if (room.lines.length > MAX_BACKLOG) {
         room.lines.shift();
+        room.speakers.shift();
         room.offset++;
       }
+      send(room, "final", { text, seq: room.offset + room.lines.length, source: chunk.source, ...(speaker ? { speaker } : {}) });
+    } else {
+      send(room, "interim", { text: "", source: chunk.source, ...(speaker ? { speaker } : {}) });
     }
-    send(room, "final", { text, seq: room.offset + room.lines.length, source: chunk.source });
   } else {
-    send(room, "interim", { text, source: chunk.source });
+    send(room, "interim", { text, source: chunk.source, ...(speaker ? { speaker } : {}) });
   }
 }
 
@@ -269,14 +284,32 @@ function addAsset(room: Room, full: Uint8Array, type: string, thumb: string) {
 function setPhone(room: Room, live: boolean, lost: boolean) {
   if (room.phone.live === live) return;
   room.phone.live = live;
-  send(room, "source", { source: "phone", live, lost });
+  send(room, "source", { source: "phone", live, lost, phones: room.phones.size });
+}
+
+function touchPhone(room: Room, phoneId: string, live: boolean, now: number) {
+  if (live) {
+    if (room.phones.has(phoneId) || room.phones.size < MAX_PHONES) {
+      room.phones.set(phoneId, now);
+    }
+    room.phone.seen = now;
+    setPhone(room, true, false);
+  } else {
+    room.phones.delete(phoneId);
+    if (room.phones.size === 0) setPhone(room, false, false);
+  }
 }
 
 // Runs every few seconds: a phone that stopped heartbeating (battery, lock screen, walked out of wifi)
 // is marked lost so the console can bring the laptop mic back.
 export function checkPhones(now: number = Date.now()): void {
   for (const r of rooms.values()) {
-    if (r.phone.live && now - r.phone.seen > PHONE_LOST_MS) setPhone(r, false, true);
+    for (const [pid, seen] of r.phones) {
+      if (now - seen > PHONE_LOST_MS) r.phones.delete(pid);
+    }
+    if (r.phone.live && (r.phones.size === 0 && now - r.phone.seen > PHONE_LOST_MS)) {
+      setPhone(r, false, true);
+    }
   }
 }
 
@@ -311,7 +344,15 @@ export function lanIp(): string {
   }
 }
 
-const isLoopbackHost = (req: Request) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.get("host") ?? "");
+const isLoopbackHost = (req: Request, info?: Deno.ServeHandlerInfo) => {
+  const hostOk = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.get("host") ?? "");
+  if (!hostOk) return false;
+  if (info?.remoteAddr?.transport === "tcp") {
+    const h = info.remoteAddr.hostname;
+    return h === "127.0.0.1" || h === "::1" || h === "localhost";
+  }
+  return true;
+};
 
 export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promise<Response> {
   const url = new URL(req.url);
@@ -365,7 +406,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
   if (get && path === "/deepgram.js") return file("deepgram.js", head, "text/javascript; charset=utf-8");
   // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
   if (get && path === "/api/info") {
-    return isLoopbackHost(req) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
+    return isLoopbackHost(req, info) ? json({ lan: `http://${lanIp()}:${PORT}` }) : json({ error: "local only" }, 404);
   }
 
   // Presenter opens a room, optionally with a title
@@ -401,8 +442,10 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
       code,
       title,
       lines: [],
+      speakers: [],
       offset: 0,
       phone: { live: false, seen: 0 },
+      phones: new Map(),
       closed: false,
       audioSessions: new Set(),
       listeners: new Set(),
@@ -436,7 +479,8 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const { socket, response } = Deno.upgradeWebSocket(req, { protocol: "bearer" });
     const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
     const lang = (url.searchParams.get("lang") ?? "en").match(/^[A-Za-z]{2,3}(-[A-Za-z]{2,8})*$/)?.[0] ?? "en";
-    deepgramSession(r, socket, source, lang, keytermsFrom(url));
+    const speaker = cleanSpeaker(url.searchParams.get("speaker"));
+    deepgramSession(r, socket, source, lang, keytermsFrom(url), speaker);
     return response;
   }
 
@@ -521,13 +565,14 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     room.touched = now;
     const source: Source = typeof body.source === "string" && SOURCES.has(body.source) ? body.source as Source : "mic";
     const text = typeof body.text === "string" ? body.text : "";
+    const speaker = cleanSpeaker(body.speaker);
+    const phoneId = typeof body.phone === "string" ? cleanPhoneId(body.phone) : (speaker || "default");
     if (source === "phone" && body.ping) {
       // The phone says live:true when it starts and heartbeats it; live:false when the presenter pauses it.
       // Words from it (via pushChunk) also count as live. The console pauses the laptop mic on the change.
-      room.phone.seen = now;
-      setPhone(room, typeof body.live === "boolean" ? body.live : room.phone.live, false);
+      touchPhone(room, phoneId, typeof body.live === "boolean" ? body.live : room.phone.live, now);
     }
-    if (!body.ping) pushChunk(room, { text, final: !!body.final, source });
+    if (!body.ping) pushChunk(room, { text, final: !!body.final, source, speaker, phoneId });
     return json({ ok: true, listeners: room.listeners.size, lineCount: room.offset + room.lines.length, title: room.title });
   }
 
@@ -546,6 +591,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
       start(c) {
         const hello = frame("backlog", {
           lines: room.lines,
+          ...(room.speakers.some(Boolean) ? { speakers: room.speakers } : {}),
           offset: room.offset,
           startedAt: room.startedAt,
           title: room.title,
@@ -585,15 +631,15 @@ const MAX_KEYTERM_CHARS = 40;
 export function keytermsFrom(url: URL): string[] {
   const out: string[] = [];
   for (const raw of [...url.searchParams.getAll("keyterm"), ...url.searchParams.getAll("keywords")]) {
-    for (const part of raw.split(",")) {
-      const term = part.trim().replace(/[^\p{L}\p{N} '\-.&]/gu, "").slice(0, MAX_KEYTERM_CHARS);
+    for (const part of raw.slice(0, 512).split(",")) {
+      const term = part.trim().slice(0, 128).replace(/[^\p{L}\p{N} '\-.&]/gu, "").slice(0, MAX_KEYTERM_CHARS);
       if (term && out.length < MAX_KEYTERMS && !out.includes(term)) out.push(term);
     }
   }
   return out;
 }
 
-function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string, keyterms: string[] = []) {
+function deepgramSession(room: Room, client: WebSocket, source: Source, lang: string, keyterms: string[] = [], speaker = "") {
   const params = new URLSearchParams({
     model: deepgramModel(),
     language: lang,
@@ -635,7 +681,10 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     clearTimeout(sessionTimeout);
     room.audioSessions.delete(closeSession);
     try {
-      if (up.readyState === WebSocket.OPEN) up.send(JSON.stringify({ type: "CloseStream" }));
+      if (up.readyState === WebSocket.OPEN) {
+        up.send(JSON.stringify({ type: "Finalize" }));
+        up.send(JSON.stringify({ type: "CloseStream" }));
+      }
     } catch { /* gone */ }
     try {
       up.close();
@@ -645,7 +694,7 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     } catch { /* gone */ }
     if (room.closed) return;
     if (pending.length) flush();
-    else pushChunk(room, { text: "", final: false, source });
+    else pushChunk(room, { text: "", final: false, source, speaker });
   };
   const closeSession = () => finish(1001, "room ended");
   room.audioSessions.add(closeSession);
@@ -654,10 +703,10 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     const text = pending.join(" ").trim();
     pending.length = 0;
     if (text) {
-      pushChunk(room, { text, final: true, source });
+      pushChunk(room, { text, final: true, source, speaker });
       tell({ final: text });
     } else {
-      pushChunk(room, { text: "", final: false, source });
+      pushChunk(room, { text: "", final: false, source, speaker });
       tell({ interim: "" });
     }
   };
@@ -695,12 +744,12 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
       if (msg.speech_final) flush();
       else {
         const i = pending.join(" ");
-        pushChunk(room, { text: i, final: false, source });
+        pushChunk(room, { text: i, final: false, source, speaker });
         tell({ interim: i });
       }
     } else {
       const i = [...pending, t].join(" ").trim();
-      pushChunk(room, { text: i, final: false, source });
+      pushChunk(room, { text: i, final: false, source, speaker });
       tell({ interim: i });
     }
   };
@@ -718,7 +767,12 @@ function deepgramSession(room: Room, client: WebSocket, source: Source, lang: st
     if (closed || room.closed) return;
     if (typeof e.data === "string") {
       try {
-        if (JSON.parse(e.data)?.type === "stop") finish();
+        const m = JSON.parse(e.data);
+        if (m?.type === "Finalize" && up.readyState === WebSocket.OPEN) {
+          up.send(JSON.stringify({ type: "Finalize" }));
+          return;
+        }
+        if (m?.type === "stop") finish();
       } catch { /* ignore */ }
       return;
     }
@@ -743,8 +797,10 @@ async function materialiseDemo(id: string, sig: string | null) {
     code: "",
     title: "StageType demo",
     lines: [],
+    speakers: [],
     offset: 0,
     phone: { live: false, seen: 0 },
+    phones: new Map(),
     closed: false,
     audioSessions: new Set(),
     listeners: new Set(),
@@ -812,9 +868,8 @@ export function sweep(now: number = Date.now()): void {
 const PORT = Number(Deno.env.get("PORT") ?? 8787);
 
 if (import.meta.main) {
-  setInterval(sweep, 60_000);
   setInterval(checkPhones, 5_000);
-  setInterval(() => sweep(), 15_000); // demo rooms expire on the minute, not the half hour
+  setInterval(() => sweep(), 15_000); // sweeps idle rooms, demo rooms, and expired rate-limit buckets
   Deno.serve({ port: PORT, hostname: "0.0.0.0" }, handler);
   console.log(`presenter: http://localhost:${PORT}   phones: http://${lanIp()}:${PORT}`);
 }

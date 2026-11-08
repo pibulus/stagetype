@@ -51,3 +51,13 @@ cloudflared tunnel --url http://localhost:8787
 Scan the resulting `https://*.trycloudflare.com` QR code with your phone to use the phone as your wireless stage microphone.
 
 The same applies to the audience: a QR that points at `http://192.168.x.x:8787` only works for phones on the same wifi. At a meetup where people are on cellular, run the presenter console through the tunnel URL (or a small public host) so the audience QR is reachable from anywhere. The relay is a single process with rooms in memory, so it wants one instance, not a serverless fleet.
+
+## Zero-internet LAN mode (`deno task listen-local`)
+
+When running on a local Wi-Fi network without internet access, pipe any local on-device transcriber (such as `whisper-stream`) directly into the room using the pairing URL from the **Phone mic** QR tab:
+
+```bash
+whisper-stream -m ggml-base.en.bin | deno task listen-local "http://localhost:8787/mic/<roomId>#<token>" --speaker Host
+# Or spawn the local speech command directly:
+deno task listen-local "http://localhost:8787/mic/<roomId>#<token>" --speaker Host --cmd "whisper-stream -m ggml-base.en.bin"
+```

@@ -25,7 +25,7 @@ class Pcm16Downsampler extends AudioWorkletProcessor {
 }
 registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
 
-  async function start({ roomId, token, source = "mic", lang = "en", keyterms = [], onInterim, onFinal, onError, onReady, onLevel }) {
+  async function start({ roomId, token, source = "mic", lang = "en", keyterms = [], speaker = "", onInterim, onFinal, onError, onReady, onLevel }) {
     if (!window.AudioWorkletNode || !window.WebSocket) throw new Error("this browser can't stream audio");
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -39,7 +39,8 @@ registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
 
     const terms = keyterms.filter(Boolean).slice(0, 20)
       .map((t) => `&keyterm=${encodeURIComponent(t)}`).join("");
-    const wsUrl = `${location.origin.replace(/^http/, "ws")}/api/room/${roomId}/audio?source=${source}&lang=${encodeURIComponent(lang)}${terms}`;
+    const spk = speaker ? `&speaker=${encodeURIComponent(speaker)}` : "";
+    const wsUrl = `${location.origin.replace(/^http/, "ws")}/api/room/${roomId}/audio?source=${source}&lang=${encodeURIComponent(lang)}${terms}${spk}`;
     const ws = new WebSocket(wsUrl, ["bearer", token]);
     ws.binaryType = "arraybuffer";
     let stopped = false;
@@ -69,7 +70,12 @@ registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
       stop() {
         if (stopped) return;
         stopped = true;
-        try { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "stop" })); } catch {}
+        try {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "Finalize" }));
+            ws.send(JSON.stringify({ type: "stop" }));
+          }
+        } catch {}
         try { ws.close(); } catch {}
         teardown();
       },

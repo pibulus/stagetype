@@ -124,6 +124,11 @@
   #feed p.line { cursor: pointer; transition: opacity .6s ease, border-color .2s ease, padding .25s var(--spring); border-left: 3px solid transparent; margin-left: -14px; padding-left: 11px; }
   #feed p.line.starred { border-left-color: var(--pill); }
   #feed p.line.star-pop { animation: starPop .36s var(--spring); }
+  .speaker-tag {
+    display: inline-block; font-size: .68em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    padding: 1px 8px; margin-right: 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--pill) 42%, transparent); color: var(--ink); vertical-align: .12em;
+  }
   @keyframes starPop { 40% { transform: translateX(3px); } }
   #feed a { color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
   #feed a:active { opacity: .6; }
@@ -206,8 +211,21 @@
   /* The kept lines are the keepsake: give them the width and the marker. */
   #keptQuotes { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; }
   #keptQuotes blockquote {
-    margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--pill);
+    margin: 0; padding: 4px 8px 4px 14px; border-left: 3px solid var(--pill); border-radius: 0 8px 8px 0;
     font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
+    transition: background .15s ease, transform .18s var(--spring);
+    touch-action: none;
+  }
+  #keptQuotes blockquote:focus {
+    outline: none;
+    background: color-mix(in srgb, var(--pill) 18%, transparent);
+  }
+  #keptQuotes blockquote:focus-visible {
+    outline: 2px solid var(--pill);
+    outline-offset: 2px;
+  }
+  #keptQuotes blockquote.dragging {
+    opacity: .6; transform: scale(.98);
   }
   #keptQuotes .more { font-size: 12px; color: var(--muted); font-weight: 600; padding-left: 14px; }
   #linksTray { margin: 0 0 18px; text-align: left; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 14px; padding: 12px 14px; }
@@ -323,6 +341,7 @@
   <p class="sub" id="endWhere">Saved on this phone. Reopens from this link.</p>
   <div class="actions">
     <button id="shareTranscript" hidden>Share</button>
+    <button id="copyKeptBtn" hidden>Copy kept</button>
     <button class="copy-btn">Copy transcript</button>
     <button id="saveMd">Save .md</button>
     <button id="cardPrintBtn">Print / PDF</button>
@@ -392,6 +411,7 @@ const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight
 
 const linesArr = [];
 const lineTimes = [];
+const lineSpeakers = [];
 let totalWords = 0;
 let talkTitle = "";
 let startedAt = 0;
@@ -402,7 +422,7 @@ const TALK_KEY = `stl-talk-${roomId}`;
 function loadSaved() { try { return JSON.parse(localStorage.getItem(TALK_KEY)); } catch { return null; } }
 let saveTimer = null;
 function writeTalk(ended = false) {
-  const rec = { id: roomId, title: talkTitle, lines: linesArr, times: lineTimes, seen, startedAt, updatedAt: Date.now(), ended, stars: [...stars] };
+  const rec = { id: roomId, title: talkTitle, lines: linesArr, times: lineTimes, speakers: lineSpeakers, seen, startedAt, updatedAt: Date.now(), ended, stars: keptIndices() };
   store.set(TALK_KEY, JSON.stringify(rec));
   let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
   idx = idx.filter((t) => t.id !== roomId);
@@ -412,7 +432,8 @@ function writeTalk(ended = false) {
 }
 function saveTalk(ended = false) {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => writeTalk(ended), ended ? 0 : 800);
+  if (ended) writeTalk(true);
+  else saveTimer = setTimeout(() => writeTalk(false), 800);
 }
 const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
@@ -481,6 +502,14 @@ function renderLinks() {
 
 // Tap a settled line to keep it. Highlights ride along into every export.
 const stars = new Set();
+let keptOrder = [];
+function syncKeptOrder() {
+  const valid = new Set(stars);
+  keptOrder = keptOrder.filter((i) => valid.has(i));
+  for (const i of [...stars].sort((a, b) => a - b)) {
+    if (!keptOrder.includes(i)) keptOrder.push(i);
+  }
+}
 function paintStars() {
   $$("#feed p.line").forEach((p) => p.classList.toggle("starred", stars.has(Number(p.dataset.i))));
 }
@@ -497,7 +526,8 @@ feed.addEventListener("click", (e) => {
     void p.offsetWidth;
     p.classList.add("star-pop");
   }
-  if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate(12);
+  syncKeptOrder();
+  if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([8, 20, 25]);
   paintStars();
   // A kept line has to survive the tab closing a second later, so write it now.
   clearTimeout(saveTimer);
@@ -547,7 +577,8 @@ lightboxImg.onerror = () => {
 };
 addEventListener("keydown", (e) => { if (e.key === "Escape") lightbox.onclick(); });
 
-function addLine(text, animate = true) {
+let lastRenderedSpeaker = "";
+function addLine(text, animate = true, speaker = "") {
   $("#waiting")?.remove();
   // The "earlier" label is a separator for the backlog block only: the next live line ends it.
   $("#feed .before-join")?.remove();
@@ -555,39 +586,63 @@ function addLine(text, animate = true) {
   const p = document.createElement("p");
   p.className = animate ? "fresh line line-in" : "fresh line";
   p.dataset.i = String(linesArr.length);
+  if (speaker && speaker !== lastRenderedSpeaker) {
+    const tag = document.createElement("b");
+    tag.className = "speaker-tag";
+    tag.textContent = speaker;
+    p.append(tag, " ");
+  }
+  lastRenderedSpeaker = speaker || "";
   const span = document.createElement("span");
   fillCaption(span, text);
   p.append(span);
   feed.insertBefore(p, interimEl);
   linesArr.push(text);
   lineTimes.push(Date.now());
+  lineSpeakers.push(speaker || "");
   updateStats();
   paintStars();
   if (animate) saveTalk();
 }
 
 const transcript = () => linesArr.join("\n\n");
-// A talk is not a list of sentences: an eight-second breath is a paragraph break. Good enough to
-// read as an essay draft without a summariser anywhere near it.
-const prose = () => {
+// A talk is not a list of sentences: an eight-second breath or ~420-char sentence boundary is a
+// paragraph break, and speaker transitions get prefixed. Good enough to read as an essay draft.
+const prose = (md = false) => {
   const paras = [];
   let para = [];
+  let paraChars = 0;
+  let lastSpeaker = "";
   for (let i = 0; i < linesArr.length; i++) {
     const gap = i > 0 && lineTimes[i] && lineTimes[i - 1] ? lineTimes[i] - lineTimes[i - 1] : 0;
-    if (gap > 8000 && para.length) {
+    const spk = lineSpeakers[i] || "";
+    const spkChanged = i > 0 && spk !== lastSpeaker;
+    const sentenceEnd = para.length > 0 && /[.!?]["'’”)]?$/.test(para[para.length - 1]);
+    if ((gap > 8000 || spkChanged || (paraChars >= 420 && sentenceEnd)) && para.length) {
       paras.push(para.join(" "));
       para = [];
+      paraChars = 0;
     }
-    para.push(linesArr[i]);
+    let lineText = linesArr[i];
+    if (spk && spk !== lastSpeaker) {
+      lineText = md ? `**${spk}:** ${lineText}` : `${spk}: ${lineText}`;
+    }
+    lastSpeaker = spk;
+    para.push(lineText);
+    paraChars += lineText.length;
   }
   if (para.length) paras.push(para.join(" "));
   return paras.join("\n\n");
 };
-const kept = () => [...stars].sort((a, b) => a - b).map((i) => linesArr[i]).filter(Boolean);
+const keptIndices = () => {
+  syncKeptOrder();
+  return keptOrder.filter((i) => Boolean(linesArr[i]));
+};
+const kept = () => keptIndices().map((i) => linesArr[i]).filter(Boolean);
 const withKept = () => {
   const k = kept();
   if (!k.length) return transcript();
-  return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${prose()}`;
+  return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${prose(false)}`;
 };
 
 async function copyTranscript(btn) {
@@ -603,6 +658,19 @@ async function copyTranscript(btn) {
 }
 $$(".copy-btn").forEach((b) => b.onclick = () => copyTranscript(b));
 
+$("#copyKeptBtn").onclick = async () => {
+  const btn = $("#copyKeptBtn");
+  const orig = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(kept().map((t) => `> ${t}`).join("\n\n"));
+    btn.textContent = "Copied!";
+    if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([8, 20, 25]);
+  } catch {
+    btn.textContent = "Blocked";
+  }
+  setTimeout(() => (btn.textContent = orig), 1500);
+};
+
 function download(filename, content, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement("a");
@@ -616,9 +684,9 @@ $("#saveMd").onclick = () => {
   const dateStr = now.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const k = kept();
   const keptSection = k.length ? `## Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n` : "";
-  const linkSection = links.length ? `## Links\n\n${links.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
+  const linkSection = links.length ? `## Links Mentioned\n\n${links.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
   const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: StageType, room \`${roomId}\`\n\n---\n\n`;
-  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + prose() + "\n", "text/markdown");
+  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + prose(true) + "\n", "text/markdown");
 };
 
 const triggerPrint = () => window.print();
@@ -636,10 +704,14 @@ if (saved?.lines?.length) {
   applyRoom({ title: saved.title });
   startedAt = saved.startedAt || 0;
   saved.lines.forEach((t, i) => {
-    addLine(t, false);
+    addLine(t, false, saved.speakers?.[i] || "");
     if (saved.times?.[i]) lineTimes[lineTimes.length - 1] = saved.times[i];
   });
-  for (const i of saved.stars || []) stars.add(i);
+  for (const i of saved.stars || []) {
+    stars.add(i);
+    if (!keptOrder.includes(i)) keptOrder.push(i);
+  }
+  syncKeptOrder();
   paintStars();
   seen = saved.seen || saved.lines.length;
   setState("saved", "Saved on this phone");
@@ -653,20 +725,32 @@ es.addEventListener("open", () => setState("live", "Live"));
 // `seen` is an absolute sequence number. The server trims old lines from its backlog and tells us
 // how many it dropped (`offset`), so a reconnect after a long talk never double-prints or skips lines.
 es.addEventListener("backlog", (e) => {
-  const { lines, offset = 0, assets = [], ...info } = JSON.parse(e.data);
+  const { lines, offset = 0, assets = [], speakers = [], ...info } = JSON.parse(e.data);
   applyRoom(info);
   if (info.startedAt) startedAt = info.startedAt;
-  lines.slice(Math.max(0, seen - offset)).forEach((t) => addLine(t, false));
+  const startIdx = Math.max(0, seen - offset);
+  lines.slice(startIdx).forEach((t, idx) => addLine(t, false, speakers[startIdx + idx] || ""));
   seen = Math.max(seen, offset + lines.length);
+  // Reconcile assets against server truth so any image pulled back while offline disappears
+  const liveIds = new Set(assets.map((a) => a.id));
+  for (const fig of $$("#feed figure.catch")) {
+    const id = fig.querySelector("img")?.dataset.asset;
+    if (id && !liveIds.has(id)) {
+      if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) lightbox.onclick();
+      fig.remove();
+      seenAssets.delete(id);
+    }
+  }
+  if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
   for (const a of assets) addAsset(a, false, true);
   if (linesArr.length) saveTalk();
   follow();
 });
 
 es.addEventListener("final", (e) => {
-  const { text } = JSON.parse(e.data);
+  const { text, speaker = "" } = JSON.parse(e.data);
   if (text) {
-    addLine(text);
+    addLine(text, true, speaker);
     seen++;
   }
   interimEl.textContent = "";
@@ -680,6 +764,7 @@ es.addEventListener("asset", (e) => {
 // The presenter pulled one back: it leaves this phone the same way it arrived.
 es.addEventListener("asset-gone", (e) => {
   const { id } = JSON.parse(e.data);
+  seenAssets.delete(id);
   const fig = feed.querySelector(`figure.catch img[data-asset="${id}"]`)?.closest("figure.catch");
   if (!fig) return;
   if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) lightbox.onclick();
@@ -692,9 +777,113 @@ es.addEventListener("interim", (e) => {
   follow();
 });
 
+function moveKeptQuote(fromLineIdx, toLineIdx) {
+  if (fromLineIdx === null || toLineIdx === null || fromLineIdx === toLineIdx) return;
+  const from = keptOrder.indexOf(fromLineIdx);
+  const to = keptOrder.indexOf(toLineIdx);
+  if (from !== -1 && to !== -1) {
+    keptOrder.splice(from, 1);
+    keptOrder.splice(to, 0, fromLineIdx);
+    renderKeptQuotes();
+    saveTalk(true);
+  }
+}
+
+function renderKeptQuotes() {
+  const idxs = keptIndices();
+  const quotes = $("#keptQuotes");
+  const copyKeptBtn = $("#copyKeptBtn");
+  if (copyKeptBtn) copyKeptBtn.hidden = idxs.length === 0;
+  let dragIdx = null;
+  quotes.replaceChildren(...idxs.slice(0, 5).map((lineIdx) => {
+    const q = document.createElement("blockquote");
+    q.contentEditable = "true";
+    q.spellcheck = false;
+    q.dataset.lineIdx = String(lineIdx);
+    q.draggable = true;
+    q.textContent = linesArr[lineIdx] || "";
+    q.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        q.blur();
+      }
+    });
+    q.addEventListener("input", () => {
+      const val = q.textContent.replace(/\s+/g, " ").trim();
+      if (val) {
+        linesArr[lineIdx] = val;
+        const feedSpan = feed.querySelector(`p.line[data-i="${lineIdx}"] span`);
+        if (feedSpan) {
+          feedSpan.replaceChildren();
+          fillCaption(feedSpan, val);
+        }
+        updateStats();
+        saveTalk(true);
+      }
+    });
+    q.addEventListener("dragstart", () => {
+      dragIdx = lineIdx;
+      q.classList.add("dragging");
+    });
+    q.addEventListener("dragend", () => {
+      dragIdx = null;
+      q.classList.remove("dragging");
+    });
+    q.addEventListener("dragover", (ev) => ev.preventDefault());
+    q.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      moveKeptQuote(dragIdx, lineIdx);
+    });
+    // Pointer/touch drag-to-reorder so mobile phones can reorder kept quotes with a finger drag
+    let ptrId = null, startY = 0, ptrDragging = false, ptrTargetIdx = null;
+    q.addEventListener("pointerdown", (ev) => {
+      if (ev.button && ev.button !== 0) return;
+      ptrId = ev.pointerId;
+      startY = ev.clientY;
+      ptrDragging = false;
+      ptrTargetIdx = null;
+    });
+    q.addEventListener("pointermove", (ev) => {
+      if (ptrId !== ev.pointerId) return;
+      if (!ptrDragging && Math.abs(ev.clientY - startY) > 6) {
+        ptrDragging = true;
+        q.classList.add("dragging");
+        try { q.setPointerCapture(ev.pointerId); } catch {}
+      }
+      if (!ptrDragging) return;
+      const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("#keptQuotes blockquote");
+      if (over && over.dataset.lineIdx !== undefined) {
+        ptrTargetIdx = Number(over.dataset.lineIdx);
+      }
+    });
+    const finishPointer = (ev) => {
+      if (ptrId !== ev.pointerId) return;
+      ptrId = null;
+      q.classList.remove("dragging");
+      try { if (q.hasPointerCapture(ev.pointerId)) q.releasePointerCapture(ev.pointerId); } catch {}
+      if (ptrDragging && ptrTargetIdx !== null && ptrTargetIdx !== lineIdx) {
+        moveKeptQuote(lineIdx, ptrTargetIdx);
+      }
+      ptrDragging = false;
+      ptrTargetIdx = null;
+    };
+    q.addEventListener("pointerup", finishPointer);
+    q.addEventListener("pointercancel", finishPointer);
+    return q;
+  }));
+  if (idxs.length > 5) {
+    const more = document.createElement("span");
+    more.className = "more";
+    more.textContent = `+${idxs.length - 5} more, in the saved copy`;
+    quotes.append(more);
+  }
+  quotes.hidden = idxs.length === 0;
+}
+
 function talkOver(label, state = "ended") {
   es.close();
   interimEl.textContent = "";
+  $("#waiting")?.remove();
   setState(state, label);
   $("#jump").hidden = true;
   if (linesArr.length) {
@@ -708,27 +897,15 @@ function talkOver(label, state = "ended") {
     stats.textContent = bits.join(" · ");
     stats.hidden = false;
 
-    // The kept lines lead, as quotes: this is the part worth screenshotting.
-    const keptNow = kept();
-    const quotes = $("#keptQuotes");
-    quotes.replaceChildren(...keptNow.slice(0, 3).map((text) => {
-      const q = document.createElement("blockquote");
-      q.textContent = text;
-      return q;
-    }));
-    if (keptNow.length > 3) {
-      const more = document.createElement("span");
-      more.className = "more";
-      more.textContent = `+${keptNow.length - 3} more, in the saved copy`;
-      quotes.append(more);
-    }
-    quotes.hidden = keptNow.length === 0;
+    // The kept lines lead, as quotes: editable in place and ready to copy or screenshot.
+    renderKeptQuotes();
 
     // Share only where a share sheet exists; Copy is the desktop answer.
     const share = $("#shareTranscript");
     if (navigator.share) {
       share.hidden = false;
       share.onclick = () => {
+        const keptNow = kept();
         navigator.share({
           title: talkTitle || "StageType transcript",
           text: (keptNow[0] ? `“${keptNow[0]}”\n\n` : "") + (talkTitle ? `${talkTitle} — ` : "") + transcript(),

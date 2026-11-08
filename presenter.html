@@ -10,46 +10,78 @@
     <link rel="stylesheet" href="/vendor/fonts.css">
     <style>
     :root {
-      /* StageType palette: warm cream, one hot pink, one amber, one teal. Flat fills only. */
+      /* StageType palette: warm Neo-Toybrut tabletop, Flexoki cream/ink, tactile frames. */
       --ground: #fff6e6;
       --surface: #fffdf5;
       --sand: #fdf1e0;
       --ink: #1e1714;
-      --quiet: #7a6a60;
+      --quiet: #6d5d53;
       --muted: rgba(30, 23, 20, 0.56);
-      --hair: rgba(58, 46, 40, 0.12);
-      --hair-soft: rgba(58, 46, 40, 0.07);
+      --hair: rgba(58, 46, 40, 0.16);
+      --hair-soft: rgba(58, 46, 40, 0.09);
       --pink: #ff6ac2;
       --coral: #ff8a5c;
       --amber: #ffc74d;
       --teal: #2dd4bf;
       --violet: #a78bfa;
-      --line: #3a2e28;
+      --line: #1e1714;
+      --vibe-accent: #ff6ac2;
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
       --mono: ui-monospace, Menlo, Consolas, monospace;
       --spring: cubic-bezier(.2, .9, .3, 1.35);
       --snap: cubic-bezier(.4, 0, .2, 1);
       --vu: 0;
     }
+    :root[data-vibe="stage"] {
+      --ground: #f3fbf8;
+      --surface: #fffef7;
+      --sand: #e6f6f0;
+      --vibe-accent: #2dd4bf;
+    }
+    :root[data-vibe="paper"] {
+      --ground: #f7ecdc;
+      --surface: #fbf1e4;
+      --sand: #efe0ca;
+      --vibe-accent: #ff8a5c;
+    }
+    :root[data-vibe="night"] {
+      --ground: #1e1714;
+      --surface: #28201c;
+      --sand: #231b17;
+      --ink: #fbf1e4;
+      --quiet: #b8a698;
+      --muted: rgba(251, 241, 228, 0.62);
+      --hair: rgba(251, 241, 228, 0.22);
+      --hair-soft: rgba(251, 241, 228, 0.12);
+      --line: #fbf1e4;
+      --vibe-accent: #ffc74d;
+    }
     * {
       box-sizing: border-box;
     }
     body {
       margin: 0;
-      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       color: var(--ink);
       background: var(--ground);
+      background-image: radial-gradient(color-mix(in srgb, var(--ink) 8%, transparent) 1.1px, transparent 1.3px);
+      background-size: 22px 22px;
       font-family: var(--swiss);
       -webkit-font-smoothing: antialiased;
+      transition: background-color .25s ease, color .25s ease;
     }
     ::selection {
       background: var(--pink);
-      color: var(--ink);
+      color: #1e1714;
     }
     main {
+      width: 100%;
       max-width: 1060px;
-      margin: 0 auto;
-      padding: 28px 24px 36px;
+      margin: auto;
+      padding: 24px 24px 28px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -73,7 +105,8 @@
     }
     h1::after {
       content: ".";
-      color: var(--pink);
+      color: var(--vibe-accent, var(--pink));
+      transition: color .25s ease;
     }
     .sub {
       margin: 8px 0 0;
@@ -91,15 +124,49 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font: 600 13px var(--swiss);
+      font: 700 12.5px var(--swiss);
       color: var(--ink);
-      padding: 8px 14px;
+      padding: 7px 14px;
       background: var(--surface);
-      border: 1px solid var(--hair);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
       border-radius: 999px;
     }
+    .vibe-pill {
+      font: 800 11.5px var(--mono);
+      color: var(--ink);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 13px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--line);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      transition: transform .18s var(--spring), box-shadow .18s var(--spring);
+    }
+    .vibe-pill:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--line);
+    }
+    .vibe-pill:active {
+      transform: translate(1px, 1px) scale(.97);
+      box-shadow: 1px 1px 0 var(--line);
+    }
+    .vibe-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--vibe-accent, var(--pink));
+      border: 1.5px solid var(--line);
+      box-shadow: 0 0 6px var(--vibe-accent, var(--pink));
+      transition: background .25s ease, box-shadow .25s ease;
+    }
     .pill-sep {
-      color: var(--hair);
+      color: var(--quiet);
     }
     #micPill {
       color: var(--quiet);
@@ -108,7 +175,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: rgba(58, 46, 40, 0.22);
+      background: color-mix(in srgb, var(--ink) 35%, transparent);
     }
     .pulse-dot.active {
       background: var(--teal);
@@ -120,11 +187,14 @@
       }
     }
     body[data-live="1"] #liveBadge {
-      background: color-mix(in srgb, var(--teal) 18%, var(--surface));
-      border-color: color-mix(in srgb, var(--teal) 40%, var(--hair));
+      background: color-mix(in srgb, var(--teal) 22%, var(--surface));
+    }
+    body[data-live="1"] #liveBadge .pill-sep,
+    body[data-live="1"] #liveBadge #micPill {
+      color: var(--ink);
     }
     #countBadge {
-      color: var(--quiet);
+      color: var(--ink);
     }
     #countBadge.bump {
       animation: bump .45s var(--spring);
@@ -145,9 +215,10 @@
       gap: 10px;
       flex-wrap: wrap;
       background: var(--surface);
-      border: 1px solid var(--hair);
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--line);
       border-radius: 20px;
-      padding: 16px 16px 16px;
+      padding: 16px;
     }
     .field {
       display: flex;
@@ -155,43 +226,76 @@
       gap: 5px;
       min-width: 0;
     }
-    .field > span {
+    .field > span,
+    .field-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 10.5px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: .12em;
       text-transform: uppercase;
       color: var(--quiet);
+    }
+    .field-head label {
+      cursor: pointer;
+    }
+    button.words-chip,
+    .words-chip {
+      font: 700 9.5px var(--mono);
+      letter-spacing: .04em;
+      text-transform: none;
+      color: #1e1714;
+      background: var(--teal);
+      border: 1px solid var(--line);
+      box-shadow: none;
+      border-radius: 999px;
+      padding: 1px 7px;
+      cursor: pointer;
+    }
+    button.words-chip:hover {
+      background: var(--amber);
+      transform: translate(-1px, -1px);
+      box-shadow: 1.5px 1.5px 0 var(--line);
+    }
+    button.words-chip:focus-visible {
+      outline: 2px solid var(--pink);
+      outline-offset: 2px;
+    }
+    .words-chip[hidden] {
+      display: none;
     }
     .field-title {
       flex: 4 1 240px;
     }
     .field-lang {
-      flex: 0 1 172px;
+      flex: 0 1 182px;
     }
     .field-engine {
-      flex: 0 1 150px;
+      flex: 0 1 164px;
     }
     .bar .control-row {
       flex: 0 0 auto;
     }
     input,
     select {
-      font: 500 15px var(--swiss);
+      font: 600 14.5px var(--swiss);
       color: var(--ink);
       background: var(--surface);
-      border: 1px solid var(--hair);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
       border-radius: 12px;
-      padding: 11px 13px;
+      padding: 10px 13px;
       width: 100%;
-      transition: border-color .18s, background .18s;
+      transition: transform .15s var(--spring), box-shadow .15s var(--spring), background .18s;
     }
     input::placeholder {
-      color: color-mix(in srgb, var(--quiet) 75%, transparent);
+      color: var(--quiet);
       font-weight: 400;
     }
     select {
       appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237a6a60' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%231e1714' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 12px center;
       padding-right: 32px;
@@ -201,15 +305,111 @@
     input:focus,
     select:focus {
       outline: none;
-      border-color: color-mix(in srgb, var(--pink) 60%, var(--hair));
-      background: #fff;
+      background: var(--ground);
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--pink);
     }
     input:disabled {
       color: var(--ink);
       background: transparent;
       border-color: transparent;
+      box-shadow: none;
       padding-left: 2px;
-      font-weight: 600;
+      font-weight: 700;
+    }
+
+    /* ---------- whimsical custom pull-down (.stage-select) ---------- */
+    .stage-select {
+      position: relative;
+      display: inline-flex;
+      width: 100%;
+    }
+    .stage-select > select {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      width: 100%;
+      height: 100%;
+    }
+    .stage-select-btn {
+      width: 100%;
+      justify-content: space-between;
+      font: 600 14px var(--swiss);
+      color: var(--ink);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: left;
+      overflow: hidden;
+    }
+    .stage-select-btn span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .stage-select-chev {
+      flex: 0 0 auto;
+      font-size: 11px;
+      transition: transform .24s var(--spring);
+      opacity: .8;
+    }
+    .stage-select.open .stage-select-chev {
+      transform: rotate(180deg);
+    }
+    .stage-select-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 100%;
+      max-height: 260px;
+      overflow-y: auto;
+      z-index: 45;
+      background: var(--surface);
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--line);
+      border-radius: 14px;
+      padding: 5px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      transform-origin: top center;
+    }
+    .stage-select.open .stage-select-menu {
+      display: flex;
+      animation: selectPop .22s var(--spring);
+    }
+    @keyframes selectPop {
+      from {
+        opacity: 0;
+        transform: translateY(-6px) scale(.95);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    .stage-select-opt {
+      width: 100%;
+      justify-content: flex-start;
+      font: 600 13px var(--swiss);
+      color: var(--ink);
+      background: transparent;
+      border: 0;
+      box-shadow: none !important;
+      border-radius: 9px;
+      padding: 7px 10px;
+      text-align: left;
+      position: relative;
+    }
+    .stage-select-opt:not(:disabled):hover {
+      background: var(--sand);
+    }
+    .stage-select-opt.active {
+      background: color-mix(in srgb, var(--pink) 24%, var(--surface));
+      font-weight: 800;
     }
     .bar .hint,
     .bar .notice {
@@ -234,15 +434,16 @@
       font: 700 14px var(--swiss);
       color: var(--ink);
       background: var(--surface);
-      border: 1px solid var(--hair);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
       border-radius: 999px;
-      padding: 11px 18px;
+      padding: 10px 18px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: background .15s, border-color .15s, transform .18s var(--spring);
+      transition: background .15s, border-color .15s, transform .18s var(--spring), box-shadow .18s var(--spring);
       -webkit-tap-highlight-color: transparent;
       white-space: nowrap;
     }
@@ -250,46 +451,50 @@
       display: none;
     }
     button:not(:disabled):hover {
-      border-color: color-mix(in srgb, var(--ink) 22%, var(--hair));
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--line);
     }
     button:not(:disabled):active {
-      transform: scale(.97);
+      transform: translate(1.5px, 1.5px) scale(.98);
+      box-shadow: 0.5px 0.5px 0 var(--line);
     }
     button:focus-visible,
     select:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--pink) 45%, transparent);
+      outline: 3px solid color-mix(in srgb, var(--pink) 55%, transparent);
       outline-offset: 2px;
     }
     button:disabled {
       opacity: .45;
       cursor: not-allowed;
+      box-shadow: none;
     }
     #startBtn {
-      background: var(--pink);
-      border-color: var(--pink);
+      background: linear-gradient(135deg, #ff6ac2, #ff9a76);
+      color: #1e1714;
+      border: 2px solid var(--line);
+      box-shadow: 3px 3px 0 var(--line);
       font-weight: 800;
       font-size: 15px;
-      padding: 12px 22px;
+      padding: 11px 22px;
     }
     #startBtn:hover {
-      background: color-mix(in srgb, var(--pink) 86%, var(--ink));
-      border-color: transparent;
+      background: linear-gradient(135deg, #ff55b8, #ff8a5c);
+      box-shadow: 4px 4px 0 var(--line);
     }
     #pauseBtn {
       background: var(--amber);
-      border-color: var(--amber);
+      color: #1e1714;
+      border: 2px solid var(--line);
       font-weight: 800;
     }
     #pauseBtn:hover {
-      background: color-mix(in srgb, var(--amber) 84%, var(--ink));
-      border-color: transparent;
+      background: color-mix(in srgb, var(--amber) 88%, #1e1714);
     }
     #stopBtn {
-      background: transparent;
-      color: var(--quiet);
+      background: var(--surface);
+      color: var(--ink);
     }
     #stopBtn:hover {
-      color: var(--ink);
       background: var(--sand);
     }
     .control-row {
@@ -301,10 +506,12 @@
     .notice {
       margin: 10px 2px 0;
       font-size: 12.5px;
-      font-weight: 500;
+      font-weight: 600;
       line-height: 1.45;
-      color: var(--ink);
-      background: color-mix(in srgb, var(--amber) 30%, var(--surface));
+      color: #1e1714;
+      background: var(--amber);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
       border-radius: 12px;
       padding: 9px 12px;
     }
@@ -315,8 +522,8 @@
     /* ---------- the two rooms ---------- */
     .console {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 336px;
-      gap: 16px;
+      grid-template-columns: minmax(0, 1fr) 344px;
+      gap: 18px;
       align-items: stretch;
     }
     @media (max-width: 900px) {
@@ -326,9 +533,10 @@
     }
     .card {
       background: var(--surface);
-      border: 1px solid var(--hair);
-      border-radius: 20px;
-      padding: 16px;
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--line);
+      border-radius: 22px;
+      padding: 18px;
       min-width: 0;
       display: flex;
       flex-direction: column;
@@ -338,18 +546,19 @@
       align-items: center;
       gap: 8px;
       font-size: 10.5px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: .12em;
       text-transform: uppercase;
       color: var(--quiet);
       margin: 0;
     }
     .ghost-chip {
-      font: 600 9.5px var(--mono);
+      font: 700 9.5px var(--mono);
       letter-spacing: .12em;
       text-transform: uppercase;
-      color: var(--coral);
-      border: 1px solid color-mix(in srgb, var(--coral) 40%, transparent);
+      color: #1e1714;
+      background: var(--amber);
+      border: 1px solid var(--line);
       border-radius: 999px;
       padding: 2px 8px;
     }
@@ -358,10 +567,11 @@
     }
     .eyebrow .badge {
       margin-left: auto;
-      font: 600 10px var(--mono);
+      font: 700 10px var(--mono);
       letter-spacing: .06em;
-      color: var(--quiet);
-      border: 1px solid var(--hair-soft);
+      color: var(--ink);
+      background: var(--sand);
+      border: 1px solid var(--line);
       border-radius: 999px;
       padding: 3px 9px;
     }
@@ -380,20 +590,31 @@
       --ring: var(--pink);
       box-sizing: border-box;
       width: 100%;
-      flex: 1 1 auto;
+      height: 220px;
+      min-height: 220px;
+      max-height: 220px;
+      flex: 0 0 220px;
       padding: 18px 22px;
-      background: var(--ink);
-      color: var(--surface);
+      background: #1e1714;
+      color: #fffdf5;
       border: 3px solid var(--ring);
+      box-shadow: 3px 3px 0 var(--line);
       border-radius: 16px;
-      font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.22 var(--ticker-face, var(--face-system));
+      font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.22 var(--ticker-face, var(--face-atkinson));
       letter-spacing: -0.02em;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      min-height: calc(var(--ticker-depth, 2) * 1.3em + 36px);
       overflow: hidden;
       transition: border-color .2s ease, font-size .15s ease, background .2s ease;
+    }
+    @media (max-width: 640px) {
+      #ticker {
+        height: 185px;
+        min-height: 185px;
+        max-height: 185px;
+        flex: 0 0 185px;
+      }
     }
     #ticker > div {
       width: 100%;
@@ -409,8 +630,21 @@
       opacity: 0.78;
     }
     #ticker .fresh-lead {
-      color: var(--surface);
+      color: #fffdf5;
       font-weight: 700;
+    }
+    #ticker .ghost-fresh {
+      background: rgba(255, 106, 194, 0.34);
+      color: #fffdf5;
+      border-radius: 5px;
+      padding: 0 3px;
+      transition: background .45s ease;
+    }
+    #ticker[data-style="paper"] .ghost-fresh,
+    #ticker[data-style="brut"] .ghost-fresh,
+    #ticker[data-style="hemingway"] .ghost-fresh {
+      color: #1e1714;
+      background: rgba(255, 106, 194, 0.32);
     }
     #ticker .interim {
       color: var(--pink);
@@ -433,55 +667,59 @@
     }
     #ticker .ticker-text {
       width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
     }
     #ticker .ticker-text:empty {
       min-height: 1.2em;
     }
-    /* The bar is where words go both ways: it reads them out and takes a typed line. */
-    #ticker #typed {
-      margin-top: 10px;
-      padding: 8px 0 2px;
-      border: 0;
-      border-top: 1px solid rgba(255, 253, 245, 0.14);
-      border-radius: 0;
-      background: transparent;
-      color: inherit;
-      font: 500 14px var(--swiss);
+    /* Dedicated tactile typing bar directly below the Stage box */
+    .typed-bar {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    .typed-bar #typed {
+      width: 100%;
+      padding: 10px 38px 10px 14px;
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--ink);
+      font: 600 14px var(--swiss);
+    }
+    .typed-bar #typed:disabled {
+      opacity: .58;
+      background: var(--sand);
+      border: 1.5px dashed color-mix(in srgb, var(--line) 45%, transparent);
       box-shadow: none;
+      padding-left: 14px;
+      cursor: not-allowed;
     }
-    #ticker #typed::placeholder {
-      color: color-mix(in srgb, currentColor 55%, transparent);
+    .typed-kbd {
+      position: absolute;
+      right: 10px;
+      pointer-events: none;
+      font: 700 11px var(--mono);
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
+      background: var(--sand);
+      color: var(--quiet);
     }
-    #ticker[data-style="paper"] #typed,
-    #ticker[data-style="brut"] #typed,
-    #ticker[data-style="hemingway"] #typed {
-      border-top-color: rgba(58, 46, 40, 0.16);
-    }
-    #ticker #typed:focus {
-      outline: none;
-      border-top-color: var(--pink);
-    }
-    #ticker.ghosting #typed {
-      display: none;
-    }
-    #ticker.empty {
-      justify-content: center;
-    }
-    #ticker.empty .ticker-text {
-      display: none;
-    }
-    #ticker.empty #typed {
-      margin-top: 0;
-      border-top-color: transparent;
-      font-size: 20px;
-    }
-    /* A style carries its own frame. No separate ring picker. */
+    /* Stage ring & surface styles */
     #ticker[data-ring="ink"] {
-      --ring: var(--ink);
+      --ring: #1e1714;
     }
     #ticker[data-ring="paper"] {
-      --ring: rgba(58, 46, 40, 0.22);
-      border-width: 1px;
+      --ring: #3a2e28;
     }
     #ticker[data-ring="clay"] {
       --ring: #b07a4e;
@@ -510,36 +748,36 @@
       display: none;
     }
     #ticker[data-style="paper"] {
-      background: var(--surface);
-      color: var(--ink);
+      background: #fbf1e4;
+      color: #1e1714;
     }
     #ticker[data-style="paper"] .fresh-lead {
-      color: var(--ink);
+      color: #1e1714;
     }
     #ticker[data-style="paper"] .interim {
-      color: var(--ink);
+      color: #1e1714;
       background: color-mix(in srgb, var(--pink) 32%, transparent);
       border-radius: .15em;
       padding: 0 .12em;
     }
     #ticker[data-style="paper"] .interim::after {
-      background: var(--ink);
+      background: #1e1714;
     }
     #ticker[data-style="brut"] {
       background: var(--amber);
-      color: var(--ink);
+      color: #1e1714;
     }
     #ticker[data-style="brut"] .fresh-lead {
-      color: var(--ink);
+      color: #1e1714;
     }
     #ticker[data-style="brut"] .interim {
-      color: var(--ink);
+      color: #1e1714;
       background: rgba(30, 23, 20, 0.12);
       border-radius: .15em;
       padding: 0 .12em;
     }
     #ticker[data-style="brut"] .interim::after {
-      background: var(--ink);
+      background: #1e1714;
     }
     #ticker[data-style="hemingway"] {
       background: #f7ecdc;
@@ -560,10 +798,15 @@
     }
 
     /* ---------- stage controls ---------- */
+    .stage-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
     .stage-controls {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
     .segmented-control {
@@ -573,54 +816,60 @@
       padding: 3px;
       border-radius: 999px;
       background: var(--sand);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
     }
     .seg-btn {
       border: 1px solid transparent;
+      box-shadow: none !important;
       background: transparent;
       border-radius: 999px;
-      padding: 6px 12px;
-      font: 600 12.5px var(--swiss);
+      padding: 5px 11px;
+      font: 700 12px var(--swiss);
       color: var(--quiet);
     }
     .seg-btn:hover {
       background: transparent;
       border-color: transparent;
       color: var(--ink);
+      transform: none !important;
     }
     .seg-btn.active {
       background: var(--surface);
-      border-color: var(--hair);
+      border-color: var(--line);
       color: var(--ink);
-      font-weight: 700;
+      font-weight: 800;
     }
     .seg-btn:active {
-      transform: scale(.95);
+      transform: scale(.95) !important;
     }
     .segmented-control.swatches {
       gap: 4px;
+      padding: 3px 5px;
     }
     .segmented-control.swatches .seg-btn {
-      width: 32px;
-      height: 26px;
+      width: 30px;
+      height: 24px;
       padding: 0;
       border-radius: 8px;
-      font: 700 11px var(--swiss);
+      font: 800 11px var(--swiss);
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
     .segmented-control.swatches .seg-btn[data-v="ink"] {
-      background: var(--ink);
-      color: var(--surface);
+      background: #1e1714;
+      color: #fffdf5;
+      border-color: rgba(251, 241, 228, 0.28);
     }
     .segmented-control.swatches .seg-btn[data-v="paper"] {
-      background: var(--surface);
-      color: var(--ink);
-      border-color: var(--hair);
+      background: #fbf1e4;
+      color: #1e1714;
+      border-color: rgba(30, 23, 20, 0.25);
     }
     .segmented-control.swatches .seg-btn[data-v="brut"] {
       background: var(--amber);
-      color: var(--ink);
+      color: #1e1714;
     }
     .segmented-control.swatches .seg-btn[data-v="hemingway"] {
       background: #f7ecdc;
@@ -632,20 +881,31 @@
       outline: 2px solid var(--ink);
       outline-offset: 1px;
     }
+    .face-wrap {
+      width: 128px;
+    }
+    .face-wrap .stage-select-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 999px;
+    }
     .more {
+      position: relative;
       margin-left: auto;
     }
     .more summary {
       cursor: pointer;
       list-style: none;
       font-size: 12px;
-      font-weight: 600;
-      color: var(--quiet);
-      padding: 6px 10px;
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
+      padding: 5px 10px;
       border-radius: 999px;
     }
     .more summary:hover {
-      color: var(--ink);
       background: var(--sand);
     }
     .more summary::-webkit-details-marker {
@@ -657,35 +917,31 @@
     .more[open] summary::after {
       content: " ▴";
     }
-    .more[open] {
-      flex: 1 1 100%;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      margin-left: 0;
-      border-top: 1px solid var(--hair-soft);
-      padding-top: 12px;
-    }
-    .more[open] summary {
-      flex: 1 1 100%;
-    }
     .opt-grid {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 45;
+      width: min(380px, 86vw);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      box-shadow: 4px 4px 0 var(--line);
+      border-radius: 16px;
+      padding: 12px 14px;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
       gap: 8px 12px;
       align-items: center;
-      flex: 1 1 100%;
     }
     .opt-label {
       font-size: 10.5px;
-      font-weight: 600;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .1em;
       color: var(--quiet);
     }
     .opt-select {
-      font: 500 13px var(--swiss);
+      font: 600 13px var(--swiss);
       padding: 7px 28px 7px 12px;
       border-radius: 999px;
       justify-self: start;
@@ -699,41 +955,45 @@
       font-size: 13px;
     }
     .ring-row {
-      display: flex;
-      gap: 6px;
+      display: inline-flex;
+      gap: 5px;
       align-items: center;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: var(--sand);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
     }
     .ring {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       padding: 0;
       border-radius: 50%;
       background: var(--c);
-      border: 1px solid var(--hair);
+      border: 1.5px solid #1e1714;
+      box-shadow: none !important;
     }
     .ring[aria-checked="true"] {
       outline: 2px solid var(--ink);
       outline-offset: 2px;
+      transform: scale(1.12);
     }
     .mini-btn {
-      font: 600 11.5px var(--mono);
+      font: 700 11.5px var(--mono);
       padding: 6px 10px;
       border-radius: 8px;
-      color: var(--quiet);
-      background: transparent;
-      border-color: transparent;
+      color: var(--ink);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
     }
     .mini-btn:hover {
-      color: var(--ink);
       background: var(--sand);
-      border-color: transparent;
     }
     #floatBtn {
-      background: color-mix(in srgb, var(--violet) 24%, var(--surface));
-      border-color: color-mix(in srgb, var(--violet) 40%, var(--hair));
+      background: color-mix(in srgb, var(--violet) 28%, var(--surface));
     }
     #floatBtn:hover {
-      background: color-mix(in srgb, var(--violet) 36%, var(--surface));
+      background: color-mix(in srgb, var(--violet) 40%, var(--surface));
     }
     /* No room, no image sharing. */
     #shareImageBtn:disabled {
@@ -813,17 +1073,19 @@
     .menu > summary {
       list-style: none;
       cursor: pointer;
-      font: 600 12px var(--swiss);
-      color: var(--quiet);
-      padding: 6px 10px;
-      border-radius: 8px;
+      font: 700 12px var(--swiss);
+      color: var(--ink);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
+      padding: 5px 11px;
+      border-radius: 999px;
       white-space: nowrap;
     }
     .menu > summary::-webkit-details-marker {
       display: none;
     }
     .menu > summary:hover {
-      color: var(--ink);
       background: var(--sand);
     }
     .menu-body {
@@ -834,10 +1096,11 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      min-width: 176px;
+      min-width: 184px;
       background: var(--surface);
-      border: 1px solid rgba(58, 46, 40, 0.22);
-      border-radius: 12px;
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--line);
+      border-radius: 14px;
       padding: 6px;
     }
     .menu > summary::after {
@@ -855,6 +1118,7 @@
     .menu-body button {
       justify-content: flex-start;
       border: 1px solid transparent;
+      box-shadow: none !important;
       background: transparent;
       border-radius: 8px;
       padding: 8px 10px;
@@ -865,6 +1129,7 @@
     .menu-body button:hover {
       background: var(--sand);
       border-color: transparent;
+      transform: none !important;
     }
     #displayMenu {
       display: none;
@@ -880,7 +1145,7 @@
       gap: 8px;
       flex-wrap: wrap;
       padding-top: 12px;
-      border-top: 1px solid var(--hair-soft);
+      border-top: 1.5px solid var(--hair);
     }
     .transcript-bar .eyebrow {
       flex: 1 1 auto;
@@ -888,7 +1153,7 @@
     }
     #transcriptStat {
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       letter-spacing: 0;
       text-transform: none;
       color: var(--quiet);
@@ -928,7 +1193,7 @@
       cursor: pointer;
       list-style: none;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--quiet);
     }
     .past summary::-webkit-details-marker {
@@ -956,7 +1221,8 @@
       font-size: 12.5px;
       font-weight: 600;
       background: var(--sand);
-      border-radius: 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
       padding: 9px 12px;
     }
     #pastList small {
@@ -969,9 +1235,18 @@
     /* ---------- the room ---------- */
     .room {
       background: var(--sand);
-      border-color: color-mix(in srgb, var(--ambra, #e0b98a) 40%, var(--hair));
       gap: 12px;
       text-align: center;
+    }
+    .qr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+    .qr-tabs {
+      margin-left: auto;
     }
     .qr-body {
       display: flex;
@@ -986,66 +1261,97 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
-      padding: 24px 8px;
+      gap: 12px;
+      padding: 8px 6px;
+      cursor: pointer;
+      border-radius: 18px;
+      transition: transform .18s var(--spring);
     }
     #qrEmpty[hidden] {
       display: none;
     }
-    #qrEmpty {
-      cursor: pointer;
-      border-radius: 16px;
-      transition: background .18s;
-    }
     #qrEmpty:hover {
-      background: color-mix(in srgb, var(--surface) 55%, transparent);
+      transform: translateY(-2px);
     }
     #qrEmpty:focus-visible {
       outline: 3px solid color-mix(in srgb, var(--pink) 45%, transparent);
       outline-offset: 2px;
     }
     .qr-slot {
-      width: 92px;
-      height: 92px;
-      border-radius: 20px;
-      border: 1px dashed rgba(58, 46, 40, 0.22);
+      width: 168px;
+      height: 168px;
+      border-radius: 18px;
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--pink);
       display: grid;
       place-items: center;
-      /* A ghost QR grid, so the square reads as "a code goes here", not as a broken image. */
-      background-color: var(--surface);
+      position: relative;
+      background-color: #fffdf5;
       background-image:
-        linear-gradient(rgba(58, 46, 40, 0.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(58, 46, 40, 0.06) 1px, transparent 1px);
-      background-size: 8px 8px;
+        linear-gradient(rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px),
+        linear-gradient(90deg, rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px);
+      background-size: 12px 12px;
       background-position: center;
+    }
+    .qr-slot::before,
+    .qr-slot::after {
+      content: "";
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border: 4px solid #1e1714;
+      border-radius: 6px;
+      background: #fffdf5;
+    }
+    .qr-slot::before {
+      top: 14px;
+      left: 14px;
+      box-shadow: 104px 0 0 -4px #fffdf5, 104px 0 0 0 #1e1714;
+    }
+    .qr-slot::after {
+      bottom: 14px;
+      left: 14px;
     }
     .qr-sub-hint {
       font-size: 11.5px;
       color: var(--quiet);
-      font-weight: 500;
-      margin-top: -6px;
+      font-weight: 600;
+      margin-top: -4px;
     }
     .qr-slot span {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
+      font: 800 13px var(--mono);
+      letter-spacing: .16em;
+      text-indent: .16em;
+      color: #1e1714;
       background: var(--pink);
+      border: 1.5px solid #1e1714;
+      box-shadow: 2px 2px 0 #1e1714;
+      border-radius: 999px;
+      padding: 5px 12px;
       animation: breatheDot 3.2s ease-in-out infinite;
     }
     #qrEmpty p {
       margin: 0;
       font-size: 13px;
-      color: var(--quiet);
-      font-weight: 500;
-      line-height: 1.5;
+      color: var(--ink);
+      font-weight: 700;
+      line-height: 1.45;
       max-width: 18em;
     }
     #qrGraphic {
-      padding: 10px;
-      background: var(--surface);
-      border: 1px solid var(--hair);
-      border-radius: 16px;
+      padding: 12px;
+      background: #fffdf5;
+      border: 2px solid var(--line);
+      box-shadow: 4px 4px 0 var(--pink);
+      border-radius: 18px;
       line-height: 0;
+      transition: box-shadow .2s var(--spring), transform .2s var(--spring);
+    }
+    #qrGraphic[data-mode="mic"] {
+      box-shadow: 4px 4px 0 var(--violet);
+    }
+    #qrGraphic.pop {
+      animation: bump .35s var(--spring);
     }
     #qrGraphic:empty {
       display: none;
@@ -1057,7 +1363,7 @@
     .qr-talk {
       margin: 0;
       font-size: 12.5px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--quiet);
       max-width: 20em;
       overflow: hidden;
@@ -1069,15 +1375,20 @@
     }
     /* The four letters ARE the join instruction. Nothing else belongs here. */
     .join-line {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 10px;
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      box-shadow: 2px 2px 0 var(--line);
+      border-radius: 12px;
+      padding: 6px 14px;
     }
     .join-line[hidden] {
       display: none;
     }
     .join-line b {
-      font: 700 36px/1 var(--mono);
+      font: 800 30px/1 var(--mono);
       letter-spacing: .22em;
       text-indent: .22em;
       color: var(--ink);
@@ -1085,7 +1396,7 @@
     .qr-hint {
       margin: 0;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--quiet);
     }
     .qr-hint[hidden] {
@@ -1097,7 +1408,7 @@
       gap: 8px;
       width: 100%;
       padding-top: 12px;
-      border-top: 1px solid rgba(58, 46, 40, 0.1);
+      border-top: 1.5px solid var(--hair);
     }
     .room-actions[hidden] {
       display: none;
@@ -1105,7 +1416,7 @@
     .room-actions button {
       flex: 1;
       font-size: 12.5px;
-      padding: 9px 12px;
+      padding: 9px 10px;
       background: var(--surface);
     }
     /* Kept in the DOM for the copy button and the tests; never shown. */
@@ -1132,11 +1443,13 @@
       flex-wrap: wrap;
       font-size: 11.5px;
       color: var(--quiet);
-      font-weight: 500;
+      font-weight: 600;
       padding: 2px;
     }
     kbd {
-      background: color-mix(in srgb, var(--ink) 7%, transparent);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: 1px 1px 0 var(--line);
       border-radius: 5px;
       padding: 2px 6px;
       font-family: var(--mono);
@@ -1174,6 +1487,8 @@
     }
     .fs-card {
       background: var(--surface);
+      border: 2.5px solid var(--line);
+      box-shadow: 6px 6px 0 var(--line);
       border-radius: 28px;
       padding: 30px;
       max-width: 560px;
@@ -1185,9 +1500,10 @@
       gap: 16px;
     }
     #fsQr {
-      background: var(--surface);
+      background: #fffdf5;
       padding: 14px;
-      border: 1px solid var(--hair);
+      border: 2px solid #1e1714;
+      box-shadow: 4px 4px 0 var(--pink);
       border-radius: 18px;
       line-height: 0;
     }
@@ -1219,7 +1535,7 @@
     #fsNote {
       margin: 0;
       color: var(--quiet);
-      font-weight: 500;
+      font-weight: 600;
       font-size: 12.5px;
       max-width: 30em;
     }
@@ -1245,15 +1561,23 @@
         <div class="status-pills">
           <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Ready</span><span class="pill-sep">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
           <span class="pill-badge" id="countBadge">Room empty</span>
+          <button type="button" class="vibe-pill" id="vibePill" title="Cycle tabletop atmosphere" aria-label="Tabletop atmosphere">
+            <span class="vibe-dot"></span>
+            <span id="vibeLabel">Peach Sunset</span>
+          </button>
         </div>
       </header>
 
       <!-- THE TALK BAR: name it, then start it. Two fields fold away once live. -->
       <section class="bar">
-        <label class="field field-title"><span>Title</span>
+        <div class="field field-title">
+          <div class="field-head">
+            <label for="title">Title</label>
+            <button type="button" class="words-chip" id="wordsChip" hidden></button>
+          </div>
           <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false"
             placeholder="Optional" aria-label="Talk title">
-        </label>
+        </div>
         <label class="field field-lang"><span>Language</span>
           <select id="lang" aria-label="Language">
                   <option value="en-AU">English (Australia)</option>
@@ -1306,8 +1630,12 @@
           </div>
           <div id="ticker" role="group" aria-label="Live caption preview">
             <div class="ticker-text"></div>
+          </div>
+          <div class="stage-bar">
+          <div class="typed-bar">
             <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
               placeholder="Type a line · Enter" aria-label="Type a caption">
+            <kbd class="typed-kbd" aria-hidden="true">↵</kbd>
           </div>
           <div class="stage-controls">
             <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
@@ -1320,6 +1648,21 @@
               <button class="seg-btn" data-v="paper" title="Paper" aria-label="Paper">Aa</button>
               <button class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut">Aa</button>
               <button class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway">Aa</button>
+            </div>
+            <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Stage ring accent">
+              <button class="ring" data-v="mint" style="--c: var(--teal)" title="Mint frame" aria-label="Mint frame" role="radio" aria-checked="true"></button>
+              <button class="ring" data-v="pink" style="--c: var(--pink)" title="Pink frame" aria-label="Pink frame" role="radio" aria-checked="false"></button>
+              <button class="ring" data-v="lilac" style="--c: var(--violet)" title="Lilac frame" aria-label="Lilac frame" role="radio" aria-checked="false"></button>
+              <button class="ring" data-v="butter" style="--c: var(--amber)" title="Amber frame" aria-label="Amber frame" role="radio" aria-checked="false"></button>
+            </div>
+            <div class="face-wrap">
+              <select id="faceSelect" data-pref="face" aria-label="Stage typeface">
+                <option value="atkinson">Atkinson</option>
+                <option value="inter">Inter</option>
+                <option value="fraunces">Fraunces</option>
+                <option value="mono">JetBrains Mono</option>
+                <option value="system">Swiss Sans</option>
+              </select>
             </div>
             <details class="menu" id="displayMenu">
               <summary>Display</summary>
@@ -1346,6 +1689,7 @@
               </div>
             </details>
           </div>
+          </div>
           <div class="asset-tray" id="assetTray" hidden>
             <button class="clip-chip" id="clipChip" hidden>
               <img alt="" id="clipThumb">
@@ -1357,11 +1701,11 @@
             <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
             <div class="transcript-actions" id="transcriptActions" hidden>
               <details class="menu" id="exportMenu">
-                <summary aria-label="Export the transcript">Export ▾</summary>
+                <summary aria-label="Export the transcript">Export</summary>
                 <div class="menu-body">
-                  <button id="copyTx" disabled>Copy transcript</button>
+                  <button id="copyTx" disabled><span class="btn-label">Copy transcript</span></button>
                   <button id="saveTxTxt" disabled>Text file (.txt)</button>
-                  <button id="saveTxMd" disabled>Markdown (.md)</button>
+                  <button id="saveTxMd" disabled>Substack / Zine (.md)</button>
                 </div>
               </details>
             </div>
@@ -1374,11 +1718,18 @@
 
         <!-- THE ROOM: what a stranger's phone needs, and nothing about the plumbing. -->
         <section class="card room qr-card">
+          <div class="qr-top">
+            <p class="eyebrow">Join</p>
+            <div class="qr-tabs segmented-control" role="tablist" aria-label="QR mode">
+              <button type="button" class="seg-btn active" id="qrTabRoom" role="tab" aria-selected="true">Room</button>
+              <button type="button" class="seg-btn" id="qrTabMic" role="tab" aria-selected="false">Phone mic</button>
+            </div>
+          </div>
           <div class="qr-body">
             <div id="qrEmpty" role="button" tabindex="0" aria-label="Start captions and show the room code">
-              <div class="qr-slot" aria-hidden="true"><span></span></div>
-              <p>Start captions and the code lands in this square.</p>
-              <span class="qr-sub-hint">A phone camera does the rest.</span>
+              <div class="qr-slot" aria-hidden="true"><span>READY</span></div>
+              <p>Start captions and the live QR lands right here.</p>
+              <span class="qr-sub-hint">Phones scan to read along or pair as lapel mic.</span>
             </div>
             <div id="qrGraphic"></div>
             <p class="qr-talk" id="qrTalk" hidden></p>
@@ -1465,8 +1816,33 @@
     let phoneLive = false;
     let transcript = []; // every final line of this talk, in room order, for export. `finals` is just the ticker's tail.
     let transcriptTimes = []; // when each line landed, so exports can paragraph by pause
+    let transcriptSpeakers = []; // optional speaker label per line
     let saveTimer = null;
     let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
+
+    // Page Atmosphere / Vibe Pill
+    const VIBES = {
+      peach: { name: "Peach Sunset", accent: "#ff6ac2" },
+      stage: { name: "Stage Lights", accent: "#2dd4bf" },
+      paper: { name: "Warm Paper", accent: "#ff8a5c" },
+      night: { name: "Night Ink", accent: "#ffc74d" },
+    };
+    const VIBE_KEYS = Object.keys(VIBES);
+    let currentVibe = store.get("st-vibe") || "peach";
+    function applyVibe(k) {
+      currentVibe = k in VIBES ? k : "peach";
+      const v = VIBES[currentVibe];
+      document.documentElement.dataset.vibe = currentVibe;
+      document.documentElement.style.setProperty("--vibe-accent", v.accent);
+      store.set("st-vibe", currentVibe);
+      const lbl = $("#vibeLabel");
+      if (lbl) lbl.textContent = v.name;
+    }
+    $("#vibePill")?.addEventListener("click", () => {
+      const next = VIBE_KEYS[(VIBE_KEYS.indexOf(currentVibe) + 1) % VIBE_KEYS.length];
+      applyVibe(next);
+    });
+    applyVibe(currentVibe);
 
     const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
     const fileStem = (title, roomId, when) => `${title ? slug(title) : "stagetype-" + roomId}-${new Date(when).toISOString().split("T")[0]}`;
@@ -1481,30 +1857,56 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
-    // The same pause rule as the reader: eight seconds of silence starts a paragraph, so the
-    // export reads like a draft instead of a column of one-sentence lines.
-    const prose = (lines, times = []) => {
+    // Pause-based prose paragraphing (8s silence) + sentence-grouped fallback (~420 chars) + speaker turns.
+    const prose = (lines, times = [], speakers = [], md = false) => {
       const paras = [];
       let para = [];
+      let paraChars = 0;
+      let lastSpeaker = "";
       for (let i = 0; i < lines.length; i++) {
         const gap = i > 0 && times[i] && times[i - 1] ? times[i] - times[i - 1] : 0;
-        if (gap > 8000 && para.length) {
+        const spk = speakers[i] || "";
+        const spkChanged = i > 0 && spk !== lastSpeaker;
+        const sentenceEnd = para.length > 0 && /[.!?]["'’”)]?$/.test(para[para.length - 1]);
+        if ((gap > 8000 || spkChanged || (paraChars >= 420 && sentenceEnd)) && para.length) {
           paras.push(para.join(" "));
           para = [];
+          paraChars = 0;
         }
-        para.push(lines[i]);
+        let lineText = lines[i];
+        if (spk && spk !== lastSpeaker) {
+          lineText = md ? `**${spk}:** ${lineText}` : `${spk}: ${lineText}`;
+        }
+        lastSpeaker = spk;
+        para.push(lineText);
+        paraChars += lineText.length;
       }
       if (para.length) paras.push(para.join(" "));
       return paras.join("\n\n");
     };
-    const asMarkdown = (t) =>
-      `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${
+    const LINK_EXTRACT_RE = /(?:https?:\/\/[^\s<>"']+|www\.[^\s<>"']+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*[^\s<>"'.,;:!?)])?)/gi;
+    const extractLinks = (lines) => {
+      const out = [];
+      for (const l of lines) {
+        for (const m of l.matchAll(LINK_EXTRACT_RE)) {
+          const raw = m[0].replace(/[.,;:!?)]+$/, "");
+          const href = /^https?:/i.test(raw) ? raw : `https://${raw.replace(/^www\./i, "")}`;
+          if (!out.includes(href)) out.push(href);
+        }
+      }
+      return out;
+    };
+    const asMarkdown = (t) => {
+      const foundLinks = extractLinks(t.lines || []);
+      const linkSection = foundLinks.length ? `## Links Mentioned\n\n${foundLinks.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
+      return `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${
         new Date(t.startedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-      }\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${
-        prose(t.lines, t.times)
+      }\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${linkSection}${
+        prose(t.lines, t.times, t.speakers, true)
       }\n`;
+    };
     const asText = (t) =>
-      (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + prose(t.lines, t.times);
+      (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + prose(t.lines, t.times, t.speakers, false);
 
     // The transcript survives on this machine: saved under the room id as lines arrive, listed under
     // Previous talks, and the open room itself is remembered for this tab so a reload mid-talk resumes.
@@ -1513,6 +1915,8 @@
       title: room.title || "",
       code: room.code || "",
       lines: transcript,
+      times: transcriptTimes,
+      speakers: transcriptSpeakers,
       startedAt: room.startedAt || Date.now(),
       updatedAt: Date.now(),
       ended,
@@ -1595,7 +1999,7 @@
         await navigator.clipboard.writeText(rec.lines.join("\n\n"));
         const lbl = $("#copyTx").querySelector(".btn-label");
         lbl.textContent = "Copied!";
-        setTimeout(() => (lbl.textContent = "Copy"), 1500);
+        setTimeout(() => (lbl.textContent = "Copy transcript"), 1500);
       } catch {}
     };
     $("#saveTxTxt").onclick = () => {
@@ -1642,20 +2046,133 @@
       }
     }
 
+    function closeStageSelects(except = null) {
+      for (const s of $$(".stage-select.open")) {
+        if (s === except) continue;
+        s.classList.remove("open");
+        s.querySelector(".stage-select-btn")?.setAttribute("aria-expanded", "false");
+      }
+    }
     // Native <details> stays open on an outside click; these are popovers, so close them.
     document.addEventListener("click", (e) => {
       for (const m of $$(".menu[open]")) if (!m.contains(e.target)) m.open = false;
+      for (const s of $$(".stage-select.open")) {
+        if (!s.contains(e.target)) {
+          s.classList.remove("open");
+          s.querySelector(".stage-select-btn")?.setAttribute("aria-expanded", "false");
+        }
+      }
     });
 
+    // Progressive enhancement for <select> -> tactile Neo-Toybrut .stage-select popovers
+    const stageSelectSyncers = new Map();
+    function initStageSelects() {
+      for (const sel of $$("#lang, #engine, #faceSelect")) {
+        if (sel.parentElement?.classList.contains("stage-select")) continue;
+        const fieldLabel = sel.closest("label, .field")?.querySelector(".field-label, span, label")?.textContent?.trim();
+        const ariaName = sel.getAttribute("aria-label") || fieldLabel || "Select option";
+        const wrap = document.createElement("div");
+        wrap.className = "stage-select";
+        sel.parentNode.insertBefore(wrap, sel);
+        sel.tabIndex = -1;
+        wrap.appendChild(sel);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "stage-select-btn";
+        btn.setAttribute("aria-label", ariaName);
+        btn.setAttribute("aria-haspopup", "listbox");
+        btn.setAttribute("aria-expanded", "false");
+        const labelSpan = document.createElement("span");
+        const chev = document.createElement("i");
+        chev.className = "stage-select-chev";
+        chev.textContent = "▾";
+        btn.append(labelSpan, chev);
+        const menu = document.createElement("div");
+        menu.className = "stage-select-menu";
+        menu.setAttribute("role", "listbox");
+        menu.setAttribute("aria-label", ariaName);
+        wrap.append(btn, menu);
+
+        const sync = () => {
+          const cur = sel.options[sel.selectedIndex] || sel.options[0];
+          labelSpan.textContent = cur ? cur.textContent : "";
+          btn.disabled = sel.disabled;
+          menu.replaceChildren(...[...sel.options].map((opt) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "stage-select-opt" + (opt.value === sel.value ? " active" : "");
+            b.dataset.val = opt.value;
+            b.setAttribute("role", "option");
+            b.setAttribute("aria-selected", String(opt.value === sel.value));
+            b.disabled = opt.disabled;
+            b.textContent = opt.textContent;
+            b.onclick = (ev) => {
+              ev.stopPropagation();
+              if (opt.disabled) return;
+              sel.value = opt.value;
+              sel.dispatchEvent(new Event("change", { bubbles: true }));
+              wrap.classList.remove("open");
+              btn.setAttribute("aria-expanded", "false");
+              sync();
+              btn.focus();
+            };
+            return b;
+          }));
+        };
+        btn.onclick = () => {
+          if (sel.disabled) return;
+          const willOpen = !wrap.classList.contains("open");
+          closeStageSelects(wrap);
+          if (willOpen) sync();
+          wrap.classList.toggle("open", willOpen);
+          btn.setAttribute("aria-expanded", String(willOpen));
+        };
+        wrap.addEventListener("keydown", (ev) => {
+          if (sel.disabled) return;
+          if (ev.key === "ArrowDown" || ev.key === "ArrowUp" || ev.key === "Home" || ev.key === "End") {
+            ev.preventDefault();
+            if (!wrap.classList.contains("open")) {
+              closeStageSelects(wrap);
+              sync();
+              wrap.classList.add("open");
+              btn.setAttribute("aria-expanded", "true");
+            }
+            const opts = [...menu.querySelectorAll(".stage-select-opt:not(:disabled)")];
+            if (!opts.length) return;
+            const curIdx = opts.findIndex((o) => o === document.activeElement || o.classList.contains("active"));
+            let nextIdx = 0;
+            if (ev.key === "Home") nextIdx = 0;
+            else if (ev.key === "End") nextIdx = opts.length - 1;
+            else if (ev.key === "ArrowDown") nextIdx = (curIdx + 1) % opts.length;
+            else if (ev.key === "ArrowUp") nextIdx = (curIdx - 1 + opts.length) % opts.length;
+            const targetOpt = opts[nextIdx];
+            if (targetOpt) {
+              const val = targetOpt.dataset.val;
+              if (val !== undefined && sel.value !== val) {
+                sel.value = val;
+                sel.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+              const activeOpt = menu.querySelector(".stage-select-opt.active") ||
+                menu.querySelector(".stage-select-opt:not(:disabled)");
+              activeOpt?.focus();
+            }
+          }
+        });
+        sel.addEventListener("change", sync);
+        const mo = new MutationObserver(sync);
+        mo.observe(sel, { attributes: true, childList: true, subtree: true });
+        stageSelectSyncers.set(sel, sync);
+        sync();
+      }
+    }
+    const syncStageSelects = () => stageSelectSyncers.forEach((fn) => fn());
+
     // Stage ticker preferences: size, face, weight, depth, flow, ring, style. Remembered on this machine.
-    // Size is the only shape control: each step carries its own line count, so the
-    // presenter never has to reason about two dials that both just make the bar taller.
     const SIZE_DEPTH = { "28px": "1", "38px": "2", "50px": "3" };
     const SIZE_NAME = { "28px": "Compact", "38px": "Standard", "50px": "Jumbo" };
-    // A style is a whole look: its own frame, its own face, its own weight. Nobody
-    // assembles a bar out of four independent dials.
+    // Each style carries its default frame, face, and weight; the presenter can also tweak ring or face directly.
     const STYLE_PRESETS = {
-      ink: { ring: "mint", face: "system", weight: "700", name: "Ink" },
+      ink: { ring: "mint", face: "atkinson", weight: "700", name: "Ink" },
       paper: { ring: "paper", face: "inter", weight: "500", name: "Paper" },
       brut: { ring: "ink", face: "system", weight: "700", name: "Yellow Brut" },
       hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
@@ -1666,20 +2183,56 @@
         .slice(0, 8)
         .join(", ");
     const keyterms = () =>
-      $("#keyterms").value.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 20);
+      $("#keyterms").value.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 20);
+    // Client-side Room Words primer so Browser SpeechRecognition also gets proper-noun casing & spelling.
+    function applyRoomWords(text, terms = keyterms()) {
+      if (!text || !terms.length) return text;
+      let out = text;
+      for (const term of terms) {
+        if (term.length < 2) continue;
+        const escTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escTerm}(?![\\p{L}\\p{N}])`, "giu"), () => term);
+        // Also match split CamelCase compounds (e.g. "stage type" -> "StageType", "soft stack" -> "SoftStack")
+        if (/[a-z][A-Z]/.test(term)) {
+          const splitPat = escTerm.replace(/([a-z])([A-Z])/g, "$1\\s+$2");
+          out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${splitPat}(?![\\p{L}\\p{N}])`, "giu"), () => term);
+        }
+      }
+      return out;
+    }
+    function updateWordsChip() {
+      const chip = $("#wordsChip");
+      if (!chip) return;
+      const n = keyterms().length;
+      chip.hidden = n === 0;
+      chip.textContent = n ? `${n} word${n === 1 ? "" : "s"} primed` : "";
+    }
+    $("#wordsChip")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const more = $("#moreTicker");
+      if (more) {
+        more.open = true;
+        $("#keyterms")?.focus();
+      }
+    });
+    const initStyle = STYLE_PRESETS[store.get("st-style")] ? store.get("st-style") : "ink";
     const prefs = {
       size: store.get("st-size") || "38px",
       depth: SIZE_DEPTH[store.get("st-size")] || "2",
       flow: store.get("st-flow") || "live",
-      style: STYLE_PRESETS[store.get("st-style")] ? store.get("st-style") : "ink",
+      style: initStyle,
+      face: store.get("st-face") || STYLE_PRESETS[initStyle].face,
+      ring: store.get("st-ring") || STYLE_PRESETS[initStyle].ring,
     };
     const presetFor = () => STYLE_PRESETS[prefs.style] || STYLE_PRESETS.ink;
     const tickerUrl = () => {
       if (!room) return "";
+      const p = presetFor();
       const q = new URLSearchParams({
         style: prefs.style,
-        face: presetFor().face,
-        weight: presetFor().weight,
+        face: prefs.face || p.face,
+        weight: p.weight,
         depth: prefs.depth,
         flow: prefs.flow,
         ring: "none",
@@ -1689,14 +2242,16 @@
     };
     function applyPrefs() {
       const p = presetFor();
+      const face = prefs.face || p.face;
+      const ring = prefs.ring || p.ring;
       for (const el of tickerEls) {
         el.style.setProperty("--ticker-size", prefs.size);
-        el.style.setProperty("--ticker-face", `var(--face-${p.face})`);
+        el.style.setProperty("--ticker-face", `var(--face-${face})`);
         el.style.setProperty("--ticker-weight", p.weight);
         el.style.setProperty("--ticker-depth", prefs.depth);
-        el.dataset.face = p.face;
+        el.dataset.face = face;
         el.dataset.flow = prefs.flow;
-        el.dataset.ring = p.ring;
+        el.dataset.ring = ring;
         el.dataset.style = prefs.style;
       }
       const badge = $("#monitorStyleBadge");
@@ -1712,6 +2267,7 @@
           if (b.classList.contains("ring")) b.setAttribute("aria-checked", String(b.dataset.v === v));
         });
       });
+      syncStageSelects();
       renderTicker();
     }
 
@@ -1722,8 +2278,12 @@
       prefs.style = styles[Math.floor(Math.random() * styles.length)];
       prefs.size = sizes[Math.floor(Math.random() * sizes.length)];
       prefs.depth = SIZE_DEPTH[prefs.size];
+      prefs.face = STYLE_PRESETS[prefs.style].face;
+      prefs.ring = STYLE_PRESETS[prefs.style].ring;
       store.set("st-style", prefs.style);
       store.set("st-size", prefs.size);
+      store.set("st-face", prefs.face);
+      store.set("st-ring", prefs.ring);
       applyPrefs();
     }
     $("#shuffleTicker")?.addEventListener("click", shuffleTicker);
@@ -1752,8 +2312,12 @@
       $("#shareImageBtn").disabled = true;
       try {
         const bitmap = await createImageBitmap(file);
-        const [full, thumb] = await Promise.all([encodeCanvas(bitmap, 1280, 0.7), encodeCanvas(bitmap, 320, 0.6)]);
-        bitmap.close?.();
+        let full, thumb;
+        try {
+          [full, thumb] = await Promise.all([encodeCanvas(bitmap, 1280, 0.7), encodeCanvas(bitmap, 320, 0.6)]);
+        } finally {
+          bitmap.close?.();
+        }
         if (!full || !thumb) throw new Error("could not encode");
         const form = new FormData();
         form.append("full", full, "full.webp");
@@ -1987,6 +2551,12 @@
           prefs[key] = b.dataset.v;
           store.set(`st-${key}`, prefs[key]);
           if (key === "size") prefs.depth = SIZE_DEPTH[prefs.size] || prefs.depth;
+          if (key === "style" && STYLE_PRESETS[prefs.style]) {
+            prefs.face = STYLE_PRESETS[prefs.style].face;
+            prefs.ring = STYLE_PRESETS[prefs.style].ring;
+            store.set("st-face", prefs.face);
+            store.set("st-ring", prefs.ring);
+          }
           applyPrefs();
         }
       );
@@ -2017,11 +2587,36 @@
       return `${lanBase}/mic/${room.id}?${q}#${room.token}`;
     };
 
-    // The card always carries the room code. The mic pairing code is a modal away.
+    let qrMode = "room";
+    function setQrTab(mode) {
+      qrMode = mode === "mic" ? "mic" : "room";
+      $("#qrTabRoom")?.classList.toggle("active", qrMode === "room");
+      $("#qrTabRoom")?.setAttribute("aria-selected", String(qrMode === "room"));
+      $("#qrTabMic")?.classList.toggle("active", qrMode === "mic");
+      $("#qrTabMic")?.setAttribute("aria-selected", String(qrMode === "mic"));
+      const g = $("#qrGraphic");
+      if (g) g.dataset.mode = qrMode;
+      if (room) {
+        const qrTarget = qrMode === "mic" ? micUrl() : roomUrl();
+        g.innerHTML = qrSvgFor(qrTarget, 5);
+        g.classList.remove("pop");
+        void g.offsetWidth;
+        g.classList.add("pop");
+        $("#qrHint").textContent = qrMode === "mic"
+          ? "Keys ride in this code — scan on a phone, keep off the projector."
+          : "Point a phone camera at the code.";
+      }
+    }
+    $("#qrTabRoom")?.addEventListener("click", () => setQrTab("room"));
+    $("#qrTabMic")?.addEventListener("click", () => setQrTab("mic"));
+
+    // The card always carries the room code link on #urlDisplay; the QR tab can preview either Room or Phone mic.
     function updateQR() {
       if (!room) return;
       const targetUrl = roomUrl();
-      $("#qrGraphic").innerHTML = qrSvgFor(targetUrl, 5);
+      const qrTarget = qrMode === "mic" ? micUrl() : targetUrl;
+      $("#qrGraphic").dataset.mode = qrMode;
+      $("#qrGraphic").innerHTML = qrSvgFor(qrTarget, 5);
       $("#qrGraphic").classList.remove("pop");
       void $("#qrGraphic").offsetWidth;
       $("#qrGraphic").classList.add("pop");
@@ -2061,11 +2656,11 @@
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         function drawMeter() {
-          animMeterId = requestAnimationFrame(drawMeter);
-          if (phoneLive) {
+          if (!audioCtx || paused || phoneLive) {
             document.documentElement.style.setProperty("--vu", "0");
             return;
           }
+          animMeterId = requestAnimationFrame(drawMeter);
           analyser.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
@@ -2081,6 +2676,7 @@
 
     function stopAudioMeter() {
       if (animMeterId) cancelAnimationFrame(animMeterId);
+      animMeterId = null;
       meterStream?.getTracks().forEach((t) => t.stop());
       meterStream = null;
       audioCtx?.close();
@@ -2094,17 +2690,21 @@
       sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
       sseSource.addEventListener("backlog", (e) => {
-        const { lines, offset = 0, phone, assets = [] } = JSON.parse(e.data);
+        const { lines, offset = 0, phone, assets = [], speakers = [] } = JSON.parse(e.data);
         for (const a of assets) addTrayImage(a.thumb, a.id);
         if (lines && lines.length > 0) {
           finals = lines.slice(-50);
           // A resumed console may have missed lines while it was away: append what the relay has past our count.
           const have = transcript.length;
           if (have < offset + lines.length) {
-            const fresh = lines.slice(Math.max(0, have - offset));
+            const startIdx = Math.max(0, have - offset);
+            const fresh = lines.slice(startIdx);
             transcript.push(...fresh);
             const now = Date.now();
-            for (let i = 0; i < fresh.length; i++) transcriptTimes.push(now);
+            for (let i = 0; i < fresh.length; i++) {
+              transcriptTimes.push(now);
+              transcriptSpeakers.push(speakers[startIdx + i] || "");
+            }
             saveTalk();
           }
           renderTicker();
@@ -2115,13 +2715,14 @@
       // Finals come back from the relay whichever mic produced them (this tab or the phone),
       // so the ticker shows exactly what the room sees.
       sseSource.addEventListener("final", (e) => {
-        const { text } = JSON.parse(e.data);
+        const { text, speaker = "" } = JSON.parse(e.data);
         if (text) {
           lastWordTime = Date.now();
           finals.push(text);
           if (finals.length > 50) finals.shift();
           transcript.push(text);
           transcriptTimes.push(Date.now());
+          transcriptSpeakers.push(speaker);
           saveTalk();
         }
         interim = "";
@@ -2168,7 +2769,7 @@
           body: JSON.stringify(body),
         });
         if (r.status === 404) {
-          notice("The room is gone (server restarted?). End the talk and start again.");
+          notice("The room is gone on the relay. End the talk and start again.");
           return false;
         }
         const j = await r.json();
@@ -2207,7 +2808,7 @@
 
     async function startDeepgram() {
       try {
-        dg = await StageTypeDeepgram.start({
+        const started = await StageTypeDeepgram.start({
           roomId: room.id,
           token: room.token,
           source: "mic",
@@ -2219,6 +2820,11 @@
             setPaused(true, false);
           },
         });
+        if (!localLive || paused || !room) {
+          started.stop();
+          return;
+        }
+        dg = started;
         updateMicLabel(true);
       } catch (err) {
         notice(`Couldn't start the Deepgram link: ${err.message}.`);
@@ -2226,12 +2832,14 @@
       }
     }
 
+    let recRestartTimer = null;
     function startLocalRec() {
-      initAudioMeter();
+      clearTimeout(recRestartTimer);
       if (engine() === "deepgram") {
         startDeepgram();
         return;
       }
+      initAudioMeter();
       if (!Rec) {
         notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
         $("#micSource").textContent = "Phone mic only";
@@ -2242,11 +2850,12 @@
       rec.interimResults = true;
       rec.lang = $("#lang").value;
 
+      const activeTerms = keyterms();
       rec.onresult = (e) => {
         lastWordTime = Date.now();
         let freshInterim = "";
         for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript.trim();
+          const t = applyRoomWords(e.results[i][0].transcript.trim(), activeTerms);
           if (e.results[i].isFinal) {
             if (t) {
               // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
@@ -2254,6 +2863,8 @@
                 if (!ok) {
                   finals.push(t);
                   transcript.push(t);
+                  transcriptTimes.push(Date.now());
+                  transcriptSpeakers.push("");
                   saveTalk();
                   renderTicker();
                 }
@@ -2266,6 +2877,7 @@
         interim = freshInterim.trim();
         renderTicker();
         if (interim) pushInterim();
+        else clearTimeout(interimTimer);
       };
 
       rec.onerror = async (e) => {
@@ -2295,7 +2907,8 @@
       };
 
       rec.onend = () => {
-        if (localLive && !paused) setTimeout(() => localLive && !paused && startLocalRec(), 150);
+        clearTimeout(recRestartTimer);
+        if (localLive && !paused) recRestartTimer = setTimeout(() => localLive && !paused && startLocalRec(), 150);
       };
 
       try {
@@ -2314,7 +2927,7 @@
       phoneLive = live;
       const label = $("#micSource");
       if (live) {
-        document.documentElement.style.setProperty("--vu", "0");
+        stopAudioMeter();
         label.textContent = "Phone mic live";
         if (localLive && !paused) {
           pausedByPhone = true;
@@ -2354,9 +2967,12 @@
       $("#pauseBtn").querySelector(".btn-label").textContent = on ? "Resume" : "Pause";
       $("#pauseBtn").classList.toggle("butter", on);
       if (on) {
+        clearTimeout(recRestartTimer);
+        clearTimeout(interimTimer);
         rec?.stop();
         dg?.stop();
         dg = null;
+        stopAudioMeter();
         interim = "";
         renderTicker();
         $("#liveText").textContent = "Live";
@@ -2376,47 +2992,55 @@
       return (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
     }
 
-    // Until a real room opens, the stage runs a quiet sample talk. The console shows what it
-    // does instead of describing it; the first Start clears it.
+    // Until a real room opens, the stage runs a quiet sample talk at human speaking cadence (~135 WPM).
+    // The console shows what it does instead of describing it; the first Start clears it.
     const GHOST = [
       "Every room has a back row.",
       "Tonight the back row reads along, in its own type, own size, own light.",
       "Speak at the desk. The words land on the phones, the ticker, the screen behind.",
       "Somewhere in the back row, a phone lights up.",
     ];
-    let ghostTimer = null, ghostLine = 0, ghostChars = 0, ghostHold = 0;
-    function ghostPaint() {
+    let ghostTimer = null, ghostLine = 0, ghostWord = 0;
+    function ghostPaint(wordsArr, count) {
       const holder = $("#ticker .ticker-text");
       if (!holder) return;
-      const prev = ghostLine > 0 && ghostChars === 0 ? GHOST[ghostLine - 1] : "";
-      const typed = GHOST[ghostLine].slice(0, ghostChars);
-      holder.innerHTML = (prev ? `<span class="prev">${esc(prev)}</span> ` : "") + `<span class="fresh-lead">${esc(typed)}</span>`;
+      const prev = ghostLine > 0 ? GHOST[ghostLine - 1] : "";
+      const settled = wordsArr.slice(0, Math.max(0, count - 2)).join(" ");
+      const fresh = wordsArr.slice(Math.max(0, count - 2), count).join(" ");
+      const leadHtml = (settled ? `${esc(settled)} ` : "") + (fresh ? `<span class="ghost-fresh">${esc(fresh)}</span>` : "");
+      holder.innerHTML = `<div>${(prev ? `<span class="prev">${esc(prev)}</span> ` : "")}<span class="fresh-lead">${leadHtml}</span></div>`;
       $("#ticker").classList.remove("empty");
     }
     function startGhost() {
       if (ghostTimer) return;
       $("#ghostChip").hidden = false;
       $("#ticker").classList.add("ghosting");
-      ghostTimer = setInterval(() => {
-        if (ghostHold > 0) {
-          ghostHold -= 1;
-          if (ghostHold === 0) {
-            if (ghostLine >= GHOST.length - 1) {
-              stopGhost();
-              return;
-            }
-            ghostLine += 1;
-            ghostChars = 0;
+      ghostLine = 0;
+      ghostWord = 0;
+      const step = () => {
+        if (!ghostTimer) return;
+        const wordsArr = GHOST[ghostLine].split(/\s+/);
+        ghostWord += 1;
+        ghostPaint(wordsArr, ghostWord);
+        if (ghostWord >= wordsArr.length) {
+          if (ghostLine >= GHOST.length - 1) {
+            ghostTimer = setTimeout(() => stopGhost(false), 900);
+            return;
           }
+          ghostLine += 1;
+          ghostWord = 0;
+          ghostTimer = setTimeout(step, 680);
           return;
         }
-        ghostChars += 1;
-        ghostPaint();
-        if (ghostChars >= GHOST[ghostLine].length) ghostHold = 28;
-      }, 42);
+        const w = wordsArr[ghostWord - 1] || "";
+        const delay = /[.!?]$/.test(w) ? 380 : /[,;—:]$/.test(w) ? 280 : 195;
+        ghostTimer = setTimeout(step, delay);
+      };
+      ghostTimer = setTimeout(step, 120);
     }
     // The sample stops typing when it runs out of lines, and is wiped when a real room opens.
     function stopGhost(clear = false) {
+      clearTimeout(ghostTimer);
       clearInterval(ghostTimer);
       ghostTimer = null;
       if (!clear) return;
@@ -2441,14 +3065,18 @@
         if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
         created = await roomRes.json();
       } catch (err) {
-        notice(`Couldn't open a room on the relay (${err.message}). Is the server running?`);
+        notice(`Couldn't open a room on the relay (${err.message}). Check that the server process is running.`);
         return;
       }
       created.startedAt = Date.now();
       // First talk on this machine: the title already knows the names worth getting right.
-      if (!$("#keyterms").value.trim() && title) $("#keyterms").value = termsFrom(title);
+      if (!$("#keyterms").value.trim() && title) {
+        $("#keyterms").value = termsFrom(title);
+        updateWordsChip();
+      }
       transcript = [];
       transcriptTimes = [];
+      transcriptSpeakers = [];
       attachRoom(created);
     }
 
@@ -2477,10 +3105,14 @@
         const rec = JSON.parse(localStorage.getItem(`st-talk-${saved.id}`));
         transcript = rec?.lines || [];
         transcriptTimes = rec?.times || [];
+        transcriptSpeakers = rec?.speakers || [];
       } catch {
         transcript = [];
         transcriptTimes = [];
+        transcriptSpeakers = [];
       }
+      while (transcriptTimes.length < transcript.length) transcriptTimes.push(saved.startedAt || Date.now());
+      while (transcriptSpeakers.length < transcript.length) transcriptSpeakers.push("");
       attachRoom(saved);
       notice("Picked the talk back up after a reload. Phones never noticed.");
       return true;
@@ -2494,12 +3126,14 @@
       exportRoom = null;
 
       stopGhost(true);
+      closeStageSelects();
       // Fresh talk, fresh ticker
       finals = [];
       interim = "";
       paused = false;
       phoneLive = false;
       pausedByPhone = false;
+      setQrTab("room");
       updateMicLabel(true);
       applyRoomStyle();
       renderTicker();
@@ -2521,6 +3155,7 @@
       $("#floatBtn").disabled = false;
       $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (⌥ + F)" : "Pop out ticker over slides (⌥ + F)";
       $("#engine").disabled = true;
+      syncStageSelects();
       $("#qrEmpty").hidden = true;
       $("#urlDisplay").hidden = false;
       $("#copyUrlBtn").disabled = false;
@@ -2556,7 +3191,7 @@
           const vu = parseFloat(document.documentElement.style.getPropertyValue("--vu") || "0");
           if (vu > 0.04) {
             notice(
-              "Hearing microphone audio, but Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, or scan the QR code to use your phone as a lapel mic.",
+              "Hearing microphone audio, but Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, or scan the QR code to pair the phone lapel mic.",
             );
           }
         }
@@ -2568,6 +3203,11 @@
       paused = false;
       phoneLive = false;
       pausedByPhone = false;
+      clearTimeout(recRestartTimer);
+      clearTimeout(interimTimer);
+      clearTimeout(typedTimer);
+      closeStageSelects();
+      setQrTab("room");
       rec?.stop();
       dg?.stop();
       dg = null;
@@ -2608,6 +3248,7 @@
       clearTray();
       $("#engine").disabled = false;
       $("#qrEmpty").hidden = false;
+      $("#qrHint").hidden = true;
       $("#urlDisplay").hidden = true;
       $("#copyUrlBtn").disabled = true;
       $("#fsQrBtn").disabled = true;
@@ -2616,6 +3257,7 @@
       interim = "";
       renderTicker();
       $("#lang").disabled = false;
+      syncStageSelects();
       $("#title").disabled = false;
       $("#typed").disabled = true;
       $("#typed").value = "";
@@ -2696,7 +3338,7 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "var(--paper)", brut: "var(--volt)", hemingway: "#f4ede2" };
+          const bgMap = { ink: "#1e1714", paper: "#fbf1e4", brut: "#ffc74d", hemingway: "#f4ede2" };
           pip.document.body.style.cssText = `margin:0;background:${
             bgMap[prefs.style] || "#1e1714"
           };display:flex;align-items:center;justify-content:center;overflow:hidden;`;
@@ -2750,7 +3392,7 @@
           const hint = $("#engineHint");
           if (hint) {
             hint.innerHTML =
-              'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or use your phone mic.';
+              'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or pair the phone lapel mic.';
             hint.hidden = false;
           }
         }
@@ -2761,6 +3403,7 @@
     $("#engine").onchange = () => {
       store.set("st-engine", engine());
       updateMicLabel(true);
+      syncStageSelects();
     };
     fetch("/api/engines").then((r) => r.json()).then((e) => {
       const opt = $('#engine option[value="deepgram"]');
@@ -2773,9 +3416,24 @@
         }
         // The engine select already says what is on offer; no banner needed on a first visit.
       }
+      syncStageSelects();
     }).catch(() => {});
-    $("#keyterms").value = store.get("st-keyterms") || "";
-    $("#keyterms").addEventListener("change", () => store.set("st-keyterms", $("#keyterms").value));
+
+    // Slide-o-Matic bridge: seed #title and #keyterms from ?title=&words= query params
+    const initQp = new URLSearchParams(location.search);
+    if (initQp.get("title")) $("#title").value = initQp.get("title").slice(0, 80);
+    $("#keyterms").value = initQp.get("words") || initQp.get("keyterms") || store.get("st-keyterms") || "";
+    $("#keyterms").addEventListener("input", () => {
+      updateWordsChip();
+      if (room && qrMode === "mic") setQrTab("mic");
+    });
+    $("#keyterms").addEventListener("change", () => {
+      store.set("st-keyterms", $("#keyterms").value);
+      updateWordsChip();
+      if (room && qrMode === "mic") setQrTab("mic");
+    });
+    updateWordsChip();
+    initStageSelects();
     applyPrefs();
     renderPastTalks();
     updateTranscriptStat();
@@ -2785,10 +3443,16 @@
 
     // Keyboard Shortcuts
     window.addEventListener("keydown", (e) => {
-      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
       if (e.key === "Escape") {
+        const openSel = $(".stage-select.open .stage-select-btn");
+        closeStageSelects();
+        openSel?.focus();
+        for (const m of $$(".menu[open], .more[open]")) m.open = false;
         closeFullscreenQR();
-      } else if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
+        return;
+      }
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+      if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
         e.preventDefault();
         floatTickerWindow();
       } else if (e.altKey && (e.code === "KeyR" || e.key.toLowerCase() === "r")) {

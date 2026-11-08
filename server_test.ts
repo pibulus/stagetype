@@ -1,7 +1,8 @@
-import { checkPhones, handler, keytermsFrom, lanIp, newCode, rooms, sweep } from "./server.ts";
+import { checkPhones, cleanSpeaker, handler, keytermsFrom, lanIp, newCode, rooms, sameToken, sweep } from "./server.ts";
+import { cleanTranscriptLine, parseMicTarget, postLocalLine } from "./scripts/listen-local.ts";
 import { mockDeepgram } from "./e2e/mock_deepgram.ts";
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
 const base = "http://x";
 const post = (
@@ -624,4 +625,69 @@ Deno.test("deepgram: names are sanitised into keyterms", () => {
   const url = new URL(`${base}/?keyterm=Pibulus&keyterm=SoftStack%20Radio&keyterm=${"x".repeat(80)}&keyterm=Pibulus&keyterm=%3Cscript%3E`);
   assertEquals(keytermsFrom(url), ["Pibulus", "SoftStack Radio", "x".repeat(40), "script"]);
   assertEquals(keytermsFrom(new URL(base)), []);
+});
+
+Deno.test("speaker tags: sanitised, broadcast with finals, and carried in backlog", async () => {
+  assertEquals(cleanSpeaker("  Host <script> "), "Host script");
+  assertEquals(cleanSpeaker("x".repeat(40)), "x".repeat(24));
+  const { id, token } = await mkRoom();
+  const { reader, read } = await openStream(id);
+  await read(); // initial backlog
+
+  await post(`/api/room/${id}`, { text: "Welcome to the salon.", final: true, source: "mic", speaker: "Host" }, token);
+  const ev = await read();
+  assert(ev.includes("event: final") && ev.includes('"speaker":"Host"'));
+
+  const late = await openStream(id);
+  const backlog = await late.read();
+  assert(backlog.includes('"speakers":["Host"]'));
+
+  await late.reader.cancel();
+  await reader.cancel();
+  await del(`/api/room/${id}`, token);
+});
+
+Deno.test("listen-local helper: parses mic URL, strips whisper markers, and posts to room", async () => {
+  const { id, token } = await mkRoom();
+  const target = parseMicTarget(`${base}/mic/${id}?lang=en-AU#${token}`, "Moderator");
+  assertEquals(target, { origin: base, roomId: id, token, speaker: "Moderator" });
+  assertEquals(
+    cleanTranscriptLine("\x1b[2K[00:00.000 --> 00:03.200]   Every room has a back row. [BLANK_AUDIO] "),
+    "Every room has a back row.",
+  );
+  assertEquals(cleanTranscriptLine("[BLANK_AUDIO] [MUSIC]"), "");
+
+  const ok = await postLocalLine(
+    target,
+    "[00:01.000 --> 00:04.000] Local whisper line.",
+    true,
+    (req, init) => handler(new Request(req, init)),
+  );
+  assertEquals(ok, true);
+  assertEquals(rooms.get(id)!.lines, ["Local whisper line."]);
+  assertEquals(rooms.get(id)!.speakers, ["Moderator"]);
+  assertThrows(() => parseMicTarget(`${base}/mic/../../admin#${token}`));
+  assertThrows(() => parseMicTarget(`${base}/mic/#${token}`));
+  assert(sameToken("Bearer abc", "Bearer abc"));
+  assert(!sameToken("Bearer abc", "Bearer ab"));
+  await del(`/api/room/${id}`, token);
+});
+
+Deno.test("multi-phone tracking: room stays phone-live until the last paired phone pauses or drops", async () => {
+  const { id, token } = await mkRoom();
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: true, phone: "hostA" }, token);
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: true, phone: "guestB" }, token);
+  assertEquals(rooms.get(id)!.phones.size, 2);
+  assertEquals(rooms.get(id)!.phone.live, true);
+
+  // hostA pauses, but guestB is still live -> room phone state remains live
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: false, phone: "hostA" }, token);
+  assertEquals(rooms.get(id)!.phones.size, 1);
+  assertEquals(rooms.get(id)!.phone.live, true);
+
+  // guestB pauses -> last phone gone, room phone state becomes false
+  await post(`/api/room/${id}`, { ping: true, source: "phone", live: false, phone: "guestB" }, token);
+  assertEquals(rooms.get(id)!.phones.size, 0);
+  assertEquals(rooms.get(id)!.phone.live, false);
+  await del(`/api/room/${id}`, token);
 });

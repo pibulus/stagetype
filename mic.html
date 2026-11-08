@@ -59,14 +59,21 @@
   #room b { color: var(--butter); font-weight: 900; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 
-  .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 58px; }
   .seg { display: flex; flex: 1; border: 1px solid rgba(251,241,228,0.16); border-radius: 999px; padding: 3px; gap: 2px; background: rgba(251,241,228,0.05); }
   .seg button { flex: 1; height: 30px; border: none; border-radius: 999px; background: transparent; color: var(--ink); font: 800 13px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--spring); }
   .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); background: var(--mint); color: #1e1714; }
   .seg button:disabled { opacity: .4; }
   .seg button:active { transform: scale(.96); }
-  body.started .engine-row { display: none; }
+  #speaker {
+    flex: 1; height: 36px; border-radius: 999px; border: 1px solid rgba(251,241,228,0.16);
+    background: rgba(251,241,228,0.05); color: var(--ink); font: 600 13px var(--swiss);
+    padding: 0 14px; outline: none;
+  }
+  #speaker::placeholder { color: var(--muted); font-weight: 500; }
+  #speaker:focus { border-color: var(--pink); }
+  body.live .engine-row { display: none; }
 
   .mic-stage { display: flex; flex-direction: column; min-height: 0; }
 
@@ -196,6 +203,10 @@
       <button data-v="deepgram" aria-pressed="false">Deepgram</button>
     </div>
   </div>
+  <div class="engine-row voice-row">
+    <span class="engine-label">Voice</span>
+    <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (optional, e.g. Host)" aria-label="Speaker label" autocomplete="off" spellcheck="false">
+  </div>
   <div class="echo-container">
     <ol id="guide">
       <li><b>Tap Go live</b> and allow the microphone.</li>
@@ -225,7 +236,7 @@ const roomId = location.pathname.split("/").pop();
 const token = location.hash.slice(1);
 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null;
+let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null, recRestartTimer = null;
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
@@ -235,12 +246,40 @@ if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"]
   $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
 }
 
+const qp = new URLSearchParams(location.search);
+const roomTerms = qp.getAll("keyterm");
+function applyRoomWords(text, terms = roomTerms) {
+  if (!text || !terms.length) return text;
+  let out = text;
+  for (const term of terms) {
+    if (term.length < 2) continue;
+    const escTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escTerm}(?![\\p{L}\\p{N}])`, "giu"), () => term);
+    if (/[a-z][A-Z]/.test(term)) {
+      const splitPat = escTerm.replace(/([a-z])([A-Z])/g, "$1\\s+$2");
+      out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${splitPat}(?![\\p{L}\\p{N}])`, "giu"), () => term);
+    }
+  }
+  return out;
+}
+
+const speakerEl = $("#speaker");
+try {
+  speakerEl.value = qp.get("speaker") || sessionStorage.getItem("stm-speaker") || "";
+} catch {}
+speakerEl.addEventListener("input", () => {
+  try { sessionStorage.setItem("stm-speaker", speakerEl.value.trim()); } catch {}
+});
+const speakerName = () => speakerEl.value.trim().slice(0, 24);
+
 async function push(body) {
+  const spk = speakerName();
+  const payload = spk ? { speaker: spk, ...body } : body;
   try {
     const r = await fetch(`/api/room/${roomId}`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
     if (r.status === 404) {
       stop(false);
@@ -264,7 +303,9 @@ function applyRoom(j) {
   if (typeof j.title === "string") { $("#talk").textContent = j.title; $("#talk").hidden = !j.title; if (j.title) document.title = `${j.title} · Lapel mic`; }
 }
 function stats() {
-  $("#room").innerHTML = `<b>${words}</b> word${words === 1 ? "" : "s"} · ${listeners} in room`;
+  const b = document.createElement("b");
+  b.textContent = String(words);
+  $("#room").replaceChildren(b, ` word${words === 1 ? "" : "s"} · ${listeners} in room`);
 }
 function render(interim) {
   const tail = finals.slice(-2);
@@ -281,7 +322,7 @@ function startRec() {
   rec.onresult = (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript.trim();
+      const t = applyRoomWords(e.results[i][0].transcript.trim());
       if (e.results[i].isFinal) {
         if (t) {
           finals.push(t);
@@ -304,6 +345,8 @@ function startRec() {
         push({ text: interim, final: false, source: "phone" });
       };
       wait <= 0 ? send() : (interimTimer = setTimeout(send, wait));
+    } else {
+      clearTimeout(interimTimer);
     }
   };
 
@@ -321,7 +364,7 @@ function startRec() {
       // A blocked mic would otherwise restart every 150ms forever.
       stop();
       $("#err").textContent = e.error === "not-allowed"
-        ? "Microphone blocked. Allow the mic for this site in your browser settings, then tap Go live."
+        ? "Microphone blocked. Allow the mic for this site in browser settings, then tap Go live."
         : `Mic issue: ${e.error}. Check the browser's mic permission and tap Go live again.`;
     } else {
       $("#err").textContent = `Mic issue: ${e.error}`;
@@ -329,7 +372,8 @@ function startRec() {
   };
 
   rec.onend = () => {
-    if (live) setTimeout(() => live && startRec(), 150);
+    clearTimeout(recRestartTimer);
+    if (live) recRestartTimer = setTimeout(() => live && startRec(), 150);
   };
 
   try {
@@ -342,7 +386,6 @@ function startRec() {
 
 // The console's QR carries the talk's language and engine, so the phone inherits both
 // instead of asking the same two questions twice. A manual choice on this phone wins.
-const qp = new URLSearchParams(location.search);
 if (qp.get("lang")) {
   const sel = $("#lang");
   const want = qp.get("lang");
@@ -371,12 +414,17 @@ fetch("/api/engines").then((r) => r.json()).then((e) => {
 
 async function startDeepgram() {
   try {
-    dg = await StageTypeDeepgram.start({
-      roomId, token, source: "phone", lang: $("#lang").value, keyterms: qp.getAll("keyterm"),
+    const started = await StageTypeDeepgram.start({
+      roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(),
       onInterim: (i) => render(i),
       onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); render(""); },
       onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
     });
+    if (!live) {
+      started.stop();
+      return;
+    }
+    dg = started;
   } catch (err) {
     $("#err").textContent = `Couldn't start the Deepgram link: ${err.message}.`;
     stop();
@@ -413,6 +461,8 @@ function stop(announce = true) {
   live = false;
   document.body.classList.remove("live");
   clearInterval(heartbeat);
+  clearTimeout(interimTimer);
+  clearTimeout(recRestartTimer);
   if (announce) push({ ping: true, source: "phone", live: false });
   rec?.stop();
   dg?.stop(); dg = null;
@@ -469,10 +519,11 @@ $("#go").onclick = () => {
 
 addEventListener("pagehide", () => {
   if (!live || !token) return;
+  const spk = speakerName();
   fetch(`/api/room/${roomId}`, {
     method: "POST", keepalive: true,
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify({ ping: true, source: "phone", live: false }),
+    body: JSON.stringify({ ping: true, source: "phone", live: false, ...(spk ? { speaker: spk } : {}) }),
   }).catch(() => {});
 });
 
