@@ -11,7 +11,11 @@ class Pcm16Downsampler extends AudioWorkletProcessor {
     const ratio = sampleRate / this.target;
     for (let i = 0; i < ch.length; i++) {
       this.acc += ch[i]; this.n++; this.pos += 1;
-      if (this.pos >= ratio) { this.pos -= ratio; this.buf.push(this.acc / this.n); this.acc = 0; this.n = 0; }
+      while (this.pos >= ratio) {
+        this.pos -= ratio;
+        this.buf.push(this.n ? this.acc / this.n : ch[i]);
+        this.acc = 0; this.n = 0;
+      }
     }
     if (this.buf.length >= 1600) { // 100 ms
       const out = new Int16Array(this.buf.length);
@@ -34,7 +38,8 @@ registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
       ctx?.close?.().catch(() => {});
     };
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      try { ctx = new AudioCtx({ sampleRate: 16000 }); } catch { ctx = new AudioCtx(); }
       await ctx.resume();
       const modUrl = URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" }));
       try { await ctx.audioWorklet.addModule(modUrl); } finally { URL.revokeObjectURL(modUrl); }
@@ -51,7 +56,13 @@ registerProcessor("pcm16-downsampler", Pcm16Downsampler);`;
       if (speaker) q.set("speaker", speaker);
       if (phoneId) q.set("phone", phoneId);
       const wsUrl = `${location.origin.replace(/^http/, "ws")}/api/room/${roomId}/audio?${q}`;
-      const protocols = pass ? ["bearer", token, "pass", pass] : ["bearer", token];
+      const encodeB64Url = (s) => {
+        const bytes = new TextEncoder().encode(String(s));
+        let bin = "";
+        for (const b of bytes) bin += String.fromCharCode(b);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      };
+      const protocols = pass ? ["bearer", token, "pass-b64", encodeB64Url(pass)] : ["bearer", token];
       const ws = new WebSocket(wsUrl, protocols);
       ws.binaryType = "arraybuffer";
       let stopped = false;

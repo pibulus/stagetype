@@ -21,7 +21,8 @@ export function parseMicTarget(rawUrl: string, speaker?: string): LocalTarget {
   }
   const m = u.pathname.match(/^\/(?:mic|live)\/([a-z0-9]{6,64})\/?$/i);
   const roomId = m?.[1] || "";
-  const token = u.hash.replace(/^#/, "").trim();
+  const rawHash = u.hash.replace(/^#/, "").trim();
+  const token = rawHash.includes("=") ? (new URLSearchParams(rawHash).get("token") || "").trim() : rawHash;
   if (!roomId || !token) {
     throw new Error("Expected a StageType mic pairing URL ending with /mic/<roomId>#<token>");
   }

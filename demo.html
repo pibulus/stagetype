@@ -318,7 +318,22 @@ function startNoise() {
 
 async function mint() {
   if (isMobileCoarse) return;
-  demo = await fetch("/api/demo/mint").then((r) => r.json());
+  let res, data = null;
+  try {
+    res = await fetch("/api/demo/mint");
+    data = await res.json().catch(() => null);
+  } catch {
+    res = null;
+  }
+  if (!res || !res.ok || !data?.id || !data?.sig) {
+    $("#statusText").textContent = res?.status === 429
+      ? "Demo is busy right now — try again in a minute, or open the Stage Console."
+      : "Couldn't reach the relay for a demo code. Refresh or open the Stage Console.";
+    $("#link").hidden = true;
+    return;
+  }
+  demo = data;
+  $("#link").hidden = false;
   const url = `${location.origin}/live/${demo.id}?s=${encodeURIComponent(demo.sig)}`;
   const qr = qrcode(0, "M"); qr.addData(url); qr.make();
   $("#qr").innerHTML = qr.createSvgTag({ cellSize: 5, margin: 0, scalable: true });

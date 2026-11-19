@@ -224,6 +224,7 @@
     .field-title { flex: 4 1 240px; }
     .field-lang { flex: 0 1 182px; }
     .field-engine { flex: 0 1 164px; }
+    .field-pass { flex: 0 1 168px; }
     .bar .control-row { flex: 0 0 auto; }
     input, select {
       font: 600 16px var(--swiss);
@@ -831,6 +832,10 @@
             <option value="deepgram">Deepgram · relay</option>
           </select>
         </div>
+        <div class="field field-pass" id="passField" hidden>
+          <label class="field-label" for="speechPass">Speech pass</label>
+          <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Relay pass">
+        </div>
         <div class="control-row">
           <button id="startBtn" type="button">Start captions</button>
           <button id="pauseBtn" type="button" hidden><span class="btn-label">Pause</span></button>
@@ -1050,7 +1055,7 @@
     applyVibe(currentVibe);
 
     const parsedRoomLinks = () =>
-      extractLinks([], $("#roomLinks").value.split(/[\s,]+/).filter(Boolean));
+      extractLinks([], $("#roomLinks").value.split(/(?:[\s]+|,\s+)/).filter(Boolean));
 
     const asMarkdown = (t) => {
       const foundLinks = extractLinks(t.lines || [], t.links || []);
@@ -1147,15 +1152,17 @@
       } catch {
         lbl.textContent = "Blocked";
       }
-      setTimeout(() => (lbl.textContent = "Copy transcript"), 1500);
+      setTimeout(() => { lbl.textContent = "Copy transcript"; $("#exportMenu").open = false; }, 1200);
     };
     $("#saveTxTxt").onclick = () => {
       const rec = currentRecord();
       if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.txt`, asText(rec), "text/plain");
+      $("#exportMenu").open = false;
     };
     $("#saveTxMd").onclick = () => {
       const rec = currentRecord();
       if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown");
+      $("#exportMenu").open = false;
     };
 
     const engine = () => $("#engine").value;
@@ -1319,8 +1326,13 @@
       brut: { ring: "ink", face: "system", weight: "700", name: "Yellow Brut" },
       hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
     };
+    // Only auto-prime genuine proper-case compounds, acronyms, or alphanumeric codes (never plain Title Case words like "The" or "How").
     const termsFrom = (text) =>
-      text.split(/[^\p{L}\p{N}'-]+/u).filter((w) => w.length >= 3 && /\p{Lu}/u.test(w)).slice(0, 8).join(", ");
+      text
+        .split(/[^\p{L}\p{N}'-]+/u)
+        .filter((w) => w.length >= 3 && (/[a-z][A-Z]/.test(w) || /[A-Z]{2,}/.test(w) || /[A-Za-z]\d|\d[A-Za-z]/.test(w)))
+        .slice(0, 8)
+        .join(", ");
     const keyterms = () =>
       $("#keyterms").value.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 20);
 
@@ -1406,7 +1418,7 @@
     }
     $("#shuffleTicker").addEventListener("click", shuffleTicker);
 
-    // Client-side image compression before upload (1280px WebP + 320px thumb, EXIF stripped).
+    // Client-side image compression before upload (1280px WebP + 320px thumb, JPEG fallback on Safari, EXIF stripped).
     function encodeCanvas(src, max, quality) {
       const scale = Math.min(1, max / Math.max(src.width, src.height));
       const w = Math.max(1, Math.round(src.width * scale));
@@ -1414,7 +1426,12 @@
       const canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       canvas.getContext("2d").drawImage(src, 0, 0, w, h);
-      return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/webp", quality));
+      return new Promise((resolve) =>
+        canvas.toBlob((b) => {
+          if (b && b.type === "image/webp") { resolve(b); return; }
+          canvas.toBlob((jpg) => resolve(jpg || b), "image/jpeg", quality);
+        }, "image/webp", quality)
+      );
     }
 
     let sharing = false;
@@ -1620,7 +1637,10 @@
       linksSyncTimer = setTimeout(() => { if (room) push({ links: parsedRoomLinks() }); }, 500);
     });
 
-    $("#screenBtn").onclick = () => { if (room) window.open(tickerUrl(), "_blank", "noopener"); };
+    $("#screenBtn").onclick = () => {
+      $("#displayMenu").open = false;
+      if (room) window.open(tickerUrl(), "_blank", "noopener");
+    };
     $$("[data-pref]").forEach((group) => {
       const key = group.dataset.pref;
       if (group.tagName === "SELECT") {
@@ -1654,7 +1674,8 @@
       $("#fsTalk").textContent = t;
       $("#fsTalk").hidden = !t;
       document.title = t ? `${t} · StageType` : "StageType · Presenter Console";
-      $("#ticker").dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
+      const dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
+      for (const el of tickerEls) el.dir = dir;
     }
 
     function qrSvgFor(url, cellSize) {
@@ -1665,10 +1686,24 @@
     }
     const roomUrl = () => `${lanBase}/live/${room.id}`;
     const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
+    let dgPassRequired = false;
+    const currentPass = () => $("#speechPass").value.trim();
+    const syncPassField = () => {
+      $("#passField").hidden = !(dgPassRequired && engine() === "deepgram");
+    };
+    try { $("#speechPass").value = sessionStorage.getItem("st-dg-pass") || ""; } catch {}
+    $("#speechPass").addEventListener("input", () => {
+      try {
+        if ($("#speechPass").value) sessionStorage.setItem("st-dg-pass", $("#speechPass").value);
+        else sessionStorage.removeItem("st-dg-pass");
+      } catch {}
+    });
     const micUrl = () => {
       const q = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
       for (const term of keyterms()) q.append("keyterm", term);
-      return `${lanBase}/mic/${room.id}?${q}#${room.token}`;
+      const pass = currentPass();
+      const hash = pass ? new URLSearchParams({ token: room.token, pass }).toString() : room.token;
+      return `${lanBase}/mic/${room.id}?${q}#${hash}`;
     };
 
     function updateQR() {
@@ -1704,13 +1739,29 @@
     }
 
     // SSE Stream Connection
+    let relayOffline = false;
+    let pageUnloading = false;
+    addEventListener("beforeunload", () => { pageUnloading = true; });
+    addEventListener("pagehide", () => { pageUnloading = true; });
     function listenToRoomStream(roomId) {
       if (sseSource) sseSource.close();
       sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
+      sseSource.addEventListener("open", () => {
+        if (relayOffline) {
+          relayOffline = false;
+          notice("");
+        }
+      });
+
       sseSource.addEventListener("backlog", (e) => {
-        const { lines = [], offset = 0, phone, assets = [], speakers = [] } = JSON.parse(e.data);
+        const { lines = [], offset = 0, phone, assets = [], speakers = [], paused: serverPaused = false, links: serverLinks = [] } =
+          JSON.parse(e.data);
         for (const a of assets) addTrayImage(a.thumb, a.id);
+        if (serverLinks.length && !$("#roomLinks").value.trim()) {
+          $("#roomLinks").value = serverLinks.join(", ");
+        }
+        if (serverPaused && !paused) push({ paused: false });
         if (lines.length > 0) {
           const tailStart = Math.max(0, lines.length - 50);
           finals = lines.slice(tailStart).map((text, i) => ({ text, speaker: speakers[tailStart + i] || "" }));
@@ -1768,6 +1819,13 @@
         addTrayImage(thumb, id);
       });
       sseSource.addEventListener("asset-gone", (e) => removeTrayThumb(JSON.parse(e.data).id));
+
+      sseSource.onerror = () => {
+        if (room && !pageUnloading) {
+          relayOffline = true;
+          notice("Relay connection interrupted — reconnecting. Audience phones will catch up once back online.");
+        }
+      };
     }
 
     async function push(body) {
@@ -1782,7 +1840,11 @@
           notice("The room is gone on the relay. End the talk and start again.");
           return false;
         }
-        const j = await r.json();
+        if (r.ok && relayOffline) {
+          relayOffline = false;
+          notice("");
+        }
+        const j = await r.json().catch(() => ({}));
         if (typeof j.listeners === "number") {
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
           const label = others === 0 ? "Room empty" : `${others} reading`;
@@ -1796,7 +1858,8 @@
         }
         return r.ok;
       } catch {
-        console.warn("Relay unreachable; captions still local");
+        relayOffline = true;
+        notice("Relay unreachable — captions stay local until the connection returns.");
         return false;
       }
     }
@@ -1815,6 +1878,12 @@
     const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
     async function startDeepgram() {
+      if (dgPassRequired && !currentPass()) {
+        notice("Enter the relay Speech pass in the top bar before starting Deepgram.");
+        setPaused(true, false);
+        $("#speechPass").focus();
+        return;
+      }
       try {
         const started = await StageTypeDeepgram.start({
           roomId: room.id,
@@ -1822,6 +1891,7 @@
           source: "mic",
           lang: $("#lang").value,
           keyterms: keyterms(),
+          pass: currentPass(),
           onError: (msg) => {
             dg = null;
             notice(`Deepgram: ${msg}`);
@@ -2066,30 +2136,36 @@
     }
 
     async function resumeRoom() {
+      if (opening || room) return false;
       let saved = null;
       try { saved = JSON.parse(sessionStorage.getItem("st-room")); } catch {}
       if (!saved?.id || !saved?.token) return false;
-      const alive = await fetch(`/api/room/${saved.id}`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${saved.token}` },
-        body: JSON.stringify({ ping: true }),
-      }).then((r) => r.ok).catch(() => false);
-      if (!alive) {
-        try { sessionStorage.removeItem("st-room"); } catch {}
-        return false;
+      opening = true;
+      try {
+        const alive = await fetch(`/api/room/${saved.id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${saved.token}` },
+          body: JSON.stringify({ ping: true }),
+        }).then((r) => r.ok).catch(() => false);
+        if (!alive) {
+          try { sessionStorage.removeItem("st-room"); } catch {}
+          return false;
+        }
+        lanBase = await lanBaseFor();
+        $("#title").value = saved.title || "";
+        const rec = store.json(`st-talk-${saved.id}`, null);
+        transcript = Array.isArray(rec?.lines) ? rec.lines : [];
+        transcriptTimes = Array.isArray(rec?.times) ? rec.times : [];
+        transcriptSpeakers = Array.isArray(rec?.speakers) ? rec.speakers : [];
+        seen = transcript.length;
+        while (transcriptTimes.length < transcript.length) transcriptTimes.push(saved.startedAt || Date.now());
+        while (transcriptSpeakers.length < transcript.length) transcriptSpeakers.push("");
+        attachRoom(saved);
+        notice("Picked the talk back up after a reload. Phones never noticed.");
+        return true;
+      } finally {
+        opening = false;
       }
-      lanBase = await lanBaseFor();
-      $("#title").value = saved.title || "";
-      const rec = store.json(`st-talk-${saved.id}`, null);
-      transcript = Array.isArray(rec?.lines) ? rec.lines : [];
-      transcriptTimes = Array.isArray(rec?.times) ? rec.times : [];
-      transcriptSpeakers = Array.isArray(rec?.speakers) ? rec.speakers : [];
-      seen = transcript.length;
-      while (transcriptTimes.length < transcript.length) transcriptTimes.push(saved.startedAt || Date.now());
-      while (transcriptSpeakers.length < transcript.length) transcriptSpeakers.push("");
-      attachRoom(saved);
-      notice("Picked the talk back up after a reload. Phones never noticed.");
-      return true;
     }
 
     function attachRoom(r) {
@@ -2165,6 +2241,8 @@
       clearTimeout(linksSyncTimer);
       closeStageSelects();
       closeFullscreenQR();
+      if (activePip) { try { activePip.close(); } catch {} activePip = null; }
+      relayOffline = false;
       rec?.stop();
       dg?.stop();
       dg = null;
@@ -2276,12 +2354,15 @@
       const width = Math.round(Math.min(1440, Math.max(720, innerWidth - 120)));
       return { width, height };
     }
+    let activePip = null;
     const floatTickerWindow = async () => {
+      $("#displayMenu").open = false;
       if (!room) return;
       const box = floatBox();
       if ("documentPictureInPicture" in window) {
         try {
           const pip = await documentPictureInPicture.requestWindow({ width: box.width, height: box.height });
+          activePip = pip;
           const fonts = pip.document.createElement("link");
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
@@ -2293,6 +2374,7 @@
 
           const t = pip.document.createElement("div");
           t.id = "ticker";
+          t.dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
           t.style.cssText = [
             "position:static;transform:none;width:100vw;height:100vh;min-height:0;max-height:none;flex:1 1 auto",
             "border-radius:0;box-shadow:none;border-width:3px;padding:12px 24px",
@@ -2304,6 +2386,7 @@
 
           pip.addEventListener("pagehide", () => {
             tickerEls = tickerEls.filter((el) => el !== t);
+            if (activePip === pip) activePip = null;
           });
           return;
         } catch (err) {
@@ -2337,16 +2420,19 @@
     $("#engine").value = store.get("st-engine") || "browser";
     $("#engine").onchange = () => {
       store.set("st-engine", engine());
+      syncPassField();
       updateMicLabel(true);
       syncStageSelects();
     };
     fetch("/api/engines").then((r) => r.json()).then((e) => {
       const opt = $('#engine option[value="deepgram"]');
       opt.disabled = !e.deepgram;
+      dgPassRequired = Boolean(e.deepgram && e.passRequired);
       if (!e.deepgram) {
         opt.textContent = "Deepgram (key needed on relay)";
         if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
       }
+      syncPassField();
       syncStageSelects();
     }).catch(() => {});
 

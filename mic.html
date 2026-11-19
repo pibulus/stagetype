@@ -69,12 +69,12 @@
   .seg button[aria-pressed="true"] { background: var(--mint); color: #1e1714; }
   .seg button:disabled { opacity: .45; cursor: not-allowed; }
   .seg button:active { transform: scale(.96); }
-  #speaker {
+  #speaker, #speechPass {
     flex: 1; height: 44px; border-radius: 999px; border: 1.5px solid var(--line);
     background: var(--surface); color: var(--ink); font: 600 16px var(--swiss);
     padding: 0 15px;
   }
-  #speaker::placeholder { color: var(--muted); font-weight: 500; }
+  #speaker::placeholder, #speechPass::placeholder { color: var(--muted); font-weight: 500; }
   body.live .engine-row { display: none; }
 
   main.mic-stage { display: flex; flex-direction: column; min-height: 0; }
@@ -174,6 +174,10 @@
       <button type="button" data-v="deepgram" aria-pressed="false">Deepgram</button>
     </div>
   </div>
+  <div class="engine-row" id="passRow" hidden>
+    <label class="engine-label" for="speechPass">Pass</label>
+    <input id="speechPass" type="password" maxlength="128" placeholder="Relay speech pass" autocomplete="off" spellcheck="false">
+  </div>
   <div class="engine-row">
     <label class="engine-label" for="speaker">Voice</label>
     <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (optional, e.g. Host)" autocomplete="off" spellcheck="false">
@@ -207,15 +211,47 @@
 
 <script>
 const $ = (s) => document.querySelector(s);
-const { fillLanguages, applyRoomWords } = window.StageTypeShared;
+const { fillLanguages, applyRoomWords, store } = window.StageTypeShared;
 const roomId = location.pathname.split("/").pop();
 const TOKEN_KEY = `stm-tok-${roomId}`;
-let token = location.hash.slice(1);
+const PASS_KEY = "st-dg-pass";
+const rawHash = location.hash.slice(1);
+let token = "";
+let hashPass = "";
+if (rawHash) {
+  if (rawHash.includes("=")) {
+    const hp = new URLSearchParams(rawHash);
+    token = hp.get("token") || "";
+    hashPass = hp.get("pass") || "";
+  } else {
+    token = rawHash;
+  }
+}
+let tokenStored = false;
 if (token) {
-  try { sessionStorage.setItem(TOKEN_KEY, token); } catch {}
-  try { history.replaceState(null, "", location.pathname + location.search); } catch {}
+  try { sessionStorage.setItem(TOKEN_KEY, token); tokenStored = true; } catch {}
 } else {
-  try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch {}
+  try { token = sessionStorage.getItem(TOKEN_KEY) || ""; tokenStored = Boolean(token); } catch {}
+}
+const passEl = $("#speechPass");
+if (hashPass) {
+  try { sessionStorage.setItem(PASS_KEY, hashPass); } catch {}
+  passEl.value = hashPass;
+} else {
+  try { passEl.value = sessionStorage.getItem(PASS_KEY) || ""; } catch {}
+}
+passEl.addEventListener("input", () => {
+  try {
+    if (passEl.value) sessionStorage.setItem(PASS_KEY, passEl.value);
+    else sessionStorage.removeItem(PASS_KEY);
+  } catch {}
+});
+const currentPass = () => passEl.value.trim();
+function scrubHashIfSafe() {
+  // Only strip #hash once token is safely persisted AND the browser is usable (preserves "Open in Safari" handoff).
+  if (tokenStored && location.hash) {
+    try { history.replaceState(null, "", location.pathname + location.search); } catch {}
+  }
 }
 
 // Unique per-tab phone session ID so multi-phone panels and Deepgram streams never collide.
@@ -230,7 +266,7 @@ const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
 const qp = new URLSearchParams(location.search);
 fillLanguages($("#lang"), qp.get("lang") || "en-AU");
 
-let rec = null, live = false, pocketLocked = false, wake = null, finals = [], lastInterim = 0, interimTimer = null, recRestartTimer = null;
+let rec = null, live = false, pocketLocked = false, wake = null, finals = [], finalTimes = [], finalSpeakers = [], lastInterim = 0, interimTimer = null, recRestartTimer = null;
 const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
 const roomTerms = qp.getAll("keyterm").slice(0, 20).map((t) => t.trim().slice(0, 40)).filter(Boolean);
@@ -246,9 +282,13 @@ let engine = (() => {
 })();
 let dg = null;
 let dgAvailable = false;
+let passRequired = false;
+let talkTitle = "";
+const startedAt = Date.now();
 
 function syncGoAvailability() {
   if ($("#stateText").textContent === "Talk ended") return;
+  $("#passRow").hidden = !(dgAvailable && passRequired && engine === "deepgram");
   const unusable = !token || (engine === "browser" && !Rec);
   $("#go").disabled = unusable;
   if (!token) {
@@ -278,6 +318,7 @@ document.querySelectorAll("#engineSeg button").forEach((b) => {
 paintEngine();
 fetch("/api/engines").then((r) => r.json()).then((e) => {
   dgAvailable = Boolean(e.deepgram);
+  passRequired = Boolean(e.passRequired);
   const b = document.querySelector('#engineSeg [data-v="deepgram"]');
   b.disabled = !dgAvailable;
   b.title = dgAvailable ? "" : "The relay has no Deepgram key";
@@ -286,6 +327,7 @@ fetch("/api/engines").then((r) => r.json()).then((e) => {
   paintEngine();
 }).catch(() => {});
 
+let netErr = false;
 async function push(body) {
   const spk = speakerName();
   const payload = { phone: phoneId, ...(spk ? { speaker: spk } : {}), ...body };
@@ -296,18 +338,26 @@ async function push(body) {
       body: JSON.stringify(payload),
     });
     if (r.status === 404) {
+      netErr = false;
       stop(false);
       $("#err").textContent = "Talk ended on stage.";
     } else if (r.status === 403) {
+      netErr = false;
       stop(false);
       $("#err").textContent = "Pairing expired. Rescan the mic QR code.";
+    } else if (!r.ok) {
+      netErr = true;
+      $("#err").textContent = r.status === 429
+        ? "Sending captions too fast — pausing a beat."
+        : `Relay returned HTTP ${r.status}; retrying on next sentence.`;
     } else {
-      $("#err").textContent = "";
-      const j = await r.json();
+      if (netErr) { $("#err").textContent = ""; netErr = false; }
+      const j = await r.json().catch(() => ({}));
       if (typeof j.listeners === "number") { listeners = j.listeners; stats(); }
       applyRoom(j);
     }
   } catch {
+    netErr = true;
     $("#err").textContent = "Relay unreachable; retrying on next sentence";
   }
 }
@@ -315,6 +365,7 @@ async function push(body) {
 let words = 0, listeners = 0;
 function applyRoom(j) {
   if (typeof j.title === "string") {
+    talkTitle = j.title;
     $("#talk").textContent = j.title;
     $("#talk").hidden = !j.title;
     if (j.title) document.title = `${j.title} · Lapel mic`;
@@ -358,6 +409,8 @@ function startRec() {
       if (e.results[i].isFinal) {
         if (t) {
           finals.push(t);
+          finalTimes.push(Date.now());
+          finalSpeakers.push(speakerName());
           words += t.split(/\s+/).filter(Boolean).length;
           gotFinal = true;
           stats();
@@ -418,11 +471,25 @@ function startRec() {
 }
 
 async function startDeepgram() {
+  if (passRequired && !currentPass()) {
+    $("#err").textContent = "Enter the relay speech pass above before going live with Deepgram.";
+    stop();
+    $("#speechPass").focus();
+    return;
+  }
   try {
     const started = await StageTypeDeepgram.start({
-      roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(), phoneId,
+      roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(), phoneId, pass: currentPass(),
       onInterim: (i) => render(i),
-      onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); renderSettled(true); render(""); },
+      onFinal: (t) => {
+        finals.push(t);
+        finalTimes.push(Date.now());
+        finalSpeakers.push(speakerName());
+        words += t.split(/\s+/).filter(Boolean).length;
+        stats();
+        renderSettled(true);
+        render("");
+      },
       onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
     });
     if (!live) {
@@ -450,14 +517,11 @@ $("#pocketBtn").onclick = () => setPocketLock(!pocketLocked);
 
 let heartbeat = null;
 async function go() {
+  scrubHashIfSafe();
+  $("#err").textContent = "";
+  netErr = false;
   live = true;
   document.body.classList.add("live", "started");
-  push({ ping: true, source: "phone", live: true });
-  clearInterval(heartbeat);
-  heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
-  if (engine === "deepgram") startDeepgram(); else startRec();
-  try { wake = await navigator.wakeLock?.request("screen"); } catch {}
-
   if (navigator.vibrate) navigator.vibrate([40]);
   $("#goLabel").textContent = "Pause";
   $("#goSub").textContent = "Broadcasting to room";
@@ -468,6 +532,17 @@ async function go() {
   $("#lang").disabled = true;
   $("#pocketBtn").hidden = false;
   setPocketLock(false);
+
+  push({ ping: true, source: "phone", live: true });
+  clearInterval(heartbeat);
+  heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
+  if (engine === "deepgram") startDeepgram(); else startRec();
+  if (!live) return;
+  try {
+    const lock = await navigator.wakeLock?.request("screen");
+    if (!live) { lock?.release?.(); return; }
+    wake = lock || null;
+  } catch {}
 }
 
 function stop(announce = true) {
@@ -496,6 +571,23 @@ function stop(announce = true) {
   $("#pocketBtn").hidden = true;
 }
 
+function saveMicTranscript() {
+  const existing = store.json(`stl-talk-${roomId}`, null);
+  if (existing?.lines?.length) return true;
+  if (!finals.length) return false;
+  const now = Date.now();
+  const rec = {
+    id: roomId, title: talkTitle, lang: $("#lang").value, lines: finals, times: finalTimes, speakers: finalSpeakers,
+    links: [], seen: finals.length, startedAt, updatedAt: now, ended: true, stars: [],
+  };
+  if (!store.set(`stl-talk-${roomId}`, JSON.stringify(rec))) return false;
+  let idx = store.json("stl-talks", []).filter((t) => t && t.id !== roomId);
+  idx.unshift({ id: roomId, title: talkTitle, words, kept: 0, links: 0, updatedAt: now, ended: true });
+  while (idx.length > 20) { const old = idx.pop(); if (old?.id) store.del(`stl-talk-${old.id}`); }
+  store.set("stl-talks", JSON.stringify(idx));
+  return true;
+}
+
 let endArmed = null;
 $("#end").onclick = async () => {
   if (pocketLocked) return;
@@ -514,18 +606,29 @@ $("#end").onclick = async () => {
   endArmed = null;
   stop(false);
   if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
-  await fetch(`/api/room/${roomId}`, {
-    method: "DELETE",
-    headers: { authorization: `Bearer ${token}` },
-  }).catch(() => {});
+  let closedOnRelay = false;
+  try {
+    const res = await fetch(`/api/room/${roomId}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    closedOnRelay = res.ok || res.status === 404;
+  } catch {
+    closedOnRelay = false;
+  }
 
-  $("#stateText").textContent = "Talk ended";
+  const hasSaved = saveMicTranscript();
+  $("#stateText").textContent = closedOnRelay ? "Talk ended" : "Mic stopped";
   $("#go").disabled = true;
-  $("#end").hidden = true;
+  $("#end").hidden = closedOnRelay;
   $("#pocketBtn").hidden = true;
-  $("#openTranscript").href = `/live/${roomId}`;
-  $("#openTranscript").hidden = false;
-  $("#err").textContent = `${words} words captioned. The transcript is on every phone in the room.`;
+  if (hasSaved) {
+    $("#openTranscript").href = `/live/${roomId}`;
+    $("#openTranscript").hidden = false;
+  }
+  $("#err").textContent = closedOnRelay
+    ? `${words} words captioned. The transcript is on every phone in the room.`
+    : "Couldn't reach the relay to close the room. End the talk from the laptop console or tap End talk again.";
 };
 
 if (token) push({ ping: true });

@@ -4,6 +4,7 @@
     "jsr:@std/assert@1": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:playwright-core@*": "1.56.1",
+    "npm:playwright-core@1.52.0": "1.52.0",
     "npm:playwright-core@1.56.1": "1.56.1"
   },
   "jsr": {
@@ -18,6 +19,10 @@
     }
   },
   "npm": {
+    "playwright-core@1.52.0": {
+      "integrity": "sha512-l2osTgLXSMeuLZOML9qYODUQoPPnUsKsb5/P6LJ2e6uPKXUdPK5WYhN4z03G+YNbWmGDY4YENauNu4ZKczreHg==",
+      "bin": true
+    },
     "playwright-core@1.56.1": {
       "integrity": "sha512-hutraynyn31F+Bifme+Ps9Vq59hKuUCz7H1kDOcBs+2oGguKkWTU50bBWrtz34OUWmIwpBTWDxaRPXrIXkgvmQ==",
       "bin": true

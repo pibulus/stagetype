@@ -74,18 +74,36 @@ export function cleanLinks(raw: unknown): string[] {
   const out: string[] = [];
   for (const item of raw) {
     if (typeof item !== "string") continue;
-    const trimmed = item.trim().slice(0, MAX_LINK_CHARS);
+    const trimmed = item.trim().replace(/[.,;:!?)\]]+$/, "").slice(0, MAX_LINK_CHARS);
     if (!trimmed) continue;
-    const href = /^https?:/i.test(trimmed) ? trimmed : `https://${trimmed.replace(/^www\./i, "")}`;
+    const explicit = /^https?:\/\//i.test(trimmed);
+    if (!explicit && !/\.[a-z]{2,}/i.test(trimmed)) continue;
+    const href = explicit ? trimmed : `https://${trimmed.replace(/^www\./i, "")}`;
     try {
       const u = new URL(href);
-      if ((u.protocol === "http:" || u.protocol === "https:") && !out.includes(u.href)) {
+      if (u.protocol !== "http:" && u.protocol !== "https:") continue;
+      const host = u.hostname.toLowerCase();
+      const isLocal = explicit && (host === "localhost" || host === "127.0.0.1");
+      const isDomain = host.includes(".") && /\.[a-z]{2,}$/i.test(host) && !host.startsWith(".") && !host.includes("..");
+      if ((isLocal || isDomain) && !out.includes(u.href)) {
         out.push(u.href);
         if (out.length >= MAX_LINKS) break;
       }
     } catch { /* skip invalid url */ }
   }
   return out;
+}
+
+function decodePassB64(raw: string): string {
+  try {
+    const pad = "=".repeat((4 - (raw.length % 4)) % 4);
+    const bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/") + pad);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "";
+  }
 }
 
 const MAX_BODY = 16_384; // bytes accepted per push
@@ -389,8 +407,17 @@ function trimAssets(room: Room) {
 
 function addAsset(room: Room, full: Uint8Array, type: string, thumb: string): Asset | null {
   const bytes = full.length + thumb.length;
-  // Evict oldest within this room first if room is near its own cap, then enforce global memory ceiling.
-  if (globalAssetBytes + bytes > MAX_GLOBAL_ASSET_BYTES) return null;
+  // Account for oldest assets in this room that trimAssets() will evict before enforcing the global RAM cap.
+  let reclaimable = 0;
+  let projectedCount = room.assets.size + 1;
+  let projectedRoomBytes = room.assetBytes + bytes;
+  for (const existing of room.assets.values()) {
+    if (projectedCount <= MAX_ASSETS && projectedRoomBytes <= MAX_ASSET_TOTAL) break;
+    reclaimable += existing.bytes;
+    projectedCount--;
+    projectedRoomBytes -= existing.bytes;
+  }
+  if (globalAssetBytes - reclaimable + bytes > MAX_GLOBAL_ASSET_BYTES) return null;
   const asset: Asset = {
     id: id(24),
     seq: room.offset + room.lines.length,
@@ -672,8 +699,11 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
     if (r.demo) return json({ error: "not in the demo" }, 403);
     const requiredPass = deepgramPass();
-    if (requiredPass && (offered[2] !== "pass" || !sameToken(offered[3] ?? "", requiredPass))) {
-      return json({ error: "speech pass required" }, 403);
+    if (requiredPass) {
+      const provided = offered[2] === "pass" ? (offered[3] ?? "") : offered[2] === "pass-b64" ? decodePassB64(offered[3] ?? "") : "";
+      if (!provided || !sameToken(provided, requiredPass)) {
+        return json({ error: "speech pass required" }, 403);
+      }
     }
     const activeSessions = [...rooms.values()].reduce((n, room) => n + room.audioSessions.size, 0);
     if (activeSessions >= MAX_DEEPGRAM_SESSIONS || r.audioSessions.size >= MAX_DEEPGRAM_SESSIONS_PER_ROOM) {
@@ -966,7 +996,13 @@ function deepgramSession(
       } catch { /* already gone */ }
       return;
     }
-    for (const buf of queue.splice(0)) up.send(buf);
+    for (const buf of queue.splice(0)) {
+      try {
+        up.send(buf);
+      } catch {
+        break;
+      }
+    }
     queueBytes = 0;
     lastClientAudio = Date.now();
     keepalive = setInterval(() => {
@@ -1041,8 +1077,11 @@ function deepgramSession(
       return;
     }
     lastClientAudio = Date.now();
-    if (up.readyState === WebSocket.OPEN) up.send(buf);
-    else if (queue.length < 200 && queueBytes + buf.byteLength <= MAX_WS_QUEUE_BYTES) {
+    if (up.readyState === WebSocket.OPEN) {
+      try {
+        up.send(buf);
+      } catch { /* upstream closing */ }
+    } else if (queue.length < 200 && queueBytes + buf.byteLength <= MAX_WS_QUEUE_BYTES) {
       queue.push(buf);
       queueBytes += buf.byteLength;
     }

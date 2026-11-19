@@ -250,10 +250,30 @@ const geomAfter = await p.evaluate(() => ({ h: document.querySelector("#ticker")
 ok(geomBefore.h === 220 && geomAfter.h === 220 && Math.abs(geomBefore.barTop - geomAfter.barTop) < 0.5, "fixed-height #ticker causes zero vertical layout shift");
 // Duplicate inline QR tabs removed (safer Mic modal only); pinned Take-Home links reach reader!
 ok((await p.$("#qrTabMic")) === null, "inline Phone mic tab removed to prevent accidental write-key screenshare");
+// Title auto-primer only extracts real acronyms/compounds (never ransom-notes "The" or "Week")
+ok((await p.evaluate(() => termsFrom("The Future of StageType and How Web Apps Work"))) === "StageType", "termsFrom extracts compounds/acronyms without ransom-noting plain Title Case words");
+ok((await p.inputValue("#keyterms")) === "COMP1010", "COMP1010 Week 3 auto-primes only COMP1010");
 await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
-await p.fill("#roomLinks", "https://madebypablo.app/slides");
+await p.fill("#roomLinks", "Slides: https://maps.google.com/@-37.767,144.963,15z, https://madebypablo.app/slides");
 await a2.waitForFunction(() => [...document.querySelectorAll("#linksList a")].some((a) => a.href.includes("madebypablo.app/slides")));
-ok(true, "presenter-pinned Take-Home link arrives live in reader links tray");
+const readerHrefs = await a2.$$eval("#linksList a", (as) => as.map((a) => a.href));
+ok(
+  readerHrefs.includes("https://maps.google.com/@-37.767,144.963,15z") &&
+    readerHrefs.includes("https://madebypablo.app/slides") &&
+    !readerHrefs.some((h) => h.includes("144.0.3.195") || h.includes("://slides")),
+  "Take-Home links preserve Google Maps commas and ignore plain words: " + JSON.stringify(readerHrefs),
+);
+// Clicking a caption while Aa popover is open dismisses Aa WITHOUT starring the line underneath!
+await a2.click("#panel summary");
+ok(await a2.$eval("#panel", (d) => d.open), "Aa panel opened before outside-click test");
+const starsBefore = await a2.$$eval("#feed p.line.starred", (ns) => ns.length);
+await a2.locator("#feed p.line").first().click({ position: { x: 12, y: 10 } });
+ok(!(await a2.$eval("#panel", (d) => d.open)) && (await a2.$$eval("#feed p.line.starred", (ns) => ns.length)) === starsBefore, "outside-click closes Aa panel without starring the line underneath");
+// Non-Latin fileStem fallback & email non-linkification in shared.js
+ok(
+  await a2.evaluate(() => !window.StageTypeShared.fileStem("日本語のトーク", "abc123").startsWith("-") && window.StageTypeShared.extractLinks(["email pablo@stagetype.app"]).length === 0),
+  "shared.js handles non-Latin filenames and skips email addresses in LINK_RE",
+);
 await p.evaluate(() => { document.querySelector("#moreTicker").open = false; });
 ok((await p.evaluate(() => applyRoomWords("welcome to stage type and soft stack", ["StageType", "SoftStack"]))) === "welcome to StageType and SoftStack", "client-side Room Words primer fixes proper nouns and CamelCase compounds");
 await push2({ text: "Panel question.", final: true, speaker: "Host" });
@@ -520,6 +540,43 @@ ok(await ar.isVisible("#copyKeptBtn") && await ar.isVisible("#quoteCardBtn"), "k
 await ar.reload();
 await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "reordered kept quotes survive reader reload");
+// Already-ended saved talk opens straight into #endCard even without SSE
+ok((await ar.textContent("#state")) === "Saved on this phone", "ended saved talk restores straight to Saved on this phone without hanging");
+
+// ---- Mic End talk saves local transcript so "Open saved transcript" never hits a dead end
+await p.fill("#title", "Mic Takehome");
+await p.click("#startBtn");
+await p.waitForSelector("#stopBtn:not([hidden])");
+const roomM = (await p.textContent("#urlDisplay")).split("/").pop();
+const tokM = (await p.evaluate(() => micUrl())).split("#")[1];
+const mm = await ctx.newPage(); track(mm, "mic-end-saved");
+await mm.addInitScript(() => {
+  window.__recs = [];
+  window.SpeechRecognition = class {
+    constructor() { this.started = false; window.__recs.push(this); }
+    start() { this.started = true; }
+    stop() { this.started = false; this.onend?.(); }
+    emit(text, isFinal) { this.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: text }], { isFinal })] }); }
+  };
+  window.__rec = () => window.__recs.at(-1);
+});
+await mm.goto(`${base}/mic/${roomM}#${tokM}`);
+await mm.waitForFunction(() => document.querySelector("#talk").textContent === "Mic Takehome");
+await mm.click("#go");
+await mm.waitForFunction(() => document.body.classList.contains("live"));
+await mm.evaluate(() => window.__rec().emit("Saved from the lapel mic.", true));
+await mm.waitForFunction(() => document.querySelector("#echoSettled").textContent.includes("Saved from the lapel mic."));
+// Double-tap End talk on the lapel mic
+await mm.click("#end");
+await mm.click("#end");
+await mm.waitForSelector("#openTranscript:not([hidden])");
+await mm.click("#openTranscript");
+await mm.waitForFunction(() => !document.querySelector("#endCard").hidden);
+ok(
+  (await mm.textContent("#feed")).includes("Saved from the lapel mic.") && (await mm.$eval("#closedCard", (c) => c.hidden)),
+  "mic End talk -> Open saved transcript opens the saved take-home copy (no dead end)",
+);
+await mm.close();
 
 // ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere
 await p.evaluate(() => { localStorage.removeItem("st-engine"); });
@@ -588,7 +645,7 @@ await mp.waitForFunction(() => document.querySelector("#ticker").textContent.inc
 ok(true, "sample plays into the bar");
 await mob.close(); await dctx.close();
 } catch (e) {
-  console.error("suite aborted: " + (e?.message ?? e));
+  console.error("suite aborted: " + (e?.stack ?? e?.message ?? e));
   failed++;
 } finally {
   await browser.close().catch(() => {});

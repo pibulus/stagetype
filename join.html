@@ -140,9 +140,17 @@ const NOPE = "No talk is using that code right now. Check the screen and try aga
 if (params.get("nope")) { code.value = params.get("nope").toUpperCase(); err.textContent = NOPE; }
 else if (params.get("code")) { code.value = params.get("code").toUpperCase(); }
 let busy = false;
-async function go() {
+async function go(fromSubmit = false) {
   const c = code.value.trim().toUpperCase();
-  if (!/^[A-Z]{4}$/.test(c) || busy) return;
+  if (busy) return;
+  if (!/^[A-Z]{4}$/.test(c)) {
+    if (fromSubmit) {
+      err.textContent = "Enter the four-letter code on the screen.";
+      code.classList.remove("shake"); void code.offsetWidth; code.classList.add("shake");
+      code.focus();
+    }
+    return;
+  }
   busy = true; err.textContent = "";
   try {
     const r = await fetch("/api/join/" + c);
@@ -153,7 +161,7 @@ async function go() {
   if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
   busy = false;
 }
-form.onsubmit = (e) => { e.preventDefault(); go(); };
+form.onsubmit = (e) => { e.preventDefault(); go(true); };
 code.oninput = () => { code.value = code.value.replace(/[^A-Za-z]/g, "").toUpperCase(); err.textContent = ""; if (code.value.length === 4) go(); };
 if (code.value.length === 4 && !params.get("nope")) go();
 

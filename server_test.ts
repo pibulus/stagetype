@@ -692,6 +692,7 @@ Deno.test("listen-local helper: parses mic URL, strips whisper markers, and post
   assertEquals(rooms.get(id)!.speakers, ["Moderator"]);
   assertThrows(() => parseMicTarget(`${base}/mic/../../admin#${token}`));
   assertThrows(() => parseMicTarget(`${base}/mic/#${token}`));
+  assertEquals(parseMicTarget(`${base}/mic/${id}#token=${token}&pass=club%20secret`).token, token);
   assert(sameToken("Bearer abc", "Bearer abc"));
   assert(!sameToken("Bearer abc", "Bearer ab"));
   await del(`/api/room/${id}`, token);
@@ -737,10 +738,24 @@ Deno.test("security & ops: headers, healthz, version, HEAD 404, cross-site guard
   assertEquals(sniffImageType(FAKE_WEBP), "image/webp");
   assertEquals(sniffImageType(FAKE_PNG), "image/png");
   assertEquals(sniffImageType(new Uint8Array([1, 2, 3])), null);
-  assertEquals(cleanLinks(["madebypablo.app", "javascript:alert(1)", "https://stagetype.app"]), [
-    "https://madebypablo.app/",
-    "https://stagetype.app/",
-  ]);
+  assertEquals(
+    cleanLinks([
+      "madebypablo.app",
+      "slides",
+      "144.963",
+      "https://144.963",
+      "https://maps.google.com/@-37.767,144.963,15z",
+      "http://localhost:8787/demo",
+      "javascript:alert(1)",
+      "https://stagetype.app",
+    ]),
+    [
+      "https://madebypablo.app/",
+      "https://maps.google.com/@-37.767,144.963,15z",
+      "http://localhost:8787/demo",
+      "https://stagetype.app/",
+    ],
+  );
 
   const created = await (await post("/api/room", { title: "Links talk", lang: "ar-SA", links: ["madebypablo.app"] })).json();
   const s = await openStream(created.id);
@@ -788,19 +803,44 @@ Deno.test({
   },
 });
 
-Deno.test("deepgram pass gate: STAGETYPE_DEEPGRAM_PASS blocks ungated audio upgrades", async () => {
-  Deno.env.set("DEEPGRAM_API_KEY", "test-key");
-  Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "club-secret");
-  const eng = await (await handler(new Request(`${base}/api/engines`))).json();
-  assertEquals(eng, { browser: true, deepgram: true, passRequired: true });
-  const { id, token } = await mkRoom();
-  const denied = await handler(
-    new Request(`${base}/api/room/${id}/audio?source=mic`, {
-      headers: { upgrade: "websocket", "sec-websocket-protocol": `bearer, ${token}` },
-    }),
-  );
-  assertEquals(denied.status, 403);
-  await del(`/api/room/${id}`, token);
-  Deno.env.delete("STAGETYPE_DEEPGRAM_PASS");
-  Deno.env.delete("DEEPGRAM_API_KEY");
+Deno.test({
+  name: "deepgram pass gate: STAGETYPE_DEEPGRAM_PASS blocks ungated upgrades and accepts pass-b64 with special chars",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const dg = mockDeepgram(0);
+    Deno.env.set("DEEPGRAM_URL", `ws://localhost:${dg.addr.port}/listen`);
+    Deno.env.set("DEEPGRAM_API_KEY", "test-key");
+    Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "club: secret pass!");
+    const relay = Deno.serve({ port: 0, onListen() {} }, handler);
+    const origin = `ws://localhost:${relay.addr.port}`;
+
+    const eng = await (await handler(new Request(`${base}/api/engines`))).json();
+    assertEquals(eng, { browser: true, deepgram: true, passRequired: true });
+    const { id, token } = await mkRoom();
+    const denied = await handler(
+      new Request(`${base}/api/room/${id}/audio?source=mic`, {
+        headers: { upgrade: "websocket", "sec-websocket-protocol": `bearer, ${token}` },
+      }),
+    );
+    assertEquals(denied.status, 403);
+
+    const b64 = btoa("club: secret pass!").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token, "pass-b64", b64]);
+    await new Promise<void>((resolve, reject) => {
+      ws.onopen = () => resolve();
+      ws.onerror = () => reject(new Error("pass-b64 upgrade failed"));
+    });
+    ws.send(JSON.stringify({ type: "stop" }));
+    await new Promise<void>((r) => {
+      ws.onclose = () => r();
+    });
+
+    await del(`/api/room/${id}`, token);
+    Deno.env.delete("STAGETYPE_DEEPGRAM_PASS");
+    Deno.env.delete("DEEPGRAM_API_KEY");
+    Deno.env.delete("DEEPGRAM_URL");
+    await relay.shutdown();
+    await dg.shutdown();
+  },
 });

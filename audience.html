@@ -476,6 +476,8 @@ document.addEventListener("click", (e) => {
   const panel = $("#panel");
   if (panel?.open && !panel.contains(e.target)) {
     panel.open = false;
+    e.stopPropagation();
+    e.preventDefault();
   }
 }, true);
 
@@ -526,12 +528,25 @@ function writeTalk(ended = talkEnded) {
     id: roomId, title: talkTitle, lang: talkLang, lines: linesArr, times: lineTimes, speakers: lineSpeakers,
     links: pinnedLinks, seen, startedAt, updatedAt: Date.now(), ended: isEnded, stars: keptIndices(),
   };
-  store.set(TALK_KEY, JSON.stringify(rec));
-  let idx = store.json("stl-talks", []);
-  idx = idx.filter((t) => t && t.id !== roomId);
-  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, kept: stars.size, links: allLinks().length, updatedAt: rec.updatedAt, ended: isEnded });
-  while (idx.length > 20) { const old = idx.pop(); if (old?.id) store.del(`stl-talk-${old.id}`); }
-  store.set("stl-talks", JSON.stringify(idx));
+  let idx = store.json("stl-talks", []).filter((t) => t && t.id !== roomId);
+  const payload = JSON.stringify(rec);
+  let ok = store.set(TALK_KEY, payload);
+  while (!ok && idx.length) {
+    const oldest = idx.pop();
+    if (oldest?.id) store.del(`stl-talk-${oldest.id}`);
+    ok = store.set(TALK_KEY, payload);
+  }
+  if (ok) {
+    idx.unshift({ id: roomId, title: talkTitle, words: totalWords, kept: stars.size, links: allLinks().length, updatedAt: rec.updatedAt, ended: isEnded });
+    while (idx.length > 20) { const old = idx.pop(); if (old?.id) store.del(`stl-talk-${old.id}`); }
+    store.set("stl-talks", JSON.stringify(idx));
+  }
+  const where = $("#endWhere");
+  if (where) {
+    where.textContent = ok
+      ? "Saved on this phone. Reopens from this link, even offline."
+      : "Device storage is full — save .md or copy before closing this tab.";
+  }
 }
 function saveTalk(ended = false) {
   if (ended) talkEnded = true;
@@ -565,8 +580,7 @@ function updateStats() {
   $("#statsPill").textContent = `${words} word${words === 1 ? "" : "s"}`;
 }
 
-const captionLinks = [];
-const allLinks = () => extractLinks([], [...pinnedLinks, ...captionLinks]);
+const allLinks = () => extractLinks(linesArr, pinnedLinks);
 
 function fillCaption(node, text) {
   let last = 0;
@@ -581,7 +595,6 @@ function fillCaption(node, text) {
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     node.append(a);
-    if (!captionLinks.includes(href)) captionLinks.push(href);
     last = m.index + raw.length;
   }
   if (last < text.length) node.append(text.slice(last));
@@ -819,27 +832,40 @@ $("#quoteCardBtn").onclick = async () => {
   // Talk title
   if (talkTitle) {
     g.fillStyle = "#5a4b42"; g.font = "800 28px 'Helvetica Neue', Helvetica, Arial, sans-serif";
-    g.fillText(talkTitle.toUpperCase().slice(0, 44), rx + 64, ry + 184);
+    g.fillText(talkTitle.toUpperCase().slice(0, 56), rx + 64, ry + 184, rw - 128);
   }
-  // Pink left quote bar + wrapped quote
+  // Pink left quote bar + wrapped quote (handles CJK, Thai, and long unbroken URLs)
   const fontSize = quote.length > 160 ? 46 : quote.length > 90 ? 56 : 68;
   g.font = `800 ${fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
   const maxW = rw - 172;
   const wordsList = `“${quote}”`.split(/\s+/);
   const lines = [];
   let cur = "";
-  for (const w of wordsList) {
-    const test = cur ? `${cur} ${w}` : w;
-    if (g.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
-  }
+  const pushToken = (tok) => {
+    if (g.measureText(tok).width <= maxW) {
+      const test = cur ? `${cur} ${tok}` : tok;
+      if (g.measureText(test).width > maxW && cur) { lines.push(cur); cur = tok; } else cur = test;
+      return;
+    }
+    if (cur) { lines.push(cur); cur = ""; }
+    for (const ch of Array.from(tok)) {
+      if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; } else cur += ch;
+    }
+  };
+  for (const w of wordsList) pushToken(w);
   if (cur) lines.push(cur);
   const clipped = lines.slice(0, 10);
+  if (lines.length > 10) {
+    let tail = clipped[9].replace(/[”".,;:\s]+$/, "");
+    while (tail.length > 1 && g.measureText(`${tail}…”`).width > maxW) tail = tail.slice(0, -1);
+    clipped[9] = `${tail}…”`;
+  }
   const lineH = Math.round(fontSize * 1.28);
   const startY = ry + 310;
   g.fillStyle = "#ff6ac2";
   g.fillRect(rx + 64, startY - fontSize + 10, 12, clipped.length * lineH + 8);
   g.fillStyle = "#1e1714";
-  clipped.forEach((ln, idx) => g.fillText(ln, rx + 104, startY + idx * lineH));
+  clipped.forEach((ln, idx) => g.fillText(ln, rx + 104, startY + idx * lineH, maxW));
   // Footer stamp
   g.strokeStyle = "rgba(30,23,20,0.18)"; g.lineWidth = 3;
   g.beginPath(); g.moveTo(rx + 64, ry + rh - 148); g.lineTo(rx + rw - 64, ry + rh - 148); g.stroke();
@@ -855,7 +881,8 @@ $("#quoteCardBtn").onclick = async () => {
   const filename = `${stem()}-quote.png`;
   const file = new File([blob], filename, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: talkTitle || "StageType quote" }); return; } catch {}
+    try { await navigator.share({ files: [file], title: talkTitle || "StageType quote" }); return; }
+    catch (err) { if (err?.name === "AbortError") return; }
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -886,6 +913,13 @@ const setState = (state, label) => {
 };
 
 let seen = 0;
+let es = null;
+let unloading = false;
+addEventListener("beforeunload", () => { unloading = true; });
+addEventListener("pagehide", () => {
+  unloading = true;
+  if (es) { es.close(); es = null; }
+});
 const saved = loadSaved();
 if (saved && Array.isArray(saved.lines) && saved.lines.length) {
   applyRoom({ title: saved.title || "", lang: saved.lang || "", links: Array.isArray(saved.links) ? saved.links : [] });
@@ -906,79 +940,96 @@ if (saved && Array.isArray(saved.lines) && saved.lines.length) {
 }
 
 const demoSig = new URLSearchParams(location.search).get("s");
-const es = new EventSource(`/api/room/${roomId}/stream${demoSig ? `?s=${encodeURIComponent(demoSig)}` : ""}`);
+function connectStream() {
+  if (es) es.close();
+  es = new EventSource(`/api/room/${roomId}/stream${demoSig ? `?s=${encodeURIComponent(demoSig)}` : ""}`);
 
-es.addEventListener("open", () => {
-  talkEnded = false;
-  $("#closedCard").hidden = true;
-  setState("live", "Live");
-});
+  es.addEventListener("open", () => {
+    talkEnded = false;
+    $("#closedCard").hidden = true;
+    $("#endCard").hidden = true;
+    setState("live", "Live");
+  });
 
-es.addEventListener("backlog", (e) => {
-  const { lines = [], offset = 0, assets = [], assetIds, speakers = [], paused = false, ...info } = JSON.parse(e.data);
-  applyRoom(info);
-  if (info.startedAt) startedAt = info.startedAt;
-  if (paused) setState("paused", "Paused on stage");
-  const startIdx = Math.max(0, seen - offset);
-  lines.slice(startIdx).forEach((t, idx) => addLine(t, false, speakers[startIdx + idx] || ""));
-  seen = Math.max(seen, offset + lines.length);
-  // Reconcile against ALL live asset IDs on the server (not just the last 12 backlog thumbs).
-  const liveIds = new Set(Array.isArray(assetIds) ? assetIds : assets.map((a) => a.id));
-  for (const fig of $$("#feed figure.catch")) {
-    const id = fig.querySelector("img")?.dataset.asset;
-    if (id && !liveIds.has(id)) {
-      if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
-      fig.remove();
-      seenAssets.delete(id);
+  es.addEventListener("backlog", (e) => {
+    const { lines = [], offset = 0, assets = [], assetIds, speakers = [], paused = false, ...info } = JSON.parse(e.data);
+    applyRoom(info);
+    if (info.startedAt) startedAt = info.startedAt;
+    if (paused) setState("paused", "Paused on stage");
+    const startIdx = Math.max(0, seen - offset);
+    lines.slice(startIdx).forEach((t, idx) => addLine(t, false, speakers[startIdx + idx] || ""));
+    seen = Math.max(seen, offset + lines.length);
+    // Reconcile against ALL live asset IDs on the server (not just the last 12 backlog thumbs).
+    const liveIds = new Set(Array.isArray(assetIds) ? assetIds : assets.map((a) => a.id));
+    for (const fig of $$("#feed figure.catch")) {
+      const id = fig.querySelector("img")?.dataset.asset;
+      if (id && !liveIds.has(id)) {
+        if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
+        fig.remove();
+        seenAssets.delete(id);
+      }
     }
-  }
-  if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
-  for (const a of assets) addAsset(a, false, true);
-  if (linesArr.length) saveTalk();
-  follow();
-});
+    if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
+    for (const a of assets) addAsset(a, false, true);
+    if (linesArr.length) saveTalk();
+    follow();
+  });
 
-es.addEventListener("final", (e) => {
-  const { text, speaker = "" } = JSON.parse(e.data);
-  if ($("#bar").dataset.state === "paused") setState("live", "Live");
-  if (text) {
-    addLine(text, true, speaker);
-    seen++;
-  }
-  interimEl.textContent = "";
-  follow();
-});
+  es.addEventListener("final", (e) => {
+    const { text, speaker = "" } = JSON.parse(e.data);
+    if ($("#bar").dataset.state === "paused") setState("live", "Live");
+    if (text) {
+      addLine(text, true, speaker);
+      seen++;
+    }
+    interimEl.textContent = "";
+    follow();
+  });
 
-es.addEventListener("paused", (e) => {
-  const { paused } = JSON.parse(e.data);
-  if (paused) setState("paused", "Paused on stage");
-  else setState("live", "Live");
-});
+  es.addEventListener("paused", (e) => {
+    const { paused } = JSON.parse(e.data);
+    if (paused) setState("paused", "Paused on stage");
+    else setState("live", "Live");
+  });
 
-es.addEventListener("links", (e) => {
-  const { links } = JSON.parse(e.data);
-  if (Array.isArray(links)) {
-    pinnedLinks = links;
-    renderLinks();
-    saveTalk();
-  }
-});
+  es.addEventListener("links", (e) => {
+    const { links } = JSON.parse(e.data);
+    if (Array.isArray(links)) {
+      pinnedLinks = links;
+      renderLinks();
+      saveTalk();
+    }
+  });
 
-es.addEventListener("asset", (e) => { addAsset(JSON.parse(e.data)); });
-es.addEventListener("asset-gone", (e) => {
-  const { id } = JSON.parse(e.data);
-  seenAssets.delete(id);
-  const fig = feed.querySelector(`figure.catch img[data-asset="${CSS.escape(id)}"]`)?.closest("figure.catch");
-  if (!fig) return;
-  if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
-  fig.remove();
-  if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
-});
+  es.addEventListener("asset", (e) => { addAsset(JSON.parse(e.data)); });
+  es.addEventListener("asset-gone", (e) => {
+    const { id } = JSON.parse(e.data);
+    seenAssets.delete(id);
+    const fig = feed.querySelector(`figure.catch img[data-asset="${CSS.escape(id)}"]`)?.closest("figure.catch");
+    if (!fig) return;
+    if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
+    fig.remove();
+    if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
+  });
 
-es.addEventListener("interim", (e) => {
-  interimEl.textContent = JSON.parse(e.data).text || "";
-  follow();
-});
+  es.addEventListener("interim", (e) => {
+    interimEl.textContent = JSON.parse(e.data).text || "";
+    follow();
+  });
+
+  es.addEventListener("end", () => talkOver("Talk ended"));
+
+  es.onerror = () => {
+    if (unloading) return;
+    if (es.readyState === EventSource.CLOSED) {
+      talkOver(linesArr.length ? "Saved on this phone" : "Room closed", linesArr.length ? "saved" : "ended");
+    } else if (!navigator.onLine && linesArr.length) {
+      talkOver("Saved offline", "saved", false);
+    } else {
+      setState("reconnecting", "Reconnecting");
+    }
+  };
+}
 
 function moveKeptQuote(fromLineIdx, toLineIdx) {
   if (fromLineIdx === null || toLineIdx === null || fromLineIdx === toLineIdx) return;
@@ -992,6 +1043,18 @@ function moveKeptQuote(fromLineIdx, toLineIdx) {
   }
 }
 
+function updateEndStats() {
+  const stats = $("#endStats");
+  if (!stats) return;
+  const when = new Date(startedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const links = allLinks();
+  const bits = [when, `${totalWords} word${totalWords === 1 ? "" : "s"}`];
+  if (stars.size) bits.push(`${stars.size} kept`);
+  if (links.length) bits.push(`${links.length} link${links.length === 1 ? "" : "s"}`);
+  stats.textContent = bits.join(" · ");
+  stats.hidden = false;
+}
+
 let quoteSaveTimer = null;
 function renderKeptQuotes() {
   const idxs = keptIndices();
@@ -1000,6 +1063,7 @@ function renderKeptQuotes() {
   const quoteCardBtn = $("#quoteCardBtn");
   if (copyKeptBtn) copyKeptBtn.hidden = idxs.length === 0;
   if (quoteCardBtn) quoteCardBtn.hidden = idxs.length === 0;
+  updateEndStats();
   const shown = idxs.slice(0, 5);
   quotes.replaceChildren(...shown.map((lineIdx, pos) => {
     const row = document.createElement("div");
@@ -1029,8 +1093,20 @@ function renderKeptQuotes() {
         const feedSpan = feed.querySelector(`p.line[data-i="${lineIdx}"] span`);
         if (feedSpan) { feedSpan.replaceChildren(); fillCaption(feedSpan, val); }
         updateStats();
+        updateEndStats();
         clearTimeout(quoteSaveTimer);
-        quoteSaveTimer = setTimeout(() => writeTalk(talkEnded), 350);
+        quoteSaveTimer = setTimeout(() => { renderLinks(); writeTalk(talkEnded); }, 350);
+      }
+    });
+    q.addEventListener("blur", () => {
+      const val = q.textContent.replace(/\s+/g, " ").trim();
+      if (!val) {
+        q.textContent = linesArr[lineIdx] || "";
+      } else {
+        clearTimeout(quoteSaveTimer);
+        renderLinks();
+        updateEndStats();
+        writeTalk(talkEnded);
       }
     });
 
@@ -1056,7 +1132,8 @@ function renderKeptQuotes() {
       ptrId = null;
       row.classList.remove("dragging");
       try { if (handle.hasPointerCapture(ev.pointerId)) handle.releasePointerCapture(ev.pointerId); } catch {}
-      if (ptrDragging && ptrTargetIdx !== null && ptrTargetIdx !== lineIdx) moveKeptQuote(lineIdx, ptrTargetIdx);
+      const commit = ev.type !== "pointercancel";
+      if (commit && ptrDragging && ptrTargetIdx !== null && ptrTargetIdx !== lineIdx) moveKeptQuote(lineIdx, ptrTargetIdx);
       ptrDragging = false; ptrTargetIdx = null;
     };
     handle.addEventListener("pointerup", finishPointer);
@@ -1086,9 +1163,11 @@ function renderKeptQuotes() {
   quotes.hidden = idxs.length === 0;
 }
 
-function talkOver(label, state = "ended") {
-  es.close();
-  talkEnded = true;
+function talkOver(label, state = "ended", markEnded = true) {
+  if (markEnded) {
+    if (es) { es.close(); es = null; }
+    talkEnded = true;
+  }
   interimEl.textContent = "";
   $("#waiting")?.remove();
   setState(state, label);
@@ -1097,14 +1176,7 @@ function talkOver(label, state = "ended") {
     $("#closedCard").hidden = true;
     paintStars();
     $("#endTitle").textContent = talkTitle || "Talk ended";
-    const stats = $("#endStats");
-    const when = new Date(startedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-    const links = allLinks();
-    const bits = [when, `${totalWords} word${totalWords === 1 ? "" : "s"}`];
-    if (stars.size) bits.push(`${stars.size} kept`);
-    if (links.length) bits.push(`${links.length} link${links.length === 1 ? "" : "s"}`);
-    stats.textContent = bits.join(" · ");
-    stats.hidden = false;
+    updateEndStats();
 
     renderKeptQuotes();
     renderLinks();
@@ -1126,22 +1198,22 @@ function talkOver(label, state = "ended") {
     }
 
     $("#endCard").hidden = false;
-    saveTalk(true);
+    if (markEnded) saveTalk(true);
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);
   } else {
     $("#closedCard").hidden = false;
   }
 }
 
-es.addEventListener("end", () => talkOver("Talk ended"));
-
-es.onerror = () => {
-  if (es.readyState === EventSource.CLOSED) {
-    talkOver(linesArr.length ? "Saved on this phone" : "Room closed", linesArr.length ? "saved" : "ended");
-  } else {
-    setState("reconnecting", "Reconnecting");
-  }
-};
+// Offline-first startup: if this talk already ended on disk, open straight into the saved take-home card.
+if (saved && Array.isArray(saved.lines) && saved.lines.length && saved.ended) {
+  talkOver("Saved on this phone", "saved", true);
+} else if (saved && Array.isArray(saved.lines) && saved.lines.length && !navigator.onLine) {
+  talkOver("Saved offline", "saved", false);
+  window.addEventListener("online", () => { if (!es && !talkEnded) connectStream(); }, { once: true });
+} else {
+  connectStream();
+}
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>

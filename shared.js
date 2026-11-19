@@ -31,7 +31,7 @@
 
   const store = {
     get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-    set: (k, v) => { try { localStorage.setItem(k, String(v)); } catch {} },
+    set: (k, v) => { try { localStorage.setItem(k, String(v)); return true; } catch { return false; } },
     del: (k) => { try { localStorage.removeItem(k); } catch {} },
     json: (k, fallback) => {
       try {
@@ -45,8 +45,10 @@
   };
 
   const slug = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-  const fileStem = (title, roomId, when = Date.now()) =>
-    `${title ? slug(title) : "stagetype-" + roomId}-${new Date(when || Date.now()).toISOString().split("T")[0]}`;
+  const fileStem = (title, roomId, when = Date.now()) => {
+    const base = slug(title) || (roomId ? `stagetype-${slug(roomId) || roomId}` : "stagetype-talk");
+    return `${base}-${new Date(when || Date.now()).toISOString().split("T")[0]}`;
+  };
 
   const words = (lines) =>
     (Array.isArray(lines) ? lines : []).reduce((n, l) => n + String(l || "").split(/\s+/).filter(Boolean).length, 0);
@@ -63,15 +65,21 @@
   }
 
   const LINK_RE =
-    /(?:https?:\/\/[^\s<>"']+|www\.[^\s<>"']+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*)?)/gi;
+    /(?:https?:\/\/[^\s<>"']+|(?<!@)www\.[^\s<>"']+\b|(?<![@\w.-])\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*)?)/gi;
 
   function linkTarget(raw) {
     const cleaned = String(raw || "").trim().replace(/[.,;:!?)\]]+$/, "");
     if (!cleaned) return null;
-    const href = /^https?:/i.test(cleaned) ? cleaned : `https://${cleaned.replace(/^www\./i, "")}`;
+    const explicit = /^https?:\/\//i.test(cleaned);
+    if (!explicit && !/\.[a-z]{2,}/i.test(cleaned)) return null;
+    const href = explicit ? cleaned : `https://${cleaned.replace(/^www\./i, "")}`;
     try {
       const u = new URL(href);
-      return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+      if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+      const host = u.hostname.toLowerCase();
+      const isLocal = explicit && (host === "localhost" || host === "127.0.0.1");
+      const isDomain = host.includes(".") && /\.[a-z]{2,}$/i.test(host) && !host.startsWith(".") && !host.includes("..");
+      return isLocal || isDomain ? u.href : null;
     } catch {
       return null;
     }
