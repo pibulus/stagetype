@@ -3,278 +3,292 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
-<script src="/deepgram.js"></script>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1714">
+<meta name="robots" content="noindex, nofollow">
 <title>StageType · Lapel Mic</title>
+<script src="/shared.js"></script>
+<script src="/deepgram.js"></script>
 <style>
   :root {
-    --ground: #1e1714; --ink: #fbf1e4; --muted: rgba(251,241,228,.55); --line: #fbf1e4;
-    --pink: #ffb3d1; --mint: #b8f0d8; --butter: #fff0a8;
+    --ground: #1e1714; --surface: #28201c; --ink: #fbf1e4; --muted: rgba(251,241,228,.72); --line: #fbf1e4;
+    --pink: #ff6ac2; --mint: #2dd4bf; --butter: #ffc74d;
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body {
-    margin: 0; height: 100%; background: var(--ground); color: var(--ink);
+    margin: 0; min-height: 100dvh; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
   body {
-    display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
-    padding: calc(env(safe-area-inset-top) + 16px) 20px calc(env(safe-area-inset-bottom) + 20px);
+    display: grid; grid-template-rows: auto 1fr auto; gap: 14px;
+    padding: calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 18px);
     max-width: 520px; margin: 0 auto;
   }
-  
-  header {
-    display: flex; justify-content: space-between; align-items: center;
-    border-bottom: 1px solid rgba(251,241,228,0.1); padding-bottom: 12px;
-  }
-  .brand-title { font-weight: 900; font-size: 1.15rem; letter-spacing: -0.03em; }
-  .brand-title::after { content: "."; color: var(--pink); }
-  .brand-sub { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
-  
-  select {
-    font: 600 14px var(--swiss); color: var(--ink); background: rgba(251,241,228,0.06);
-    border: 1px solid rgba(251,241,228,0.18); border-radius: 999px; height: 40px; padding: 0 14px;
-    cursor: pointer; max-width: 46vw; text-overflow: ellipsis;
-  }
-  select option { color: #1e1714; }
-  #talk { font-size: 13px; font-weight: 800; color: var(--butter); margin: 0 0 8px; }
-  #talk[hidden] { display: none; }
 
-  /* Status Bar */
-  .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  header {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    border-bottom: 1.5px solid rgba(251,241,228,0.18); padding-bottom: 12px;
+  }
+  h1 { margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: 1.15rem; }
+  .brand-title { font-weight: 900; letter-spacing: -0.03em; }
+  .brand-title::after { content: "."; color: var(--pink); }
+  .brand-sub { font-weight: 500; color: var(--muted); font-size: 0.9rem; }
+
+  select {
+    font: 600 16px var(--swiss); color: var(--ink); background: var(--surface);
+    border: 1.5px solid var(--line); box-shadow: 2px 2px 0 rgba(251,241,228,0.35); border-radius: 999px;
+    height: 44px; padding: 0 14px; cursor: pointer; max-width: 50vw; text-overflow: ellipsis;
+  }
+  select option { color: #1e1714; background: #fffdf5; }
+  #talk { font-size: 13.5px; font-weight: 800; color: var(--butter); margin: 0 0 8px; }
+
+  .status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
   #state {
     font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
     color: var(--muted); display: inline-flex; align-items: center; gap: 8px;
   }
   #state.on { color: var(--mint); }
-  .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--muted);
-  }
-  #state.on .dot { background: var(--mint); box-shadow: 0 0 12px 1px rgba(184,240,216,.5); animation: breatheDot 2.2s infinite ease-in-out; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  #state.on .dot { background: var(--mint); box-shadow: 0 0 12px 1px rgba(45,212,191,.55); animation: breatheDot 2.2s infinite ease-in-out; }
   @keyframes breatheDot { 50% { transform: scale(1.25); opacity: .55; } }
-  #room { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; }
+  #room { font-size: 13px; font-weight: 700; color: var(--muted); margin: 0; }
   #room b { color: var(--butter); font-weight: 900; }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 
-  .engine-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 58px; }
-  .seg { display: flex; flex: 1; border: 1px solid rgba(251,241,228,0.16); border-radius: 999px; padding: 3px; gap: 2px; background: rgba(251,241,228,0.05); }
-  .seg button { flex: 1; height: 30px; border: none; border-radius: 999px; background: transparent; color: var(--ink); font: 800 13px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .22s var(--spring); }
-  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); background: var(--mint); color: #1e1714; }
-  .seg button:disabled { opacity: .4; }
+  .engine-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 60px; }
+  .seg { display: flex; flex: 1; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; gap: 3px; background: var(--surface); }
+  .seg button {
+    flex: 1; height: 38px; border: none; border-radius: 999px; background: transparent; color: var(--ink);
+    font: 800 13.5px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform .2s var(--spring), background .15s;
+  }
+  .seg button[aria-pressed="true"] { background: var(--mint); color: #1e1714; }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
   .seg button:active { transform: scale(.96); }
   #speaker {
-    flex: 1; height: 36px; border-radius: 999px; border: 1px solid rgba(251,241,228,0.16);
-    background: rgba(251,241,228,0.05); color: var(--ink); font: 600 13px var(--swiss);
-    padding: 0 14px; outline: none;
+    flex: 1; height: 44px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: var(--surface); color: var(--ink); font: 600 16px var(--swiss);
+    padding: 0 15px;
   }
   #speaker::placeholder { color: var(--muted); font-weight: 500; }
-  #speaker:focus { border-color: var(--pink); }
   body.live .engine-row { display: none; }
 
-  .mic-stage { display: flex; flex-direction: column; min-height: 0; }
+  main.mic-stage { display: flex; flex-direction: column; min-height: 0; }
 
-  /* Live Transcription Echo */
+  /* Live Transcription Echo — intentionally NOT aria-live so VoiceOver never feeds back into the mic */
   .echo-container {
     display: flex; flex-direction: column; justify-content: flex-end;
-    background: rgba(251,241,228,0.04); border: 1px solid rgba(251,241,228,0.12);
-    border-radius: 26px; padding: 20px; min-height: 160px; margin-bottom: 16px;
-    flex: 1;
+    background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 rgba(251,241,228,0.28);
+    border-radius: 24px; padding: 18px; min-height: 150px; margin-bottom: 14px;
+    flex: 1; transition: border-color .25s ease;
   }
-  #guide { margin: auto 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 12px; color: var(--muted); font-size: 15px; line-height: 1.45; font-weight: 500; }
+  body.live .echo-container { border-color: var(--mint); }
+  #guide { margin: auto 0; padding: 0 0 0 1.3em; display: flex; flex-direction: column; gap: 10px; color: var(--muted); font-size: 14.5px; line-height: 1.45; font-weight: 500; }
   #guide li::marker { color: var(--pink); font-weight: 900; }
   #guide b { color: var(--ink); font-weight: 800; }
   body.started #guide { display: none; }
   #echo {
-    font: 700 clamp(20px, 6vw, 30px)/1.35 var(--swiss);
+    font: 700 clamp(20px, 5.8vw, 30px)/1.35 var(--swiss);
     overflow: hidden; max-height: 4.8em; letter-spacing: -0.01em;
   }
   #echo .interim { color: var(--pink); }
-  #echo .interim::after { content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .12em; vertical-align: -.08em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
-  #echo .last { animation: land .55s ease-out; }
-  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--mint); } 35% { opacity: 1; text-shadow: 0 0 16px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
+  #echo .interim:empty { display: none; }
+  #echo .interim:not(:empty)::after { content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .12em; vertical-align: -.08em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  #echo .last.land { animation: land .48s ease-out; }
+  @keyframes land { 0% { opacity: .2; text-shadow: 0 0 0 var(--mint); } 40% { opacity: 1; text-shadow: 0 0 14px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
   @keyframes caret { to { opacity: 0; } }
-  body.live .echo-container { border-color: rgba(184,240,216,.45); }
-  .echo-container { transition: border-color .3s, box-shadow .3s; }
-  #echo:empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
-  body:not(.started) #echo:empty::before { content: none; }
+  body.started #echo.empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
 
-  /* Big Stage Button & Glow Aura */
-  .mic-button-wrap {
-    position: relative; width: 100%; display: flex; align-items: center; justify-content: center;
-  }
+  .mic-button-wrap { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; }
   .pulse-aura {
-    position: absolute; inset: -8px; border-radius: 44px;
-    background: var(--mint); opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    position: absolute; inset: -6px; border-radius: 36px;
+    background: var(--mint); opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
   }
-  .pulse-aura.active {
-    opacity: 0.25; animation: auraWave 1.6s ease-out infinite;
-  }
-  @keyframes auraWave {
-    0% { transform: scale(0.96); opacity: 0.35; }
-    100% { transform: scale(1.08); opacity: 0; }
-  }
+  .pulse-aura.active { opacity: 0.28; animation: auraWave 1.6s ease-out infinite; }
+  @keyframes auraWave { 0% { transform: scale(0.97); opacity: 0.35; } 100% { transform: scale(1.06); opacity: 0; } }
 
   #go {
-    position: relative; width: 100%; height: 32vh; min-height: 180px; max-height: 280px;
-    border-radius: 32px; cursor: pointer;
-    font: 800 clamp(28px, 8.5vw, 42px) var(--swiss); color: #1e1714;
-    background: var(--pink);
-    border: 1px solid rgba(251,241,228,0.16);
-    box-shadow: none;
-    transition: transform .22s var(--spring), box-shadow .22s var(--spring), background .2s;
+    position: relative; width: 100%; height: 28vh; min-height: 156px; max-height: 248px;
+    border-radius: 28px; cursor: pointer;
+    font: 900 clamp(28px, 8vw, 40px) var(--swiss); color: #1e1714;
+    background: var(--pink); border: 2px solid var(--line); box-shadow: 4px 4px 0 rgba(251,241,228,0.4);
+    transition: transform .18s var(--spring), background .2s, box-shadow .18s var(--spring);
     -webkit-tap-highlight-color: transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   }
-  #go:active { transform: scale(.98); transition-duration: .06s; }
-  #go:focus-visible, #end:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; }
-  #go:disabled { opacity: .5; }
+  #go:active:not(:disabled) { transform: translate(2px, 2px) scale(.98); box-shadow: 1px 1px 0 rgba(251,241,228,0.4); transition-duration: .06s; }
+  #go:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
   #go.live { background: var(--mint); }
-  .btn-subtext { font-size: 13px; font-weight: 700; opacity: 0.7; letter-spacing: 0.04em; }
+  #go.locked { background: var(--surface); color: var(--mint); border-color: var(--mint); }
+  .btn-subtext { font-size: 13.5px; font-weight: 700; opacity: 0.8; letter-spacing: 0.03em; }
 
-  /* End Talk Button */
-  #end {
-    margin-top: 14px; width: 100%; height: 50px; border-radius: 999px;
-    background: transparent; color: var(--ink); border: 1px solid rgba(251,241,228,0.2);
-    font: 800 16px var(--swiss); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+  .foot-actions { display: flex; gap: 10px; margin-top: 12px; }
+  .foot-actions > * { flex: 1; }
+  #end, #pocketBtn, #openTranscript {
+    height: 48px; border-radius: 999px;
+    background: var(--surface); color: var(--ink); border: 1.5px solid var(--line);
+    font: 800 15px var(--swiss); cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: transform .18s var(--spring), background .15s, color .15s;
   }
-  #end { transition: transform .22s var(--spring), background .15s, color .15s; }
-  #end:active { transform: scale(0.96); }
+  #end:active, #pocketBtn:active { transform: scale(0.97); }
   #end.armed { background: var(--butter); color: #1e1714; }
+  #pocketBtn[aria-pressed="true"] { background: var(--butter); color: #1e1714; }
+  #openTranscript { background: var(--mint); color: #1e1714; margin-top: 12px; width: 100%; }
+
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 3px solid var(--butter); outline-offset: 3px;
+  }
 
   #err {
     color: var(--butter); font-weight: 700; min-height: 1.2em; text-align: center;
-    margin: 8px 0 0; font-size: 14px;
+    margin: 0 0 10px; font-size: 14px;
   }
-
-  .screen-notice {
-    font-size: 12px; color: var(--muted); text-align: center; margin: 10px 0 0;
-  }
+  .screen-notice { font-size: 12px; color: var(--muted); text-align: center; margin: 10px 0 0; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 </style>
 </head>
 <body>
 <header>
-  <div>
+  <h1>
     <span class="brand-title">StageType</span>
     <span class="brand-sub">lapel mic</span>
-  </div>
-  <select id="lang" aria-label="Speech language">
-    <option value="en-AU">English (Australia)</option>
-    <option value="en-GB">English (UK)</option>
-    <option value="en-US">English (US)</option>
-    <option value="en-IN">English (India)</option>
-    <option value="es-ES">Español (España)</option>
-    <option value="es-MX">Español (México)</option>
-    <option value="fr-FR">Français</option>
-    <option value="de-DE">Deutsch</option>
-    <option value="it-IT">Italiano</option>
-    <option value="pt-BR">Português (Brasil)</option>
-    <option value="nl-NL">Nederlands</option>
-    <option value="pl-PL">Polski</option>
-    <option value="tr-TR">Türkçe</option>
-    <option value="ru-RU">Русский</option>
-    <option value="ar-SA">العربية</option>
-    <option value="hi-IN">हिन्दी</option>
-    <option value="id-ID">Bahasa Indonesia</option>
-    <option value="vi-VN">Tiếng Việt</option>
-    <option value="th-TH">ไทย</option>
-    <option value="zh-CN">中文 (普通话)</option>
-    <option value="zh-TW">中文 (台灣)</option>
-    <option value="yue-Hant-HK">粵語 (香港)</option>
-    <option value="ja-JP">日本語</option>
-    <option value="ko-KR">한국어</option>
-  </select>
+  </h1>
+  <select id="lang" aria-label="Speech language"></select>
 </header>
 
-<div class="mic-stage">
+<main class="mic-stage">
   <p id="talk" hidden></p>
   <div class="status-row">
-    <span id="state"><span class="dot"></span><span id="stateText">Paired · Ready</span></span>
+    <span id="state" role="status"><span class="dot" aria-hidden="true"></span><span id="stateText">Paired · Ready</span></span>
     <span id="room">0 in room</span>
   </div>
   <div class="engine-row">
-    <span class="engine-label">Engine</span>
-    <div class="seg" id="engineSeg" role="radiogroup" aria-label="Speech engine">
-      <button data-v="browser" aria-pressed="true">Browser</button>
-      <button data-v="deepgram" aria-pressed="false">Deepgram</button>
+    <span class="engine-label" id="engineLbl">Engine</span>
+    <div class="seg" id="engineSeg" role="group" aria-labelledby="engineLbl">
+      <button type="button" data-v="browser" aria-pressed="true">Browser</button>
+      <button type="button" data-v="deepgram" aria-pressed="false">Deepgram</button>
     </div>
   </div>
-  <div class="engine-row voice-row">
-    <span class="engine-label">Voice</span>
-    <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (optional, e.g. Host)" aria-label="Speaker label" autocomplete="off" spellcheck="false">
+  <div class="engine-row">
+    <label class="engine-label" for="speaker">Voice</label>
+    <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (optional, e.g. Host)" autocomplete="off" spellcheck="false">
   </div>
   <div class="echo-container">
     <ol id="guide">
       <li><b>Tap Go live</b> and allow the microphone.</li>
-      <li><b>Pocket it,</b> screen facing out, or hold it close to the voice.</li>
+      <li><b>Pocket it,</b> screen facing out, and tap Pocket lock if sliding it into fabric.</li>
       <li><b>Leave the screen on.</b> StageType keeps it awake. The laptop mic pauses while this one is live.</li>
     </ol>
-    <div id="echo" aria-live="polite"></div>
+    <div id="echo" class="empty"><span id="echoSettled"></span> <span id="echoInterim" class="interim"></span></div>
   </div>
-</div>
+</main>
 
-<div>
-  <p id="err"></p>
+<footer>
+  <p id="err" role="alert"></p>
   <div class="mic-button-wrap">
-    <div id="pulseAura" class="pulse-aura"></div>
-    <button id="go">
+    <div id="pulseAura" class="pulse-aura" aria-hidden="true"></div>
+    <button id="go" type="button">
       <span id="goLabel">Go live</span>
       <span class="btn-subtext" id="goSub">Tap to broadcast</span>
     </button>
   </div>
-  <button id="end">End talk</button>
+  <div class="foot-actions">
+    <button id="pocketBtn" type="button" aria-pressed="false" hidden>Pocket lock</button>
+    <button id="end" type="button">End talk</button>
+  </div>
+  <a id="openTranscript" href="#" hidden>Open saved transcript</a>
   <p class="screen-notice">Screen stay-awake enabled while live.</p>
-</div>
+</footer>
 
 <script>
 const $ = (s) => document.querySelector(s);
+const { fillLanguages, applyRoomWords } = window.StageTypeShared;
 const roomId = location.pathname.split("/").pop();
-const token = location.hash.slice(1);
-const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const TOKEN_KEY = `stm-tok-${roomId}`;
+let token = location.hash.slice(1);
+if (token) {
+  try { sessionStorage.setItem(TOKEN_KEY, token); } catch {}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch {}
+} else {
+  try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch {}
+}
 
-let rec = null, live = false, wake = null, finals = [], lastInterim = 0, interimTimer = null, recRestartTimer = null;
-const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+// Unique per-tab phone session ID so multi-phone panels and Deepgram streams never collide.
+let phoneId = "";
+try { phoneId = sessionStorage.getItem("stm-phone-id") || ""; } catch {}
+if (!phoneId) {
+  phoneId = `ph-${(crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(36).slice(2, 10))}`;
+  try { sessionStorage.setItem("stm-phone-id", phoneId); } catch {}
+}
+
+const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const qp = new URLSearchParams(location.search);
+fillLanguages($("#lang"), qp.get("lang") || "en-AU");
+
+let rec = null, live = false, pocketLocked = false, wake = null, finals = [], lastInterim = 0, interimTimer = null, recRestartTimer = null;
 const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
-if (!token) $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
-if (!Rec) $("#err").textContent = "This browser has no speech recognition. Use Safari or Chrome, or pick the Deepgram engine if the relay offers it.";
-if (Rec && token && location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
-  $("#err").textContent = "Phones need an https link for the mic. Serve StageType through a tunnel (see README) and rescan.";
-}
-
-const qp = new URLSearchParams(location.search);
-const roomTerms = qp.getAll("keyterm");
-function applyRoomWords(text, terms = roomTerms) {
-  if (!text || !terms.length) return text;
-  let out = text;
-  for (const term of terms) {
-    if (term.length < 2) continue;
-    const escTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escTerm}(?![\\p{L}\\p{N}])`, "giu"), () => term);
-    if (/[a-z][A-Z]/.test(term)) {
-      const splitPat = escTerm.replace(/([a-z])([A-Z])/g, "$1\\s+$2");
-      out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${splitPat}(?![\\p{L}\\p{N}])`, "giu"), () => term);
-    }
-  }
-  return out;
-}
-
+const roomTerms = qp.getAll("keyterm").slice(0, 20).map((t) => t.trim().slice(0, 40)).filter(Boolean);
 const speakerEl = $("#speaker");
-try {
-  speakerEl.value = qp.get("speaker") || sessionStorage.getItem("stm-speaker") || "";
-} catch {}
-speakerEl.addEventListener("input", () => {
-  try { sessionStorage.setItem("stm-speaker", speakerEl.value.trim()); } catch {}
-});
+try { speakerEl.value = qp.get("speaker") || sessionStorage.getItem("stm-speaker") || ""; } catch {}
+speakerEl.addEventListener("input", () => { try { sessionStorage.setItem("stm-speaker", speakerEl.value.trim()); } catch {} });
 const speakerName = () => speakerEl.value.trim().slice(0, 24);
+
+let engine = (() => {
+  const inherited = qp.get("engine");
+  if (inherited === "browser" || inherited === "deepgram") return inherited;
+  try { return localStorage.getItem("stm-engine") || "browser"; } catch { return "browser"; }
+})();
+let dg = null;
+let dgAvailable = false;
+
+function syncGoAvailability() {
+  if ($("#stateText").textContent === "Talk ended") return;
+  const unusable = !token || (engine === "browser" && !Rec);
+  $("#go").disabled = unusable;
+  if (!token) {
+    $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
+  } else if (engine === "browser" && !Rec) {
+    $("#err").textContent = dgAvailable
+      ? "This browser has no built-in speech recognition. Switch Engine to Deepgram, or open in Safari."
+      : "This browser has no speech recognition. Open this link in Safari (iOS) or Chrome (Android).";
+  } else if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+    $("#err").textContent = "Phones need an https link for the mic. Serve StageType over https (see docs/DEPLOY.md) and rescan.";
+  }
+}
+
+const paintEngine = () => {
+  document.querySelectorAll("#engineSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === engine)));
+  syncGoAvailability();
+};
+document.querySelectorAll("#engineSeg button").forEach((b) => {
+  b.onclick = () => {
+    if (b.disabled) return;
+    engine = b.dataset.v;
+    try { localStorage.setItem("stm-engine", engine); } catch {}
+    $("#err").textContent = "";
+    paintEngine();
+  };
+});
+paintEngine();
+fetch("/api/engines").then((r) => r.json()).then((e) => {
+  dgAvailable = Boolean(e.deepgram);
+  const b = document.querySelector('#engineSeg [data-v="deepgram"]');
+  b.disabled = !dgAvailable;
+  b.title = dgAvailable ? "" : "The relay has no Deepgram key";
+  if (!dgAvailable && engine === "deepgram") { engine = "browser"; }
+  else if (dgAvailable && !Rec && engine === "browser") { engine = "deepgram"; }
+  paintEngine();
+}).catch(() => {});
 
 async function push(body) {
   const spk = speakerName();
-  const payload = spk ? { speaker: spk, ...body } : body;
+  const payload = { phone: phoneId, ...(spk ? { speaker: spk } : {}), ...body };
   try {
     const r = await fetch(`/api/room/${roomId}`, {
       method: "POST",
@@ -300,17 +314,34 @@ async function push(body) {
 
 let words = 0, listeners = 0;
 function applyRoom(j) {
-  if (typeof j.title === "string") { $("#talk").textContent = j.title; $("#talk").hidden = !j.title; if (j.title) document.title = `${j.title} · Lapel mic`; }
+  if (typeof j.title === "string") {
+    $("#talk").textContent = j.title;
+    $("#talk").hidden = !j.title;
+    if (j.title) document.title = `${j.title} · Lapel mic`;
+  }
 }
 function stats() {
   const b = document.createElement("b");
   b.textContent = String(words);
   $("#room").replaceChildren(b, ` word${words === 1 ? "" : "s"} · ${listeners} in room`);
 }
-function render(interim) {
+function renderSettled(animateLatest = false) {
   const tail = finals.slice(-2);
-  const html = tail.map((t, i) => (i === tail.length - 1 ? `<span class="last">${esc(t)}</span>` : esc(t))).join(" ");
-  $("#echo").innerHTML = html + (interim ? ` <span class="interim">${esc(interim)}</span>` : "");
+  const frag = document.createDocumentFragment();
+  tail.forEach((t, i) => {
+    const isLast = i === tail.length - 1;
+    const span = document.createElement("span");
+    if (isLast) span.className = animateLatest ? "last land" : "last";
+    span.textContent = t;
+    frag.append(span);
+    if (!isLast) frag.append(" ");
+  });
+  $("#echoSettled").replaceChildren(frag);
+  $("#echo").classList.toggle("empty", finals.length === 0 && !$("#echoInterim").textContent);
+}
+function render(interim) {
+  $("#echoInterim").textContent = interim || "";
+  $("#echo").classList.toggle("empty", finals.length === 0 && !interim);
 }
 
 function startRec() {
@@ -321,12 +352,14 @@ function startRec() {
 
   rec.onresult = (e) => {
     let interim = "";
+    let gotFinal = false;
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const t = applyRoomWords(e.results[i][0].transcript.trim());
+      const t = applyRoomWords(e.results[i][0].transcript.trim(), roomTerms);
       if (e.results[i].isFinal) {
         if (t) {
           finals.push(t);
           words += t.split(/\s+/).filter(Boolean).length;
+          gotFinal = true;
           stats();
           push({ text: t, final: true, source: "phone" });
         }
@@ -334,6 +367,7 @@ function startRec() {
         interim += t + " ";
       }
     }
+    if (gotFinal) renderSettled(true);
     interim = interim.trim();
     render(interim);
 
@@ -361,7 +395,6 @@ function startRec() {
       return;
     }
     if (FATAL_REC.has(e.error)) {
-      // A blocked mic would otherwise restart every 150ms forever.
       stop();
       $("#err").textContent = e.error === "not-allowed"
         ? "Microphone blocked. Allow the mic for this site in browser settings, then tap Go live."
@@ -384,40 +417,12 @@ function startRec() {
   }
 }
 
-// The console's QR carries the talk's language and engine, so the phone inherits both
-// instead of asking the same two questions twice. A manual choice on this phone wins.
-if (qp.get("lang")) {
-  const sel = $("#lang");
-  const want = qp.get("lang");
-  if ([...sel.options].some((o) => o.value === want)) sel.value = want;
-}
-// Engine: browser recognition, or Deepgram through the relay if the relay has a key.
-let engine = (() => {
-  const inherited = qp.get("engine");
-  if (inherited === "browser" || inherited === "deepgram") return inherited;
-  try {
-    return localStorage.getItem("stm-engine") || "browser";
-  } catch {
-    return "browser";
-  }
-})();
-let dg = null;
-const paintEngine = () => document.querySelectorAll("#engineSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === engine)));
-document.querySelectorAll("#engineSeg button").forEach((b) => b.onclick = () => { if (b.disabled) return; engine = b.dataset.v; try { localStorage.setItem("stm-engine", engine); } catch {} paintEngine(); });
-paintEngine();
-fetch("/api/engines").then((r) => r.json()).then((e) => {
-  const b = document.querySelector('#engineSeg [data-v="deepgram"]');
-  b.disabled = !e.deepgram;
-  b.title = e.deepgram ? "" : "The relay has no Deepgram key";
-  if (!e.deepgram && engine === "deepgram") { engine = "browser"; paintEngine(); }
-}).catch(() => {});
-
 async function startDeepgram() {
   try {
     const started = await StageTypeDeepgram.start({
-      roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(),
+      roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(), phoneId,
       onInterim: (i) => render(i),
-      onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); render(""); },
+      onFinal: (t) => { finals.push(t); words += t.split(/\s+/).filter(Boolean).length; stats(); renderSettled(true); render(""); },
       onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
     });
     if (!live) {
@@ -431,20 +436,28 @@ async function startDeepgram() {
   }
 }
 
+function setPocketLock(on) {
+  pocketLocked = Boolean(on && live);
+  $("#pocketBtn").setAttribute("aria-pressed", String(pocketLocked));
+  $("#pocketBtn").textContent = pocketLocked ? "Unlock controls" : "Pocket lock";
+  $("#go").classList.toggle("locked", pocketLocked);
+  if (live) {
+    $("#goLabel").textContent = pocketLocked ? "Pocket locked" : "Pause";
+    $("#goSub").textContent = pocketLocked ? "Tap Unlock controls below to pause" : "Broadcasting to room";
+  }
+}
+$("#pocketBtn").onclick = () => setPocketLock(!pocketLocked);
+
 let heartbeat = null;
 async function go() {
   live = true;
   document.body.classList.add("live", "started");
-  // Tell the console this phone is the mic now, and keep saying so while live, so a dead battery
-  // or a locked screen is noticed within a minute and the laptop mic can take over.
   push({ ping: true, source: "phone", live: true });
   clearInterval(heartbeat);
   heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
   if (engine === "deepgram") startDeepgram(); else startRec();
-  try {
-    wake = await navigator.wakeLock?.request("screen");
-  } catch {}
-  
+  try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+
   if (navigator.vibrate) navigator.vibrate([40]);
   $("#goLabel").textContent = "Pause";
   $("#goSub").textContent = "Broadcasting to room";
@@ -452,37 +465,40 @@ async function go() {
   $("#pulseAura").classList.add("active");
   $("#stateText").textContent = "Live on stage";
   $("#state").classList.add("on");
-  document.body.classList.add("live");
   $("#lang").disabled = true;
+  $("#pocketBtn").hidden = false;
+  setPocketLock(false);
 }
 
 function stop(announce = true) {
   if (!live) return;
   live = false;
+  setPocketLock(false);
   document.body.classList.remove("live");
   clearInterval(heartbeat);
   clearTimeout(interimTimer);
   clearTimeout(recRestartTimer);
-  if (announce) push({ ping: true, source: "phone", live: false });
+  // Stop Deepgram/recogniser BEFORE sending live:false so teardown never races past pause.
   rec?.stop();
   dg?.stop(); dg = null;
+  if (announce) push({ ping: true, source: "phone", live: false });
   wake?.release?.();
   wake = null;
 
   if (navigator.vibrate) navigator.vibrate([25, 40]);
   $("#goLabel").textContent = "Go live";
   $("#goSub").textContent = "Tap to broadcast";
-  $("#go").classList.remove("live");
+  $("#go").classList.remove("live", "locked");
   $("#pulseAura").classList.remove("active");
   $("#stateText").textContent = "Paused";
   $("#state").classList.remove("on");
-  document.body.classList.remove("live");
   $("#lang").disabled = false;
+  $("#pocketBtn").hidden = true;
 }
 
-// Two-tap safety to prevent accidental ends inside a pocket
 let endArmed = null;
 $("#end").onclick = async () => {
+  if (pocketLocked) return;
   if (!endArmed) {
     $("#end").textContent = "Tap again to confirm end";
     $("#end").classList.add("armed");
@@ -491,7 +507,7 @@ $("#end").onclick = async () => {
       endArmed = null;
       $("#end").textContent = "End talk";
       $("#end").classList.remove("armed");
-    }, 3000);
+    }, 5000);
     return;
   }
   clearTimeout(endArmed);
@@ -500,19 +516,22 @@ $("#end").onclick = async () => {
   if (navigator.vibrate) navigator.vibrate([30, 80, 30]);
   await fetch(`/api/room/${roomId}`, {
     method: "DELETE",
-    headers: { authorization: `Bearer ${token}` }
+    headers: { authorization: `Bearer ${token}` },
   }).catch(() => {});
 
   $("#stateText").textContent = "Talk ended";
   $("#go").disabled = true;
   $("#end").hidden = true;
+  $("#pocketBtn").hidden = true;
+  $("#openTranscript").href = `/live/${roomId}`;
+  $("#openTranscript").hidden = false;
   $("#err").textContent = `${words} words captioned. The transcript is on every phone in the room.`;
 };
 
 if (token) push({ ping: true });
 
 $("#go").onclick = () => {
-  if (!token) return;
+  if (!token || pocketLocked) return;
   if (engine === "browser" && !Rec) return;
   live ? stop() : go();
 };
@@ -523,7 +542,7 @@ addEventListener("pagehide", () => {
   fetch(`/api/room/${roomId}`, {
     method: "POST", keepalive: true,
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-    body: JSON.stringify({ ping: true, source: "phone", live: false, ...(spk ? { speaker: spk } : {}) }),
+    body: JSON.stringify({ ping: true, source: "phone", live: false, phone: phoneId, ...(spk ? { speaker: spk } : {}) }),
   }).catch(() => {});
 });
 

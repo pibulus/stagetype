@@ -3,257 +3,315 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="/vendor/fonts.css">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbf1e4">
+<meta name="robots" content="noindex, nofollow">
 <title>StageType Live Reader</title>
+<script src="/shared.js"></script>
 <style>
   :root {
-    --ground: #fbf1e4; --ink: #1e1714; --line: #3a2e28;
-    --pill: #ffb3d1; --mint: #b8f0d8; --size: 22px;
-    --muted: color-mix(in srgb, var(--ink) 66%, transparent); /* 4.7:1+ on every theme, WCAG AA for small UI text */
+    --ground: #fbf1e4; --surface: #fffdf5; --ink: #1e1714; --line: #1e1714;
+    --pill: #ff6ac2; --pill-soft: #ffb3d1; --mint: #2dd4bf; --butter: #ffc74d; --size: 22px;
+    --muted: color-mix(in srgb, var(--ink) 70%, transparent);
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
-  :root[data-theme="espresso"] { --ground: #1e1714; --ink: #fbf1e4; --line: #fbf1e4; }
-  :root[data-theme="contrast"] { --ground: #fff0a8; --ink: #1e1714; --line: #1e1714; }
-  :root[data-theme="night"]    { --ground: #1e1714; --ink: #fff0a8; --line: #fff0a8; }
+  :root[data-theme="espresso"] { --ground: #1e1714; --surface: #28201c; --ink: #fbf1e4; --line: #fbf1e4; }
+  :root[data-theme="contrast"] { --ground: #fff0a8; --surface: #fff9d6; --ink: #1e1714; --line: #1e1714; }
+  :root[data-theme="night"]    { --ground: #1e1714; --surface: #28201c; --ink: #fff0a8; --line: #fff0a8; }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body {
-    margin: 0; background: var(--ground); color: var(--ink);
+    margin: 0; min-height: 100dvh; background: var(--ground); color: var(--ink);
     font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
-  /* No texture behind running text: the words are the only thing worth looking at. */
-  body { background-image: none; }
-  ::selection { background: var(--pill); color: #1e1714; }
-  
+  /* Calm, texture-free reading surface; flex column keeps footer anchored at bottom. */
+  body { display: flex; flex-direction: column; background-image: none; }
+  ::selection { background: var(--pill-soft); color: #1e1714; }
+
   header {
     position: sticky; top: 0; z-index: 10; background: var(--ground);
-    padding: calc(env(safe-area-inset-top) + 12px) 18px 12px;
-    display: flex; gap: 10px; align-items: center; border-bottom: 1px solid color-mix(in srgb, var(--line) 16%, transparent);
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
+    display: flex; gap: 10px; align-items: center;
+    border-bottom: 1.5px solid color-mix(in srgb, var(--line) 24%, transparent);
   }
   .live-badge {
-    font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 13px;
-    margin-right: auto; display: flex; align-items: center; gap: 8px;
-    padding: 6px 12px 6px 8px; border-radius: 999px; transition: background .25s;
+    font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 12.5px;
+    margin-right: auto; display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 13px 7px 10px; border-radius: 999px;
+    border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+    transition: background .25s;
   }
-  #bar[data-state="live"] .live-badge { background: var(--mint); color: #1e1714; }
-  #bar[data-state="ended"] .live-badge { background: var(--pill); color: #1e1714; }
-  #bar[data-state="saved"] .live-badge { background: var(--mint); color: #1e1714; }
-  .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--muted);
-  }
-  #bar[data-state="live"] .dot { background: #51cf66; box-shadow: 0 0 10px 1px rgba(81, 207, 102, .5); animation: breathe 1.6s ease-in-out infinite; }
-  #bar[data-state="reconnecting"] .dot { background: #f4c45f; animation: breathe .9s ease-in-out infinite; }
-  @keyframes breathe { 50% { opacity: .55; transform: scale(1.15); } }
+  #bar[data-state="live"] .live-badge { background: var(--mint); color: #1e1714; border-color: #1e1714; }
+  #bar[data-state="paused"] .live-badge { background: var(--butter); color: #1e1714; border-color: #1e1714; }
+  #bar[data-state="ended"] .live-badge { background: var(--pill-soft); color: #1e1714; border-color: #1e1714; }
+  #bar[data-state="saved"] .live-badge { background: var(--mint); color: #1e1714; border-color: #1e1714; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  #bar[data-state="live"] .dot { background: #1e1714; animation: breathe 1.6s ease-in-out infinite; }
+  #bar[data-state="paused"] .dot { background: #1e1714; }
+  #bar[data-state="reconnecting"] .dot { background: var(--butter); border: 1.5px solid var(--line); animation: breathe .9s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .45; transform: scale(1.15); } }
 
   .stats-pill {
-    font-size: 12px; font-weight: 600; color: var(--muted);
-    background: color-mix(in srgb, var(--line) 7%, transparent);
-    padding: 5px 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--line) 14%, transparent);
+    font-size: 12px; font-weight: 700; color: var(--ink);
+    background: var(--surface); padding: 6px 11px; border-radius: 999px;
+    border: 1.5px solid color-mix(in srgb, var(--line) 40%, transparent);
   }
 
   button, summary {
-    font: 700 15px var(--swiss); color: var(--ink); background: transparent;
-    border: 1px solid color-mix(in srgb, var(--line) 18%, transparent); border-radius: 999px; min-width: 44px; height: 42px; padding: 0 14px;
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; list-style: none;
-    transition: transform .22s var(--spring), background .15s, border-color .15s;
+    font: 700 15px var(--swiss); color: var(--ink); background: var(--surface);
+    border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line); border-radius: 999px;
+    min-width: 44px; min-height: 44px; padding: 0 15px;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; list-style: none;
+    transition: transform .18s var(--spring), background .15s, box-shadow .18s var(--spring);
     -webkit-tap-highlight-color: transparent;
   }
-  button:active, summary:active { transform: scale(.96); transition-duration: .06s; }
-  button:focus-visible, summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--pill) 70%, transparent); outline-offset: 3px; }
-  .swatch { transition: transform .22s var(--spring); }
-  .swatch:hover { transform: scale(1.12) rotate(-6deg); }
-  .swatch[aria-pressed="true"] { transform: scale(1.08); }
-  summary::-webkit-details-marker { display: none; }
-  summary::marker { display: none; }
+  button:active, summary:active { transform: translate(1px, 1px) scale(.97); box-shadow: 0.5px 0.5px 0 var(--line); transition-duration: .06s; }
+  button:focus-visible, summary:focus-visible, select:focus-visible, a:focus-visible, [tabindex="0"]:focus-visible {
+    outline: 3px solid var(--ink); outline-offset: 3px;
+  }
+  summary::-webkit-details-marker, summary::marker { display: none; }
 
   #panel { position: relative; }
-  #panel[open] > summary { background: var(--pill); }
+  #panel[open] > summary { background: var(--pill); color: #1e1714; border-color: #1e1714; }
   .panel-body {
     position: absolute; top: calc(100% + 8px); right: 0;
-    background: var(--ground); border: 1px solid color-mix(in srgb, var(--line) 18%, transparent); border-radius: 22px;
-    padding: 18px;
-    width: min(300px, calc(100vw - 32px));
-    display: flex; flex-direction: column; gap: 14px; z-index: 20;
+    background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+    border-radius: 22px; padding: 16px;
+    width: min(306px, calc(100vw - 28px));
+    max-height: calc(100dvh - 88px); overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 13px; z-index: 25;
   }
   .panel-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .panel-label { width: 100%; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  #sizeLabel { font-weight: 700; font-size: 14px; min-width: 44px; text-align: center; }
-  .swatches { display: flex; gap: 8px; }
-  .swatch { width: 40px; height: 40px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--line) 20%, transparent); padding: 0; box-shadow: none; }
-  .swatch[aria-pressed="true"] { outline: 2px solid var(--pill); outline-offset: 3px; }
+  .panel-label { width: 100%; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  #sizeLabel { font-weight: 800; font-size: 14px; min-width: 46px; text-align: center; }
+  .swatches { display: flex; gap: 10px; }
+  .swatch {
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px; border-radius: 50%;
+    border: 2px solid var(--line); box-shadow: none; padding: 0;
+    transition: transform .2s var(--spring);
+  }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 3px; transform: scale(1.06); }
   .swatch[data-t="cream"]    { background: linear-gradient(135deg, #fbf1e4 50%, #1e1714 50%); }
   .swatch[data-t="espresso"] { background: linear-gradient(135deg, #1e1714 50%, #fbf1e4 50%); }
   .swatch[data-t="contrast"] { background: linear-gradient(135deg, #fff0a8 50%, #1e1714 50%); }
   .swatch[data-t="night"]    { background: linear-gradient(135deg, #1e1714 50%, #fff0a8 50%); }
   select {
-    font: 600 14px var(--swiss); color: var(--ink); background: var(--ground);
-    border: 1px solid color-mix(in srgb, var(--line) 18%, transparent); border-radius: 999px; height: 40px; padding: 0 14px; width: 100%;
+    font: 600 16px var(--swiss); color: var(--ink); background: var(--ground);
+    border: 1.5px solid var(--line); border-radius: 999px; height: 44px; padding: 0 14px; width: 100%;
   }
-  select:focus-visible { outline: 3px solid var(--pill); outline-offset: 3px; }
-  .seg { display: flex; width: 100%; border: 1px solid color-mix(in srgb, var(--line) 18%, transparent); border-radius: 999px; padding: 3px; gap: 2px; background: color-mix(in srgb, var(--line) 5%, transparent); }
-  .seg button { flex: 1; height: 32px; min-width: 0; padding: 0 8px; border: none; box-shadow: none; font-size: 13px; }
+  .seg { display: flex; width: 100%; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; gap: 3px; background: var(--ground); }
+  .seg button { flex: 1; min-height: 40px; min-width: 0; padding: 0 8px; border: none; box-shadow: none; font-size: 13.5px; background: transparent; }
   .seg button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
-  .seg button:active { transform: scale(.96); }
-  .wide { width: 100%; justify-content: flex-start; }
-  .wide[aria-pressed="true"] { background: var(--pill); color: #1e1714; }
+  .wide { width: 100%; justify-content: flex-start; box-shadow: none; }
+  .wide[aria-pressed="true"] { background: var(--pill-soft); color: #1e1714; border-color: #1e1714; }
 
   #talkTitle {
-    max-width: 46em; margin: 22px auto 0; padding: 0 20px; font-size: 15px; font-weight: 900;
-    letter-spacing: .02em; text-transform: uppercase; color: var(--muted);
+    width: 100%; max-width: 46em; margin: 20px auto 0; padding: 0 20px; font-size: 14.5px; font-weight: 900;
+    letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
   }
-  #talkTitle[hidden] { display: none; }
   #talkTitle + #feed { padding-top: 12px; }
 
   /* Feed Area */
-  #feed { padding: 24px 20px 160px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto;
-    font-family: var(--face, var(--face-system)); font-weight: var(--weight, 400); }
-  #feed p { margin: 0 0 .75em; opacity: .78; transition: opacity .6s ease; }
+  #feed {
+    flex: 1 0 auto; width: 100%;
+    padding: 24px 20px 100px; font-size: var(--size); line-height: 1.5; max-width: 46em; margin: 0 auto;
+    font-family: var(--face, var(--face-system)); font-weight: var(--weight, 400);
+  }
+  #feed p { margin: 0 0 .75em; opacity: .82; transition: opacity .5s ease; }
   #feed p.fresh { opacity: 1; font-weight: min(700, calc(var(--weight, 400) + 200)); }
   :root[data-flow="settled"] #interim { display: none; }
   #feed p.fresh span {
-    background-image: linear-gradient(color-mix(in srgb, var(--pill) 55%, transparent), color-mix(in srgb, var(--pill) 55%, transparent));
+    background-image: linear-gradient(color-mix(in srgb, var(--pill-soft) 58%, transparent), color-mix(in srgb, var(--pill-soft) 58%, transparent));
     background-repeat: no-repeat; background-size: 0% 45%; background-position: 0 85%;
     animation: sweep 1.1s var(--spring) .1s forwards;
     box-decoration-break: clone; -webkit-box-decoration-break: clone;
   }
-  #feed p.line-in { animation: lineIn .42s var(--spring); }
-  /* Tap a settled line to keep it. The mark is a margin rule, not a highlighter wash. */
-  #feed p.line { cursor: pointer; transition: opacity .6s ease, border-color .2s ease, padding .25s var(--spring); border-left: 3px solid transparent; margin-left: -14px; padding-left: 11px; }
-  #feed p.line.starred { border-left-color: var(--pill); }
-  #feed p.line.star-pop { animation: starPop .36s var(--spring); }
+  #feed p.line-in { animation: lineIn .4s var(--spring); }
+  /* Tap or press Enter/Space on a settled line to keep it. Uses logical inline-start for RTL support. */
+  #feed p.line {
+    cursor: pointer; transition: opacity .5s ease, border-color .2s ease;
+    border-inline-start: 4px solid transparent; margin-inline-start: -14px; padding-inline-start: 10px;
+    border-radius: 4px; position: relative;
+  }
+  #feed p.line.starred {
+    border-inline-start-color: var(--ink);
+    background: color-mix(in srgb, var(--pill) 14%, transparent);
+    padding-block: 3px; padding-inline-end: 8px;
+  }
+  #feed p.line.starred::after {
+    content: " · kept";
+    font: 800 11px var(--swiss); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); vertical-align: middle; margin-inline-start: 6px;
+  }
+  #feed p.line.star-pop { animation: starPop .34s var(--spring); }
   .speaker-tag {
     display: inline-block; font-size: .68em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-    padding: 1px 8px; margin-right: 6px; border-radius: 999px;
-    background: color-mix(in srgb, var(--pill) 42%, transparent); color: var(--ink); vertical-align: .12em;
+    padding: 1px 8px; margin-inline-end: 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--pill-soft) 48%, transparent); color: var(--ink); vertical-align: .12em;
+    border: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
   }
   @keyframes starPop { 40% { transform: translateX(3px); } }
-  #feed a { color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, var(--ink) 45%, transparent); }
+  #feed a { color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
   #feed a:active { opacity: .6; }
-  @media print {
-    #feed p.line { border-left: 0; margin-left: 0; padding-left: 0; }
-    /* Images are live only: they never leave the room, including on paper. */
-    #feed figure.catch, #feed .before-join { display: none; }
-  }
   @keyframes lineIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes sweep { to { background-size: 100% 45%; } }
-  
-  /* On the dark themes a 55% pink wash drags the text under 4.5:1; 26% keeps the sweep readable. */
+
+  /* Keep dark-theme highlight washes within WCAG AAA/AA caption contrast floors. */
   :root[data-theme="espresso"] #feed p.fresh span,
   :root[data-theme="night"] #feed p.fresh span {
-    background-image: linear-gradient(color-mix(in srgb, var(--pill) 26%, transparent), color-mix(in srgb, var(--pill) 26%, transparent));
+    background-image: linear-gradient(color-mix(in srgb, var(--pill-soft) 24%, transparent), color-mix(in srgb, var(--pill-soft) 24%, transparent));
   }
   :root[data-loose="1"] #feed { line-height: 1.95; }
   :root[data-loose="1"] #feed p { letter-spacing: .025em; word-spacing: .16em; margin-bottom: 1.1em; }
 
-  /* The catch: an image lands where it was shared, between the captions. */
+  /* Shared image catch */
   #feed figure.catch { margin: 0 0 1em; }
-  #feed figure.catch img {
-    display: block; width: 100%; height: auto; max-height: 58vh; object-fit: contain; border-radius: 14px;
-    border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
-    background: color-mix(in srgb, var(--ink) 5%, transparent); cursor: zoom-in;
+  .catch-btn {
+    display: block; width: 100%; padding: 0; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line);
+    border-radius: 16px; background: var(--surface); overflow: hidden; cursor: zoom-in;
   }
-  #feed figure.catch.line-in { animation: lineIn .42s var(--spring); }
-  #feed .before-join { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  #feed figure.catch img { display: block; width: 100%; height: auto; max-height: 58vh; object-fit: contain; }
+  #feed figure.catch.line-in { animation: lineIn .4s var(--spring); }
+  #feed .before-join { margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
   #lightbox {
     position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center;
-    background: color-mix(in srgb, var(--ink) 96%, transparent); backdrop-filter: blur(6px); padding: 16px;
+    background: rgba(30, 23, 20, 0.94); padding: 20px;
   }
   #lightbox.open { display: flex; }
-  #lightbox img { max-width: 100%; max-height: 92vh; border-radius: 10px; }
+  #lightbox img { max-width: 100%; max-height: 86vh; border-radius: 12px; border: 2px solid #fbf1e4; }
+  #lightboxClose {
+    position: fixed; top: calc(env(safe-area-inset-top) + 16px); right: 16px;
+    background: #fffdf5; color: #1e1714; border: 2px solid #1e1714; box-shadow: 3px 3px 0 #1e1714;
+    width: 44px; height: 44px; padding: 0; font-size: 18px; font-weight: 900;
+  }
 
   #interim {
     color: var(--ink); opacity: 1; border-radius: 8px; padding: 2px 6px; margin: -2px -6px;
-    background: color-mix(in srgb, var(--pill) 35%, transparent); transition: background .2s ease;
+    background: color-mix(in srgb, var(--pill-soft) 34%, transparent); transition: background .2s ease;
+  }
+  :root[data-theme="espresso"] #interim,
+  :root[data-theme="night"] #interim {
+    background: color-mix(in srgb, var(--pill-soft) 20%, transparent);
   }
   #interim:empty { background: none; padding: 0; margin: 0; }
   #interim:not(:empty)::after {
-    content: ""; display: inline-block; width: .1em; height: .85em; margin-left: .15em; vertical-align: -.08em;
+    content: ""; display: inline-block; width: .1em; height: .85em; margin-inline-start: .15em; vertical-align: -.08em;
     background: var(--ink); border-radius: 2px; animation: caret 1s steps(2) infinite;
   }
   @keyframes caret { to { opacity: 0; } }
 
-  #waiting { text-align: center; padding: 64px 16px 40px; }
+  #waiting { text-align: center; padding: 60px 16px 40px; }
   .wait-dot {
     width: 14px; height: 14px; margin: 0 auto; border-radius: 50%;
-    background: color-mix(in srgb, var(--pill) 85%, var(--ink));
-    box-shadow: 0 0 24px 4px color-mix(in srgb, var(--pill) 55%, transparent);
-    animation: breathe 2.6s ease-in-out infinite;
+    background: var(--pill); border: 2px solid var(--line);
+    animation: breathe 2.4s ease-in-out infinite;
   }
-  #waiting p { margin-top: 18px; font-size: 16px; font-weight: 600; color: var(--muted); }
-  #waiting p::after { content: "…"; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.6s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+  #waiting p { margin: 16px 0 6px; font-size: 16px; font-weight: 700; color: var(--ink); }
+  #waiting p.wait-tip { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+  #waiting p.wait-main::after { content: "…"; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.6s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
   @keyframes dots { from { width: 0; } to { width: 1.2em; } }
-  @keyframes floatGhost { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
   #jump {
-    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 24px); transform: translateX(-50%);
-    background: var(--pill); color: #1e1714; border: 1px solid color-mix(in srgb, var(--line) 16%, transparent);
-    height: 46px; padding: 0 24px; z-index: 15; font-weight: 700;
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 22px); transform: translateX(-50%);
+    background: var(--pill); color: #1e1714; border: 2px solid #1e1714; box-shadow: 3px 3px 0 #1e1714;
+    height: 46px; padding: 0 24px; z-index: 15; font-weight: 800;
+    animation: popUp .36s var(--spring);
   }
-  #jump[hidden] { display: none; }
-  #jump { animation: popUp .4s var(--spring); }
-  @keyframes popUp { from { transform: translate(-50%, 30px) scale(.8); opacity: 0; } }
+  @keyframes popUp { from { transform: translate(-50%, 30px) scale(.85); opacity: 0; } }
 
-  #endCard {
-    margin: 12px 18px 32px; max-width: 46em; margin-inline: auto;
-    background: var(--ground); border: 1px solid color-mix(in srgb, var(--line) 16%, transparent); border-radius: 24px;
-    padding: 26px 24px;
+  .takehome-card {
+    width: min(46em, calc(100% - 32px)); margin: 12px auto 28px;
+    background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+    border-radius: 24px; padding: 24px 20px; position: relative;
+    animation: cardIn .45s var(--spring);
   }
-  #endCard[hidden] { display: none; }
-  #endCard { position: relative; overflow: hidden; animation: cardIn .5s var(--spring); }
-  @keyframes cardIn { from { transform: translateY(16px) scale(.98); opacity: 0; } }
-  #endCard h2 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.035em; font-weight: 900; line-height: 1.1; }
-  #endCard p.sub { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
-  #endCard p.sub:last-of-type { margin-bottom: 18px; }
-  /* The kept lines are the keepsake: give them the width and the marker. */
+  @keyframes cardIn { from { transform: translateY(14px) scale(.98); opacity: 0; } }
+  .takehome-card h2 { margin: 0 0 6px; font-size: 25px; letter-spacing: -0.035em; font-weight: 900; line-height: 1.1; }
+  .takehome-card p.sub { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; line-height: 1.45; font-weight: 600; }
+
+  /* Kept quotes: editable text + dedicated touch handle + keyboard Up/Down buttons (no scroll trap). */
   #keptQuotes { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; }
-  #keptQuotes blockquote {
-    margin: 0; padding: 4px 8px 4px 14px; border-left: 3px solid var(--pill); border-radius: 0 8px 8px 0;
-    font-size: 17px; line-height: 1.42; color: var(--ink); font-weight: 500;
-    transition: background .15s ease, transform .18s var(--spring);
-    touch-action: none;
+  .quote-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: var(--ground); border: 1.5px solid color-mix(in srgb, var(--line) 30%, transparent);
+    border-inline-start: 4px solid var(--pill); border-radius: 12px; padding: 8px 8px 8px 10px;
+    transition: transform .16s var(--spring), opacity .16s;
   }
-  #keptQuotes blockquote:focus {
-    outline: none;
-    background: color-mix(in srgb, var(--pill) 18%, transparent);
+  .quote-row.dragging { opacity: .6; transform: scale(.98); }
+  .quote-handle {
+    flex: none; width: 32px; min-width: 32px; min-height: 36px; padding: 0;
+    border-radius: 8px; border: 1px solid color-mix(in srgb, var(--line) 25%, transparent);
+    background: transparent; box-shadow: none; color: var(--muted); font-size: 14px;
+    cursor: grab; touch-action: none;
   }
-  #keptQuotes blockquote:focus-visible {
-    outline: 2px solid var(--pill);
-    outline-offset: 2px;
+  .quote-row blockquote {
+    flex: 1; margin: 0; padding: 4px 4px; font-size: 16.5px; line-height: 1.42;
+    color: var(--ink); font-weight: 500; min-width: 0;
   }
-  #keptQuotes blockquote.dragging {
-    opacity: .6; transform: scale(.98);
+  .quote-row blockquote:focus { outline: none; background: color-mix(in srgb, var(--pill-soft) 24%, transparent); border-radius: 6px; }
+  .quote-row blockquote:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .quote-moves { display: flex; flex-direction: column; gap: 4px; flex: none; }
+  .quote-moves button {
+    width: 32px; min-width: 32px; min-height: 28px; padding: 0; font-size: 12px;
+    border-radius: 8px; box-shadow: none; background: var(--surface);
   }
-  #keptQuotes .more { font-size: 12px; color: var(--muted); font-weight: 600; padding-left: 14px; }
-  #linksTray { margin: 0 0 18px; text-align: left; background: color-mix(in srgb, var(--ink) 5%, transparent); border-radius: 14px; padding: 12px 14px; }
-  #linksTray[hidden] { display: none; }
-  #linksTray h3 { margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
-  #linksList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #keptQuotes .more { font-size: 12.5px; color: var(--muted); font-weight: 600; padding-inline-start: 6px; }
+
+  #linksTray {
+    margin: 0 0 16px; text-align: left;
+    background: var(--ground); border: 1.5px solid color-mix(in srgb, var(--line) 25%, transparent);
+    border-radius: 16px; padding: 12px 14px;
+  }
+  #linksTray h3 { margin: 0 0 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  #linksList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   #linksList a {
-    display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px;
-    border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); border-radius: 999px;
-    color: var(--ink); font-weight: 600; font-size: 13.5px; text-decoration: none;
+    display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px;
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: 999px;
+    color: var(--ink); font-weight: 700; font-size: 13.5px; text-decoration: none; word-break: break-all;
   }
-  #linksList a:active { transform: scale(.98); }
-  #endCard .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-  #endCard .actions button { flex: 1 1 130px; height: 46px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .actions button, .actions a { flex: 1 1 132px; min-height: 46px; }
+  .btn-primary { background: var(--mint); color: #1e1714; border-color: #1e1714; }
+  .btn-card { background: var(--butter); color: #1e1714; border-color: #1e1714; }
+  .run-next {
+    margin: 16px 0 0; padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--line) 18%, transparent);
+    font-size: 13px; font-weight: 600; color: var(--muted);
+  }
+  .run-next a { color: var(--ink); font-weight: 800; text-underline-offset: 3px; }
+  .btn-link-cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--mint); color: #1e1714; border: 2px solid #1e1714; box-shadow: 3px 3px 0 #1e1714;
+    border-radius: 999px; padding: 10px 20px; font: 800 15px var(--swiss); text-decoration: none;
+  }
 
   footer {
-    text-align: center; font-size: 13px; color: var(--muted);
-    padding: 0 0 calc(env(safe-area-inset-bottom) + 24px); font-weight: 600;
+    margin-top: auto; text-align: center; font-size: 13px; color: var(--muted);
+    padding: 8px 16px calc(env(safe-area-inset-bottom) + 24px); font-weight: 600;
   }
-  footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  footer a { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; border: 0; padding: 0; margin: -1px;
+  }
 
-  /* Print Stylesheet: Beautiful Clean PDF / Paper Exports */
+  /* Print Stylesheet: Clean PDF / Paper Exports */
   @media print {
-    header, #jump, #endCard .actions, footer, #panel, .stats-pill { display: none !important; }
+    header, #jump, #endCard .actions, .run-next, .quote-handle, .quote-moves, footer, #panel, .stats-pill, #closedCard { display: none !important; }
     body, html { background: #fff !important; color: #111 !important; font-size: 12pt !important; line-height: 1.6 !important; }
     #feed { padding: 0 !important; max-width: 100% !important; font-size: 12pt !important; }
     #feed p { opacity: 1 !important; margin-bottom: 1em !important; page-break-inside: avoid; }
-    #endCard { border: 1px solid #ccc !important; box-shadow: none !important; margin: 20px 0 !important; padding: 12px !important; }
+    #feed p.line { border-inline-start: 0 !important; margin-inline-start: 0 !important; padding: 0 !important; background: none !important; }
+    #feed p.line.starred::after { display: none; }
+    #feed figure.catch, #feed .before-join { display: none !important; }
+    .takehome-card { border: 1px solid #ccc !important; box-shadow: none !important; width: 100% !important; margin: 20px 0 !important; padding: 12px !important; }
     @page { margin: 20mm; }
   }
 
@@ -267,29 +325,29 @@
 </head>
 <body>
 <header id="bar" data-state="connecting">
-  <span class="live-badge"><span class="dot"></span><span id="state">Connecting</span></span>
+  <span class="live-badge" role="status"><span class="dot" aria-hidden="true"></span><span id="state">Connecting</span></span>
   <span class="stats-pill" id="statsPill">0 words</span>
   <details id="panel">
     <summary aria-label="Reading settings">Aa</summary>
     <div class="panel-body">
       <div class="panel-row">
         <span class="panel-label">Text size</span>
-        <button id="smaller" aria-label="Smaller text">A−</button>
-        <span id="sizeLabel">22px</span>
-        <button id="bigger" aria-label="Bigger text">A+</button>
+        <button id="smaller" type="button" aria-label="Smaller text">A−</button>
+        <span id="sizeLabel" aria-live="polite">22px</span>
+        <button id="bigger" type="button" aria-label="Bigger text">A+</button>
       </div>
       <div class="panel-row">
         <span class="panel-label">Theme</span>
         <div class="swatches">
-          <button class="swatch" data-t="cream" aria-label="Cream theme"></button>
-          <button class="swatch" data-t="espresso" aria-label="Espresso theme"></button>
-          <button class="swatch" data-t="contrast" aria-label="High contrast theme"></button>
-          <button class="swatch" data-t="night" aria-label="Night theme"></button>
+          <button type="button" class="swatch" data-t="cream" aria-label="Cream theme"></button>
+          <button type="button" class="swatch" data-t="espresso" aria-label="Espresso theme"></button>
+          <button type="button" class="swatch" data-t="contrast" aria-label="High contrast theme"></button>
+          <button type="button" class="swatch" data-t="night" aria-label="Night theme"></button>
         </div>
       </div>
       <div class="panel-row">
-        <span class="panel-label">Typeface</span>
-        <select id="face" aria-label="Typeface">
+        <label class="panel-label" for="face">Typeface</label>
+        <select id="face">
           <option value="system">System</option>
           <option value="inter">Inter</option>
           <option value="atkinson">Atkinson Hyperlegible</option>
@@ -299,38 +357,44 @@
       </div>
       <div class="panel-row">
         <span class="panel-label">Weight</span>
-        <div class="seg" id="weightSeg">
-          <button data-v="400" aria-pressed="false">Regular</button>
-          <button data-v="500" aria-pressed="false">Medium</button>
-          <button data-v="700" aria-pressed="false">Bold</button>
+        <div class="seg" id="weightSeg" role="group" aria-label="Font weight">
+          <button type="button" data-v="400" aria-pressed="false">Regular</button>
+          <button type="button" data-v="500" aria-pressed="false">Medium</button>
+          <button type="button" data-v="700" aria-pressed="false">Bold</button>
         </div>
       </div>
       <div class="panel-row">
         <span class="panel-label">Flow</span>
-        <div class="seg" id="flowSeg">
-          <button data-v="live" aria-pressed="false">Live words</button>
-          <button data-v="settled" aria-pressed="false">Settled</button>
+        <div class="seg" id="flowSeg" role="group" aria-label="Caption flow">
+          <button type="button" data-v="live" aria-pressed="false">Live words</button>
+          <button type="button" data-v="settled" aria-pressed="false">Settled</button>
         </div>
       </div>
-      <button id="loose" class="wide" aria-pressed="false">Loose spacing</button>
-      <button class="wide copy-btn">Copy transcript</button>
-      <button class="wide" id="printBtn">Print or Save PDF</button>
+      <button id="loose" type="button" class="wide" aria-pressed="false">Loose spacing</button>
+      <button type="button" class="wide copy-btn">Copy transcript</button>
+      <button type="button" class="wide" id="printBtn">Print or Save PDF</button>
     </div>
   </details>
 </header>
 
 <h1 id="talkTitle" hidden></h1>
-<main id="feed" aria-live="polite">
+<main id="feed" dir="auto">
   <div id="waiting">
     <div class="wait-dot" aria-hidden="true"></div>
-    <p>Waiting for the first spoken words</p>
+    <p class="wait-main">Waiting for the first spoken words</p>
+    <p class="wait-tip">Tap any line during the talk to keep it for later.</p>
   </div>
-  <p id="interim" aria-live="off"></p>
+  <p id="interim"></p>
 </main>
-<button id="jump" hidden>Jump to live</button>
-<div id="lightbox" role="dialog" aria-label="Shared image"><img alt=""></div>
+<div id="liveAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<button id="jump" type="button" hidden>Jump to live</button>
 
-<section id="endCard" role="status" hidden>
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="Shared image">
+  <button id="lightboxClose" type="button" aria-label="Close image">✕</button>
+  <img alt="">
+</div>
+
+<section id="endCard" class="takehome-card" aria-labelledby="endTitle" hidden>
   <h2 id="endTitle">Talk ended</h2>
   <p class="sub" id="endStats" hidden></p>
   <div id="keptQuotes" hidden></div>
@@ -338,36 +402,46 @@
     <h3>Links from this talk</h3>
     <ul id="linksList"></ul>
   </div>
-  <p class="sub" id="endWhere">Saved on this phone. Reopens from this link.</p>
+  <p class="sub" id="endWhere">Saved on this phone. Reopens from this link, even offline.</p>
   <div class="actions">
-    <button id="shareTranscript" hidden>Share</button>
-    <button id="copyKeptBtn" hidden>Copy kept</button>
-    <button class="copy-btn">Copy transcript</button>
-    <button id="saveMd">Save .md</button>
-    <button id="cardPrintBtn">Print / PDF</button>
+    <button id="saveMd" type="button" class="btn-primary">Save .md</button>
+    <button id="quoteCardBtn" type="button" class="btn-card" hidden>Quote card</button>
+    <button id="shareTranscript" type="button" hidden>Share</button>
+    <button id="copyKeptBtn" type="button" hidden>Copy kept</button>
+    <button type="button" class="copy-btn">Copy transcript</button>
+    <button id="cardPrintBtn" type="button">Print / PDF</button>
+  </div>
+  <p class="run-next">Running a talk next week? <a href="/demo" target="_blank" rel="noopener noreferrer">Open StageType in one tap →</a></p>
+</section>
+
+<section id="closedCard" class="takehome-card" aria-labelledby="closedTitle" hidden>
+  <h2 id="closedTitle">This room has wrapped</h2>
+  <p class="sub">StageType keeps nothing on the server once a talk ends — notes live only on the devices that were in the room.</p>
+  <div class="actions">
+    <a class="btn-link-cta" href="/join">Join another talk</a>
+    <a class="btn-link-cta" style="background:var(--surface)" href="/demo">Try StageType</a>
   </div>
 </section>
 
-<footer>Captions by <a href="https://talktype.app">StageType</a> ♥ Part of the TalkType family</footer>
+<footer>Captions by <a href="/demo" target="_blank" rel="noopener noreferrer">StageType</a> ♥ Part of the <a href="https://talktype.app" target="_blank" rel="noopener noreferrer">TalkType</a> family</footer>
 
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const { store, fileStem, download, LINK_RE, linkTarget, extractLinks, prose: sharedProse, isRtlLang } = window.StageTypeShared;
 const roomId = location.pathname.split("/").pop();
-const feed = $("#feed"), interimEl = $("#interim");
-const store = {
-  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
-};
+const feed = $("#feed"), interimEl = $("#interim"), announcer = $("#liveAnnouncer");
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Reader prefs survive between sessions
-let size = Number(store.get("stl-size")) || 22;
-let theme = store.get("stl-theme") || "cream";
-let loose = store.get("stl-loose") === "1";
-let face = store.get("stl-face") || "system";
-let weight = store.get("stl-weight") || "400";
-let flow = store.get("stl-flow") || "live";
+// Reader prefs survive between sessions (clamped & allowlisted against corrupted localStorage).
 const themeColor = { cream: "#fbf1e4", espresso: "#1e1714", contrast: "#fff0a8", night: "#1e1714" };
+const rawSize = Number(store.get("stl-size"));
+let size = Number.isFinite(rawSize) ? Math.min(56, Math.max(14, rawSize)) : 22;
+let theme = store.get("stl-theme") in themeColor ? store.get("stl-theme") : "cream";
+let loose = store.get("stl-loose") === "1";
+let face = ["system", "inter", "atkinson", "fraunces", "mono"].includes(store.get("stl-face")) ? store.get("stl-face") : "system";
+let weight = ["400", "500", "700"].includes(store.get("stl-weight")) ? store.get("stl-weight") : "400";
+let flow = ["live", "settled"].includes(store.get("stl-flow")) ? store.get("stl-flow") : "live";
 
 function applyPrefs() {
   document.documentElement.style.setProperty("--size", size + "px");
@@ -375,6 +449,8 @@ function applyPrefs() {
   document.documentElement.dataset.loose = loose ? "1" : "0";
   $('meta[name="theme-color"]').content = themeColor[theme];
   $("#sizeLabel").textContent = size + "px";
+  $("#smaller").disabled = size <= 14;
+  $("#bigger").disabled = size >= 56;
   $$(".swatch").forEach((s) => s.setAttribute("aria-pressed", String(s.dataset.t === theme)));
   $("#loose").setAttribute("aria-pressed", String(loose));
   document.documentElement.style.setProperty("--face", `var(--face-${face})`);
@@ -395,6 +471,28 @@ $("#face").onchange = () => { face = $("#face").value; store.set("stl-face", fac
 $$("#weightSeg button").forEach((b) => b.onclick = () => { weight = b.dataset.v; store.set("stl-weight", weight); applyPrefs(); });
 $$("#flowSeg button").forEach((b) => b.onclick = () => { flow = b.dataset.v; store.set("stl-flow", flow); applyPrefs(); });
 
+// Close Aa settings popover on outside click (without accidentally starring a line underneath!).
+document.addEventListener("click", (e) => {
+  const panel = $("#panel");
+  if (panel?.open && !panel.contains(e.target)) {
+    panel.open = false;
+  }
+}, true);
+
+// Keep screen awake while live captions are flowing so phones don't auto-lock mid-talk.
+let wakeLock = null;
+async function holdWake() {
+  if ($("#bar").dataset.state !== "live") return;
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
+}
+function dropWake() {
+  try { wakeLock?.release?.(); } catch {}
+  wakeLock = null;
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") holdWake();
+});
+
 const atBottom = () => innerHeight + scrollY >= document.body.scrollHeight - 80;
 let following = true;
 addEventListener("scroll", () => {
@@ -405,44 +503,60 @@ addEventListener("scroll", () => {
 $("#jump").onclick = () => {
   following = true;
   $("#jump").hidden = true;
-  scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  scrollTo({ top: document.body.scrollHeight, behavior: reduced ? "auto" : "smooth" });
 };
 const follow = () => { if (following) scrollTo({ top: document.body.scrollHeight }); };
 
 const linesArr = [];
 const lineTimes = [];
 const lineSpeakers = [];
+let pinnedLinks = [];
 let totalWords = 0;
 let talkTitle = "";
+let talkLang = "";
 let startedAt = 0;
+let talkEnded = false;
 
-// The transcript survives on this phone. Every finished line is stashed under the room id, and the
-// join page lists what's here, so closing the tab or reopening the link a week later still shows the talk.
 const TALK_KEY = `stl-talk-${roomId}`;
-function loadSaved() { try { return JSON.parse(localStorage.getItem(TALK_KEY)); } catch { return null; } }
+function loadSaved() { return store.json(TALK_KEY, null); }
 let saveTimer = null;
-function writeTalk(ended = false) {
-  const rec = { id: roomId, title: talkTitle, lines: linesArr, times: lineTimes, speakers: lineSpeakers, seen, startedAt, updatedAt: Date.now(), ended, stars: keptIndices() };
+function writeTalk(ended = talkEnded) {
+  const isEnded = Boolean(ended || talkEnded);
+  const rec = {
+    id: roomId, title: talkTitle, lang: talkLang, lines: linesArr, times: lineTimes, speakers: lineSpeakers,
+    links: pinnedLinks, seen, startedAt, updatedAt: Date.now(), ended: isEnded, stars: keptIndices(),
+  };
   store.set(TALK_KEY, JSON.stringify(rec));
-  let idx = []; try { idx = JSON.parse(localStorage.getItem("stl-talks")) || []; } catch {}
-  idx = idx.filter((t) => t.id !== roomId);
-  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, kept: stars.size, links: links.length, updatedAt: rec.updatedAt, ended });
-  while (idx.length > 20) { const old = idx.pop(); try { localStorage.removeItem(`stl-talk-${old.id}`); } catch {} }
+  let idx = store.json("stl-talks", []);
+  idx = idx.filter((t) => t && t.id !== roomId);
+  idx.unshift({ id: roomId, title: talkTitle, words: totalWords, kept: stars.size, links: allLinks().length, updatedAt: rec.updatedAt, ended: isEnded });
+  while (idx.length > 20) { const old = idx.pop(); if (old?.id) store.del(`stl-talk-${old.id}`); }
   store.set("stl-talks", JSON.stringify(idx));
 }
 function saveTalk(ended = false) {
+  if (ended) talkEnded = true;
   clearTimeout(saveTimer);
   if (ended) writeTalk(true);
-  else saveTimer = setTimeout(() => writeTalk(false), 800);
+  else saveTimer = setTimeout(() => writeTalk(talkEnded), 800);
 }
-const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-const fileStem = () => `${talkTitle ? slug(talkTitle) : "stagetype-" + roomId}-${new Date().toISOString().split("T")[0]}`;
+const stem = () => fileStem(talkTitle, roomId, startedAt || Date.now());
 
 function applyRoom(info) {
-  talkTitle = info.title || "";
-  $("#talkTitle").textContent = talkTitle;
-  $("#talkTitle").hidden = !talkTitle;
-  document.title = talkTitle ? `${talkTitle} · StageType` : "StageType Live Reader";
+  if (typeof info.title === "string") {
+    talkTitle = info.title;
+    $("#talkTitle").textContent = talkTitle;
+    $("#talkTitle").hidden = !talkTitle;
+    document.title = talkTitle ? `${talkTitle} · StageType` : "StageType Live Reader";
+  }
+  if (info.lang) {
+    talkLang = info.lang;
+    document.documentElement.lang = talkLang;
+    feed.dir = isRtlLang(talkLang) ? "rtl" : "auto";
+  }
+  if (Array.isArray(info.links)) {
+    pinnedLinks = info.links;
+    renderLinks();
+  }
 }
 
 function updateStats() {
@@ -451,19 +565,9 @@ function updateStats() {
   $("#statsPill").textContent = `${words} word${words === 1 ? "" : "s"}`;
 }
 
-// Links in a caption become taps: a pasted reading list or syllabus link lands as a card,
-// and the end card collects them.
-const LINK_RE = /(?:https?:\/\/[^\s<>"']+|www\.[^\s<>"']+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*)?)/gi;
-const links = [];
-function linkTarget(raw) {
-  const href = /^https?:/i.test(raw) ? raw : `https://${raw.replace(/^www\./i, "")}`;
-  try {
-    const u = new URL(href);
-    return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
-  } catch {
-    return null;
-  }
-}
+const captionLinks = [];
+const allLinks = () => extractLinks([], [...pinnedLinks, ...captionLinks]);
+
 function fillCaption(node, text) {
   let last = 0;
   for (const m of text.matchAll(LINK_RE)) {
@@ -477,15 +581,16 @@ function fillCaption(node, text) {
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     node.append(a);
-    if (!links.includes(href)) links.push(href);
+    if (!captionLinks.includes(href)) captionLinks.push(href);
     last = m.index + raw.length;
   }
   if (last < text.length) node.append(text.slice(last));
   if (!node.childNodes.length) node.textContent = text;
-  if (links.length) renderLinks();
+  if (allLinks().length) renderLinks();
 }
 function renderLinks() {
   const tray = $("#linksTray"), list = $("#linksList");
+  const links = allLinks();
   if (!tray || !list) return;
   tray.hidden = !links.length;
   list.replaceChildren(...links.map((href) => {
@@ -500,7 +605,7 @@ function renderLinks() {
   }));
 }
 
-// Tap a settled line to keep it. Highlights ride along into every export.
+// Tap or press Enter/Space on a settled line to keep it.
 const stars = new Set();
 let keptOrder = [];
 function syncKeptOrder() {
@@ -511,13 +616,13 @@ function syncKeptOrder() {
   }
 }
 function paintStars() {
-  $$("#feed p.line").forEach((p) => p.classList.toggle("starred", stars.has(Number(p.dataset.i))));
+  $$("#feed p.line").forEach((p) => {
+    const on = stars.has(Number(p.dataset.i));
+    p.classList.toggle("starred", on);
+    p.setAttribute("aria-pressed", String(on));
+  });
 }
-feed.addEventListener("click", (e) => {
-  if (e.target.closest("a")) return;
-  const p = e.target.closest("p.line");
-  if (!p) return;
-  if (!window.getSelection()?.isCollapsed) return;
+function toggleStar(p) {
   const i = Number(p.dataset.i);
   if (stars.has(i)) stars.delete(i);
   else {
@@ -529,12 +634,26 @@ feed.addEventListener("click", (e) => {
   syncKeptOrder();
   if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([8, 20, 25]);
   paintStars();
-  // A kept line has to survive the tab closing a second later, so write it now.
   clearTimeout(saveTimer);
-  writeTalk(false);
+  writeTalk(talkEnded);
+  if (!$("#endCard").hidden) renderKeptQuotes();
+}
+feed.addEventListener("click", (e) => {
+  if ($("#panel")?.open) return;
+  if (e.target.closest("a") || e.target.closest("button")) return;
+  const p = e.target.closest("p.line");
+  if (!p) return;
+  if (!window.getSelection()?.isCollapsed) return;
+  toggleStar(p);
+});
+feed.addEventListener("keydown", (e) => {
+  const p = e.target.closest?.("p.line");
+  if (!p || (e.key !== "Enter" && e.key !== " ")) return;
+  e.preventDefault();
+  toggleStar(p);
 });
 
-// An image is live only: it lives as long as the room does, and never rides in the saved copy.
+// Shared images: live only, never persisted or printed.
 const seenAssets = new Set();
 function addAsset({ id, thumb }, animate = true, beforeJoin = false) {
   if (seenAssets.has(id)) return;
@@ -549,43 +668,71 @@ function addAsset({ id, thumb }, animate = true, beforeJoin = false) {
   }
   const fig = document.createElement("figure");
   fig.className = animate ? "catch line-in" : "catch";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "catch-btn";
+  btn.setAttribute("aria-label", "Open shared image full screen");
   const img = document.createElement("img");
   img.src = thumb;
   img.alt = "Image shared during the talk";
   img.loading = "lazy";
   img.dataset.asset = id;
-  fig.append(img);
+  btn.append(img);
+  fig.append(btn);
   feed.insertBefore(fig, interimEl);
   follow();
 }
 
 const lightbox = $("#lightbox");
 const lightboxImg = lightbox.querySelector("img");
-feed.addEventListener("click", (e) => {
-  const img = e.target.closest("figure.catch img");
-  if (!img) return;
-  lightboxImg.src = `/api/room/${roomId}/asset/${img.dataset.asset}`;
+const lightboxClose = $("#lightboxClose");
+let lightboxOpener = null;
+function openLightbox(id, opener) {
+  lightboxOpener = opener || null;
+  lightboxImg.src = `/api/room/${roomId}/asset/${id}`;
+  lightboxImg.alt = "Full-size image shared during the talk";
   lightbox.classList.add("open");
+  lightboxClose.focus();
+}
+function closeLightbox() {
+  if (!lightbox.classList.contains("open")) return;
+  lightbox.classList.remove("open");
+  lightboxImg.removeAttribute("src");
+  lightboxOpener?.focus?.();
+  lightboxOpener = null;
+}
+feed.addEventListener("click", (e) => {
+  const btn = e.target.closest("figure.catch .catch-btn");
+  const img = btn?.querySelector("img");
+  if (!img) return;
+  openLightbox(img.dataset.asset, btn);
 });
-lightbox.onclick = () => {
-  lightbox.classList.remove("open");
-  lightboxImg.removeAttribute("src");
-};
-lightboxImg.onerror = () => {
-  lightbox.classList.remove("open");
-  lightboxImg.removeAttribute("src");
-};
-addEventListener("keydown", (e) => { if (e.key === "Escape") lightbox.onclick(); });
+lightboxClose.onclick = closeLightbox;
+lightbox.onclick = (e) => { if (e.target === lightbox || e.target === lightboxImg) closeLightbox(); };
+lightboxImg.onerror = closeLightbox;
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (lightbox.classList.contains("open")) { closeLightbox(); return; }
+    const panel = $("#panel");
+    if (panel?.open) { panel.open = false; panel.querySelector("summary")?.focus(); }
+  }
+  if (e.key === "Tab" && lightbox.classList.contains("open")) {
+    e.preventDefault();
+    lightboxClose.focus();
+  }
+});
 
 let lastRenderedSpeaker = "";
 function addLine(text, animate = true, speaker = "") {
   $("#waiting")?.remove();
-  // The "earlier" label is a separator for the backlog block only: the next live line ends it.
   $("#feed .before-join")?.remove();
   feed.querySelector("p.fresh")?.classList.remove("fresh");
   const p = document.createElement("p");
   p.className = animate ? "fresh line line-in" : "fresh line";
   p.dataset.i = String(linesArr.length);
+  p.tabIndex = 0;
+  p.setAttribute("role", "button");
+  p.setAttribute("aria-pressed", "false");
   if (speaker && speaker !== lastRenderedSpeaker) {
     const tag = document.createElement("b");
     tag.className = "speaker-tag";
@@ -602,38 +749,14 @@ function addLine(text, animate = true, speaker = "") {
   lineSpeakers.push(speaker || "");
   updateStats();
   paintStars();
-  if (animate) saveTalk();
+  if (animate) {
+    announcer.textContent = speaker ? `${speaker}: ${text}` : text;
+    saveTalk();
+  }
 }
 
 const transcript = () => linesArr.join("\n\n");
-// A talk is not a list of sentences: an eight-second breath or ~420-char sentence boundary is a
-// paragraph break, and speaker transitions get prefixed. Good enough to read as an essay draft.
-const prose = (md = false) => {
-  const paras = [];
-  let para = [];
-  let paraChars = 0;
-  let lastSpeaker = "";
-  for (let i = 0; i < linesArr.length; i++) {
-    const gap = i > 0 && lineTimes[i] && lineTimes[i - 1] ? lineTimes[i] - lineTimes[i - 1] : 0;
-    const spk = lineSpeakers[i] || "";
-    const spkChanged = i > 0 && spk !== lastSpeaker;
-    const sentenceEnd = para.length > 0 && /[.!?]["'’”)]?$/.test(para[para.length - 1]);
-    if ((gap > 8000 || spkChanged || (paraChars >= 420 && sentenceEnd)) && para.length) {
-      paras.push(para.join(" "));
-      para = [];
-      paraChars = 0;
-    }
-    let lineText = linesArr[i];
-    if (spk && spk !== lastSpeaker) {
-      lineText = md ? `**${spk}:** ${lineText}` : `${spk}: ${lineText}`;
-    }
-    lastSpeaker = spk;
-    para.push(lineText);
-    paraChars += lineText.length;
-  }
-  if (para.length) paras.push(para.join(" "));
-  return paras.join("\n\n");
-};
+const prose = (md = false) => sharedProse(linesArr, lineTimes, lineSpeakers, md);
 const keptIndices = () => {
   syncKeptOrder();
   return keptOrder.filter((i) => Boolean(linesArr[i]));
@@ -641,7 +764,7 @@ const keptIndices = () => {
 const kept = () => keptIndices().map((i) => linesArr[i]).filter(Boolean);
 const withKept = () => {
   const k = kept();
-  if (!k.length) return transcript();
+  if (!k.length) return prose(false);
   return `Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n${prose(false)}`;
 };
 
@@ -671,22 +794,85 @@ $("#copyKeptBtn").onclick = async () => {
   setTimeout(() => (btn.textContent = orig), 1500);
 };
 
-function download(filename, content, type) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
+// 1-Tap Client-Side Quote Card PNG (1080x1350 warm-cream Soft Neo Toybrut)
+$("#quoteCardBtn").onclick = async () => {
+  const quote = kept()[0];
+  if (!quote) return;
+  const c = document.createElement("canvas");
+  c.width = 1080; c.height = 1350;
+  const g = c.getContext("2d");
+  // Tabletop background + dot texture
+  g.fillStyle = "#fff6e6"; g.fillRect(0, 0, 1080, 1350);
+  g.fillStyle = "rgba(30,23,20,0.08)";
+  for (let x = 28; x < 1080; x += 36) for (let y = 28; y < 1350; y += 36) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
+  // Card shadow + frame
+  const rx = 74, ry = 96, rw = 932, rh = 1158;
+  g.fillStyle = "#1e1714";
+  g.beginPath(); g.roundRect(rx + 14, ry + 14, rw, rh, 44); g.fill();
+  g.fillStyle = "#fffdf5"; g.strokeStyle = "#1e1714"; g.lineWidth = 6;
+  g.beginPath(); g.roundRect(rx, ry, rw, rh, 44); g.fill(); g.stroke();
+  // Eyebrow badge
+  g.fillStyle = "#ff6ac2";
+  g.beginPath(); g.roundRect(rx + 64, ry + 64, 240, 52, 26); g.fill(); g.stroke();
+  g.fillStyle = "#1e1714"; g.font = "900 22px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+  g.fillText("KEPT QUOTE", rx + 110, ry + 98);
+  // Talk title
+  if (talkTitle) {
+    g.fillStyle = "#5a4b42"; g.font = "800 28px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    g.fillText(talkTitle.toUpperCase().slice(0, 44), rx + 64, ry + 184);
+  }
+  // Pink left quote bar + wrapped quote
+  const fontSize = quote.length > 160 ? 46 : quote.length > 90 ? 56 : 68;
+  g.font = `800 ${fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+  const maxW = rw - 172;
+  const wordsList = `“${quote}”`.split(/\s+/);
+  const lines = [];
+  let cur = "";
+  for (const w of wordsList) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (g.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
+  }
+  if (cur) lines.push(cur);
+  const clipped = lines.slice(0, 10);
+  const lineH = Math.round(fontSize * 1.28);
+  const startY = ry + 310;
+  g.fillStyle = "#ff6ac2";
+  g.fillRect(rx + 64, startY - fontSize + 10, 12, clipped.length * lineH + 8);
+  g.fillStyle = "#1e1714";
+  clipped.forEach((ln, idx) => g.fillText(ln, rx + 104, startY + idx * lineH));
+  // Footer stamp
+  g.strokeStyle = "rgba(30,23,20,0.18)"; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(rx + 64, ry + rh - 148); g.lineTo(rx + rw - 64, ry + rh - 148); g.stroke();
+  g.fillStyle = "#1e1714"; g.font = "900 42px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+  g.fillText("StageType", rx + 64, ry + rh - 76);
+  const stW = g.measureText("StageType").width;
+  g.fillStyle = "#ff6ac2"; g.beginPath(); g.arc(rx + 64 + stW + 10, ry + rh - 82, 8, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "#5a4b42"; g.font = "700 24px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+  g.fillText("Live captions on every phone", rx + rw - 388, ry + rh - 80);
+
+  const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+  if (!blob) return;
+  const filename = `${stem()}-quote.png`;
+  const file = new File([blob], filename, { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: talkTitle || "StageType quote" }); return; } catch {}
+  }
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+};
 
 $("#saveMd").onclick = () => {
   const now = new Date();
   const dateStr = now.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   const k = kept();
+  const links = allLinks();
   const keptSection = k.length ? `## Kept from this talk\n\n${k.map((t) => `> ${t}`).join("\n>\n")}\n\n---\n\n` : "";
   const linkSection = links.length ? `## Links Mentioned\n\n${links.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
-  const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: StageType, room \`${roomId}\`\n\n---\n\n`;
-  download(`${fileStem()}.md`, frontmatter + keptSection + linkSection + prose(true) + "\n", "text/markdown");
+  const frontmatter = `# ${talkTitle || "StageType Live Transcript"}\n\n- **Date**: ${dateStr}\n- **Words**: ${totalWords}\n- **Captions**: [StageType](${location.origin}/demo)\n\n---\n\n`;
+  download(`${stem()}.md`, frontmatter + keptSection + linkSection + prose(true) + "\n", "text/markdown");
 };
 
 const triggerPrint = () => window.print();
@@ -696,18 +882,20 @@ $("#cardPrintBtn").onclick = triggerPrint;
 const setState = (state, label) => {
   $("#state").textContent = label;
   $("#bar").dataset.state = state;
+  if (state === "live") holdWake(); else dropWake();
 };
 
 let seen = 0;
 const saved = loadSaved();
-if (saved?.lines?.length) {
-  applyRoom({ title: saved.title });
+if (saved && Array.isArray(saved.lines) && saved.lines.length) {
+  applyRoom({ title: saved.title || "", lang: saved.lang || "", links: Array.isArray(saved.links) ? saved.links : [] });
   startedAt = saved.startedAt || 0;
+  talkEnded = Boolean(saved.ended);
   saved.lines.forEach((t, i) => {
     addLine(t, false, saved.speakers?.[i] || "");
     if (saved.times?.[i]) lineTimes[lineTimes.length - 1] = saved.times[i];
   });
-  for (const i of saved.stars || []) {
+  for (const i of Array.isArray(saved.stars) ? saved.stars : []) {
     stars.add(i);
     if (!keptOrder.includes(i)) keptOrder.push(i);
   }
@@ -716,27 +904,30 @@ if (saved?.lines?.length) {
   seen = saved.seen || saved.lines.length;
   setState("saved", "Saved on this phone");
 }
-// Demo links carry a signature; the relay turns it into a room on this first connection.
+
 const demoSig = new URLSearchParams(location.search).get("s");
 const es = new EventSource(`/api/room/${roomId}/stream${demoSig ? `?s=${encodeURIComponent(demoSig)}` : ""}`);
 
-es.addEventListener("open", () => setState("live", "Live"));
+es.addEventListener("open", () => {
+  talkEnded = false;
+  $("#closedCard").hidden = true;
+  setState("live", "Live");
+});
 
-// `seen` is an absolute sequence number. The server trims old lines from its backlog and tells us
-// how many it dropped (`offset`), so a reconnect after a long talk never double-prints or skips lines.
 es.addEventListener("backlog", (e) => {
-  const { lines, offset = 0, assets = [], speakers = [], ...info } = JSON.parse(e.data);
+  const { lines = [], offset = 0, assets = [], assetIds, speakers = [], paused = false, ...info } = JSON.parse(e.data);
   applyRoom(info);
   if (info.startedAt) startedAt = info.startedAt;
+  if (paused) setState("paused", "Paused on stage");
   const startIdx = Math.max(0, seen - offset);
   lines.slice(startIdx).forEach((t, idx) => addLine(t, false, speakers[startIdx + idx] || ""));
   seen = Math.max(seen, offset + lines.length);
-  // Reconcile assets against server truth so any image pulled back while offline disappears
-  const liveIds = new Set(assets.map((a) => a.id));
+  // Reconcile against ALL live asset IDs on the server (not just the last 12 backlog thumbs).
+  const liveIds = new Set(Array.isArray(assetIds) ? assetIds : assets.map((a) => a.id));
   for (const fig of $$("#feed figure.catch")) {
     const id = fig.querySelector("img")?.dataset.asset;
     if (id && !liveIds.has(id)) {
-      if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) lightbox.onclick();
+      if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
       fig.remove();
       seenAssets.delete(id);
     }
@@ -749,6 +940,7 @@ es.addEventListener("backlog", (e) => {
 
 es.addEventListener("final", (e) => {
   const { text, speaker = "" } = JSON.parse(e.data);
+  if ($("#bar").dataset.state === "paused") setState("live", "Live");
   if (text) {
     addLine(text, true, speaker);
     seen++;
@@ -757,17 +949,28 @@ es.addEventListener("final", (e) => {
   follow();
 });
 
-es.addEventListener("asset", (e) => {
-  addAsset(JSON.parse(e.data));
+es.addEventListener("paused", (e) => {
+  const { paused } = JSON.parse(e.data);
+  if (paused) setState("paused", "Paused on stage");
+  else setState("live", "Live");
 });
 
-// The presenter pulled one back: it leaves this phone the same way it arrived.
+es.addEventListener("links", (e) => {
+  const { links } = JSON.parse(e.data);
+  if (Array.isArray(links)) {
+    pinnedLinks = links;
+    renderLinks();
+    saveTalk();
+  }
+});
+
+es.addEventListener("asset", (e) => { addAsset(JSON.parse(e.data)); });
 es.addEventListener("asset-gone", (e) => {
   const { id } = JSON.parse(e.data);
   seenAssets.delete(id);
-  const fig = feed.querySelector(`figure.catch img[data-asset="${id}"]`)?.closest("figure.catch");
+  const fig = feed.querySelector(`figure.catch img[data-asset="${CSS.escape(id)}"]`)?.closest("figure.catch");
   if (!fig) return;
-  if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) lightbox.onclick();
+  if (lightbox.classList.contains("open") && lightboxImg.src.includes(id)) closeLightbox();
   fig.remove();
   if (!$("#feed figure.catch")) $("#feed .before-join")?.remove();
 });
@@ -785,91 +988,94 @@ function moveKeptQuote(fromLineIdx, toLineIdx) {
     keptOrder.splice(from, 1);
     keptOrder.splice(to, 0, fromLineIdx);
     renderKeptQuotes();
-    saveTalk(true);
+    saveTalk(talkEnded);
   }
 }
 
+let quoteSaveTimer = null;
 function renderKeptQuotes() {
   const idxs = keptIndices();
   const quotes = $("#keptQuotes");
   const copyKeptBtn = $("#copyKeptBtn");
+  const quoteCardBtn = $("#quoteCardBtn");
   if (copyKeptBtn) copyKeptBtn.hidden = idxs.length === 0;
-  let dragIdx = null;
-  quotes.replaceChildren(...idxs.slice(0, 5).map((lineIdx) => {
+  if (quoteCardBtn) quoteCardBtn.hidden = idxs.length === 0;
+  const shown = idxs.slice(0, 5);
+  quotes.replaceChildren(...shown.map((lineIdx, pos) => {
+    const row = document.createElement("div");
+    row.className = "quote-row";
+    row.dataset.lineIdx = String(lineIdx);
+
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "quote-handle";
+    handle.textContent = "⋮⋮";
+    handle.setAttribute("aria-label", "Drag to reorder quote");
+
     const q = document.createElement("blockquote");
     q.contentEditable = "true";
+    q.setAttribute("role", "textbox");
+    q.setAttribute("aria-label", `Edit kept quote ${pos + 1}`);
     q.spellcheck = false;
     q.dataset.lineIdx = String(lineIdx);
-    q.draggable = true;
     q.textContent = linesArr[lineIdx] || "";
     q.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        q.blur();
-      }
+      if (ev.key === "Enter") { ev.preventDefault(); q.blur(); }
     });
     q.addEventListener("input", () => {
       const val = q.textContent.replace(/\s+/g, " ").trim();
       if (val) {
         linesArr[lineIdx] = val;
         const feedSpan = feed.querySelector(`p.line[data-i="${lineIdx}"] span`);
-        if (feedSpan) {
-          feedSpan.replaceChildren();
-          fillCaption(feedSpan, val);
-        }
+        if (feedSpan) { feedSpan.replaceChildren(); fillCaption(feedSpan, val); }
         updateStats();
-        saveTalk(true);
+        clearTimeout(quoteSaveTimer);
+        quoteSaveTimer = setTimeout(() => writeTalk(talkEnded), 350);
       }
     });
-    q.addEventListener("dragstart", () => {
-      dragIdx = lineIdx;
-      q.classList.add("dragging");
-    });
-    q.addEventListener("dragend", () => {
-      dragIdx = null;
-      q.classList.remove("dragging");
-    });
-    q.addEventListener("dragover", (ev) => ev.preventDefault());
-    q.addEventListener("drop", (ev) => {
-      ev.preventDefault();
-      moveKeptQuote(dragIdx, lineIdx);
-    });
-    // Pointer/touch drag-to-reorder so mobile phones can reorder kept quotes with a finger drag
+
+    // Pointer drag strictly on the dedicated handle so normal phone scrolling over quotes never stalls.
     let ptrId = null, startY = 0, ptrDragging = false, ptrTargetIdx = null;
-    q.addEventListener("pointerdown", (ev) => {
+    handle.addEventListener("pointerdown", (ev) => {
       if (ev.button && ev.button !== 0) return;
-      ptrId = ev.pointerId;
-      startY = ev.clientY;
-      ptrDragging = false;
-      ptrTargetIdx = null;
+      ptrId = ev.pointerId; startY = ev.clientY; ptrDragging = false; ptrTargetIdx = null;
+      try { handle.setPointerCapture(ev.pointerId); } catch {}
     });
-    q.addEventListener("pointermove", (ev) => {
+    handle.addEventListener("pointermove", (ev) => {
       if (ptrId !== ev.pointerId) return;
       if (!ptrDragging && Math.abs(ev.clientY - startY) > 6) {
         ptrDragging = true;
-        q.classList.add("dragging");
-        try { q.setPointerCapture(ev.pointerId); } catch {}
+        row.classList.add("dragging");
       }
       if (!ptrDragging) return;
-      const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("#keptQuotes blockquote");
-      if (over && over.dataset.lineIdx !== undefined) {
-        ptrTargetIdx = Number(over.dataset.lineIdx);
-      }
+      const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("#keptQuotes .quote-row");
+      if (over && over.dataset.lineIdx !== undefined) ptrTargetIdx = Number(over.dataset.lineIdx);
     });
     const finishPointer = (ev) => {
       if (ptrId !== ev.pointerId) return;
       ptrId = null;
-      q.classList.remove("dragging");
-      try { if (q.hasPointerCapture(ev.pointerId)) q.releasePointerCapture(ev.pointerId); } catch {}
-      if (ptrDragging && ptrTargetIdx !== null && ptrTargetIdx !== lineIdx) {
-        moveKeptQuote(lineIdx, ptrTargetIdx);
-      }
-      ptrDragging = false;
-      ptrTargetIdx = null;
+      row.classList.remove("dragging");
+      try { if (handle.hasPointerCapture(ev.pointerId)) handle.releasePointerCapture(ev.pointerId); } catch {}
+      if (ptrDragging && ptrTargetIdx !== null && ptrTargetIdx !== lineIdx) moveKeptQuote(lineIdx, ptrTargetIdx);
+      ptrDragging = false; ptrTargetIdx = null;
     };
-    q.addEventListener("pointerup", finishPointer);
-    q.addEventListener("pointercancel", finishPointer);
-    return q;
+    handle.addEventListener("pointerup", finishPointer);
+    handle.addEventListener("pointercancel", finishPointer);
+
+    const moves = document.createElement("div");
+    moves.className = "quote-moves";
+    const up = document.createElement("button");
+    up.type = "button"; up.textContent = "↑"; up.setAttribute("aria-label", "Move quote up");
+    up.disabled = pos === 0;
+    up.onclick = () => moveKeptQuote(lineIdx, shown[pos - 1]);
+    const dn = document.createElement("button");
+    dn.type = "button"; dn.textContent = "↓"; dn.setAttribute("aria-label", "Move quote down");
+    dn.disabled = pos === shown.length - 1;
+    dn.onclick = () => moveKeptQuote(lineIdx, shown[pos + 1]);
+    moves.append(up, dn);
+
+    row.append(handle, q, moves);
+    return row;
   }));
   if (idxs.length > 5) {
     const more = document.createElement("span");
@@ -882,41 +1088,48 @@ function renderKeptQuotes() {
 
 function talkOver(label, state = "ended") {
   es.close();
+  talkEnded = true;
   interimEl.textContent = "";
   $("#waiting")?.remove();
   setState(state, label);
   $("#jump").hidden = true;
   if (linesArr.length) {
+    $("#closedCard").hidden = true;
     paintStars();
     $("#endTitle").textContent = talkTitle || "Talk ended";
     const stats = $("#endStats");
     const when = new Date(startedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    const links = allLinks();
     const bits = [when, `${totalWords} word${totalWords === 1 ? "" : "s"}`];
     if (stars.size) bits.push(`${stars.size} kept`);
     if (links.length) bits.push(`${links.length} link${links.length === 1 ? "" : "s"}`);
     stats.textContent = bits.join(" · ");
     stats.hidden = false;
 
-    // The kept lines lead, as quotes: editable in place and ready to copy or screenshot.
     renderKeptQuotes();
+    renderLinks();
 
-    // Share only where a share sheet exists; Copy is the desktop answer.
     const share = $("#shareTranscript");
     if (navigator.share) {
       share.hidden = false;
       share.onclick = () => {
         const keptNow = kept();
+        const snippet = keptNow.length
+          ? keptNow.slice(0, 3).map((q) => `“${q}”`).join("\n\n")
+          : prose(false).slice(0, 800);
         navigator.share({
           title: talkTitle || "StageType transcript",
-          text: (keptNow[0] ? `“${keptNow[0]}”\n\n` : "") + (talkTitle ? `${talkTitle} — ` : "") + transcript(),
+          text: (talkTitle ? `${talkTitle}\n\n` : "") + snippet,
+          url: `${location.origin}/demo`,
         }).catch(() => {});
       };
     }
 
-    $("#endWhere").textContent = "Saved on this phone. Reopens from this link.";
     $("#endCard").hidden = false;
     saveTalk(true);
     if (navigator.vibrate && navigator.userActivation?.hasBeenActive) navigator.vibrate([30, 80, 30]);
+  } else {
+    $("#closedCard").hidden = false;
   }
 }
 
@@ -924,13 +1137,13 @@ es.addEventListener("end", () => talkOver("Talk ended"));
 
 es.onerror = () => {
   if (es.readyState === EventSource.CLOSED) {
-    // The room is gone (ended while this phone was asleep, or the relay restarted). Whatever we
-    // caught is still worth keeping, so offer the export card the same as a clean ending.
     talkOver(linesArr.length ? "Saved on this phone" : "Room closed", linesArr.length ? "saved" : "ended");
   } else {
     setState("reconnecting", "Reconnecting");
   }
 };
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

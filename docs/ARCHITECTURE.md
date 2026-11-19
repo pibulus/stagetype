@@ -28,7 +28,7 @@ Everything that adds words goes through `pushChunk()` in `server.ts`. New capabi
 | `POST` | `/api/room/:id` | Bearer token | Push `{ text, final, source, speaker?, phone? }`; `source` is `mic` (default), `phone` or `typed`. `{ ping: true }` is a keepalive that broadcasts nothing. `{ ping: true, source: "phone", live: true\|false, phone? }` announces a phone mic session in `room.phones` (up to 8 concurrent phones) and heartbeats it while live |
 | `GET` | `/api/room/:id/stream` | none | SSE: `backlog { lines, speakers?, offset, startedAt, title, phone }`, then `interim { text, source, speaker? }`, `final { text, seq, source, speaker? }`, `source { source: "phone", live, lost, phones }` on handoffs, `end` |
 | `POST` | `/api/room/:id/asset` | Bearer token | Share an image: multipart `full` + `thumb` (WebP/JPEG/PNG), 2 MB and 40 images a room, not in demo rooms |
-| `GET` | `/api/room/:id/asset/:assetId` | none | The full frame, immutable and cacheable. The room id is the secret |
+| `GET` | `/api/room/:id/asset/:assetId` | none | The full frame (`private, max-age=60`, `nosniff`), no auth (the room id is the secret) |
 | `DELETE` | `/api/room/:id/asset/:assetId` | Bearer token | Pull a picture back; every listener gets `asset-gone { id }` |
 | `DELETE` | `/api/room/:id` | Bearer token | End the talk and drop the room |
 | `GET` | `/api/info` | localhost only | `{ lan }` base URL for QR codes |
@@ -98,7 +98,12 @@ stagetype/
 ├── demo.html         # Live demo: signed QR per visitor, type on the laptop, read on the phone
 ├── signed_noise.ts   # Zero-dep HMAC ids that only become real when used (also for QR Buddy)
 ├── ROADMAP.md        # Position, model, numbers, build order
-├── ghost.svg         # Favicon / home-screen icon
+├── ghost.svg         # Toybrut ST. monogram favicon (sandboxed SVG)
+├── apple-touch-icon.png # 180x180 iOS Home Screen icon
+├── og-image.png      # 1200x630 Open Graph / social share card
+├── manifest.webmanifest # PWA metadata
+├── sw.js             # Lightweight offline shell cache so saved talks reopen without signal
+├── shared.js         # Shared client helpers (languages, prose, room words, URL validation, downloads)
 ├── vendor/qrcode.js  # Vendored QR encoder (MIT, Kazuhiko Arase) so nothing loads from a CDN
 ├── vendor/fonts.css  # @font-face for the five curated faces (all OFL), plus the --face-* stacks
 ├── vendor/fonts/     # Inter, Atkinson Hyperlegible, Fraunces, JetBrains Mono as woff2 (Latin + Latin Ext)

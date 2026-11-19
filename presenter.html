@@ -3,9 +3,20 @@
   <head>
     <meta charset="utf-8">
     <link rel="icon" href="/ghost.svg" type="image/svg+xml">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#fff6e6">
     <title>StageType · Presenter Console</title>
+    <meta name="description" content="Live presentation captions ticker, wireless phone lapel mic, OBS browser source, and instant audience QR reader. Zero accounts, open source.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="StageType · Speak. Every phone in the room reads along.">
+    <meta property="og:description" content="Wordly is the one you book a demo for. StageType is the one you just open.">
+    <meta property="og:image" content="/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="/og-image.png">
     <script src="/vendor/qrcode.js"></script>
+    <script src="/shared.js"></script>
     <script src="/deepgram.js"></script>
     <link rel="stylesheet" href="/vendor/fonts.css">
     <style>
@@ -15,12 +26,10 @@
       --surface: #fffdf5;
       --sand: #fdf1e0;
       --ink: #1e1714;
-      --quiet: #6d5d53;
-      --muted: rgba(30, 23, 20, 0.56);
+      --quiet: #5a4b42;
       --hair: rgba(58, 46, 40, 0.16);
       --hair-soft: rgba(58, 46, 40, 0.09);
       --pink: #ff6ac2;
-      --coral: #ff8a5c;
       --amber: #ffc74d;
       --teal: #2dd4bf;
       --violet: #a78bfa;
@@ -29,8 +38,6 @@
       --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
       --mono: ui-monospace, Menlo, Consolas, monospace;
       --spring: cubic-bezier(.2, .9, .3, 1.35);
-      --snap: cubic-bezier(.4, 0, .2, 1);
-      --vu: 0;
     }
     :root[data-vibe="stage"] {
       --ground: #f3fbf8;
@@ -49,16 +56,14 @@
       --surface: #28201c;
       --sand: #231b17;
       --ink: #fbf1e4;
-      --quiet: #b8a698;
-      --muted: rgba(251, 241, 228, 0.62);
+      --quiet: #c0aea0;
       --hair: rgba(251, 241, 228, 0.22);
       --hair-soft: rgba(251, 241, 228, 0.12);
       --line: #fbf1e4;
       --vibe-accent: #ffc74d;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       min-height: 100dvh;
@@ -73,15 +78,12 @@
       -webkit-font-smoothing: antialiased;
       transition: background-color .25s ease, color .25s ease;
     }
-    ::selection {
-      background: var(--pink);
-      color: #1e1714;
-    }
+    ::selection { background: var(--pink); color: #1e1714; }
     main {
       width: 100%;
       max-width: 1060px;
       margin: auto;
-      padding: 24px 24px 28px;
+      padding: calc(env(safe-area-inset-top) + 22px) 22px calc(env(safe-area-inset-bottom) + 24px);
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -148,14 +150,8 @@
       letter-spacing: .06em;
       transition: transform .18s var(--spring), box-shadow .18s var(--spring);
     }
-    .vibe-pill:hover {
-      transform: translate(-1px, -1px);
-      box-shadow: 3px 3px 0 var(--line);
-    }
-    .vibe-pill:active {
-      transform: translate(1px, 1px) scale(.97);
-      box-shadow: 1px 1px 0 var(--line);
-    }
+    .vibe-pill:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--line); }
+    .vibe-pill:active { transform: translate(1px, 1px) scale(.97); box-shadow: 1px 1px 0 var(--line); }
     .vibe-dot {
       width: 8px;
       height: 8px;
@@ -165,48 +161,21 @@
       box-shadow: 0 0 6px var(--vibe-accent, var(--pink));
       transition: background .25s ease, box-shadow .25s ease;
     }
-    .pill-sep {
-      color: var(--quiet);
-    }
-    #micPill {
-      color: var(--quiet);
-    }
+    .pill-sep, #micPill { color: var(--quiet); }
     .pulse-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: color-mix(in srgb, var(--ink) 35%, transparent);
+      background: color-mix(in srgb, var(--ink) 40%, transparent);
     }
-    .pulse-dot.active {
-      background: var(--teal);
-      animation: breatheDot 2.4s ease-in-out infinite;
-    }
-    @keyframes breatheDot {
-      50% {
-        opacity: .5;
-      }
-    }
-    body[data-live="1"] #liveBadge {
-      background: color-mix(in srgb, var(--teal) 22%, var(--surface));
-    }
+    .pulse-dot.active { background: var(--teal); animation: breatheDot 2.4s ease-in-out infinite; }
+    @keyframes breatheDot { 50% { opacity: .5; } }
+    body[data-live="1"] #liveBadge { background: color-mix(in srgb, var(--teal) 24%, var(--surface)); }
     body[data-live="1"] #liveBadge .pill-sep,
-    body[data-live="1"] #liveBadge #micPill {
-      color: var(--ink);
-    }
-    #countBadge {
-      color: var(--ink);
-    }
-    #countBadge.bump {
-      animation: bump .45s var(--spring);
-    }
-    @keyframes bump {
-      30% {
-        transform: scale(1.07);
-      }
-      100% {
-        transform: none;
-      }
-    }
+    body[data-live="1"] #liveBadge #micPill { color: var(--ink); }
+    #countBadge { color: var(--ink); }
+    #countBadge.bump { animation: bump .45s var(--spring); }
+    @keyframes bump { 30% { transform: scale(1.07); } 100% { transform: none; } }
 
     /* ---------- the talk bar ---------- */
     .bar {
@@ -226,7 +195,7 @@
       gap: 5px;
       min-width: 0;
     }
-    .field > span,
+    .field > .field-label,
     .field-head {
       display: flex;
       align-items: center;
@@ -237,77 +206,41 @@
       text-transform: uppercase;
       color: var(--quiet);
     }
-    .field-head label {
-      cursor: pointer;
-    }
-    button.words-chip,
+    .field-head label { cursor: pointer; }
     .words-chip {
-      font: 700 9.5px var(--mono);
+      font: 700 10.5px var(--mono);
       letter-spacing: .04em;
       text-transform: none;
       color: #1e1714;
       background: var(--teal);
-      border: 1px solid var(--line);
+      border: 1.5px solid #1e1714;
       box-shadow: none;
       border-radius: 999px;
-      padding: 1px 7px;
+      padding: 3px 9px;
+      min-height: 24px;
       cursor: pointer;
     }
-    button.words-chip:hover {
-      background: var(--amber);
-      transform: translate(-1px, -1px);
-      box-shadow: 1.5px 1.5px 0 var(--line);
-    }
-    button.words-chip:focus-visible {
-      outline: 2px solid var(--pink);
-      outline-offset: 2px;
-    }
-    .words-chip[hidden] {
-      display: none;
-    }
-    .field-title {
-      flex: 4 1 240px;
-    }
-    .field-lang {
-      flex: 0 1 182px;
-    }
-    .field-engine {
-      flex: 0 1 164px;
-    }
-    .bar .control-row {
-      flex: 0 0 auto;
-    }
-    input,
-    select {
-      font: 600 14.5px var(--swiss);
+    .words-chip:hover { background: var(--amber); transform: translate(-1px, -1px); box-shadow: 1.5px 1.5px 0 #1e1714; }
+    .field-title { flex: 4 1 240px; }
+    .field-lang { flex: 0 1 182px; }
+    .field-engine { flex: 0 1 164px; }
+    .bar .control-row { flex: 0 0 auto; }
+    input, select {
+      font: 600 16px var(--swiss);
       color: var(--ink);
       background: var(--surface);
       border: 1.5px solid var(--line);
       box-shadow: 2px 2px 0 var(--line);
       border-radius: 12px;
-      padding: 10px 13px;
+      padding: 9px 13px;
       width: 100%;
       transition: transform .15s var(--spring), box-shadow .15s var(--spring), background .18s;
     }
-    input::placeholder {
-      color: var(--quiet);
-      font-weight: 400;
-    }
-    select {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%231e1714' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 32px;
-      cursor: pointer;
-      text-overflow: ellipsis;
-    }
-    input:focus,
-    select:focus {
-      outline: none;
+    input::placeholder { color: var(--quiet); font-weight: 400; }
+    input:focus, select:focus {
+      outline: 3px solid var(--ink);
+      outline-offset: 2px;
       background: var(--ground);
-      transform: translate(-1px, -1px);
-      box-shadow: 3px 3px 0 var(--pink);
     }
     input:disabled {
       color: var(--ink);
@@ -315,22 +248,14 @@
       border-color: transparent;
       box-shadow: none;
       padding-left: 2px;
-      font-weight: 700;
+      font-weight: 800;
     }
+    input:disabled::placeholder { color: transparent; }
 
     /* ---------- whimsical custom pull-down (.stage-select) ---------- */
-    .stage-select {
-      position: relative;
-      display: inline-flex;
-      width: 100%;
-    }
+    .stage-select { position: relative; display: inline-flex; width: 100%; }
     .stage-select > select {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      pointer-events: none;
-      width: 100%;
-      height: 100%;
+      position: absolute; inset: 0; opacity: 0; pointer-events: none; width: 100%; height: 100%;
     }
     .stage-select-btn {
       width: 100%;
@@ -345,20 +270,17 @@
       text-align: left;
       overflow: hidden;
     }
-    .stage-select-btn span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+    .stage-select-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage-select-chev {
       flex: 0 0 auto;
-      font-size: 11px;
+      width: 12px;
+      height: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: transform .24s var(--spring);
-      opacity: .8;
     }
-    .stage-select.open .stage-select-chev {
-      transform: rotate(180deg);
-    }
+    .stage-select.open .stage-select-chev { transform: rotate(180deg); }
     .stage-select-menu {
       position: absolute;
       top: calc(100% + 6px);
@@ -377,20 +299,8 @@
       gap: 2px;
       transform-origin: top center;
     }
-    .stage-select.open .stage-select-menu {
-      display: flex;
-      animation: selectPop .22s var(--spring);
-    }
-    @keyframes selectPop {
-      from {
-        opacity: 0;
-        transform: translateY(-6px) scale(.95);
-      }
-      to {
-        opacity: 1;
-        transform: none;
-      }
-    }
+    .stage-select.open .stage-select-menu { display: flex; animation: selectPop .22s var(--spring); }
+    @keyframes selectPop { from { opacity: 0; transform: translateY(-6px) scale(.95); } to { opacity: 1; transform: none; } }
     .stage-select-opt {
       width: 100%;
       justify-content: flex-start;
@@ -400,34 +310,16 @@
       border: 0;
       box-shadow: none !important;
       border-radius: 9px;
-      padding: 7px 10px;
+      padding: 8px 10px;
       text-align: left;
-      position: relative;
     }
-    .stage-select-opt:not(:disabled):hover {
-      background: var(--sand);
-    }
-    .stage-select-opt.active {
-      background: color-mix(in srgb, var(--pink) 24%, var(--surface));
-      font-weight: 800;
-    }
-    .bar .hint,
-    .bar .notice {
-      flex: 1 1 100%;
-    }
+    .stage-select-opt:not(:disabled):hover { background: var(--sand); }
+    .stage-select-opt.active { background: color-mix(in srgb, var(--pink) 24%, var(--surface)); font-weight: 800; }
+    .bar .hint, .bar .notice { flex: 1 1 100%; }
     body[data-live="1"] .field-lang,
     body[data-live="1"] .field-engine,
-    body[data-live="1"] #engineHint {
-      display: none;
-    }
-    .hint {
-      margin: 10px 2px 0;
-      font-size: 12px;
-      color: var(--quiet);
-    }
-    .hint[hidden] {
-      display: none;
-    }
+    body[data-live="1"] #engineHint { display: none; }
+    .hint { margin: 8px 2px 0; font-size: 12.5px; color: var(--quiet); }
 
     /* ---------- buttons ---------- */
     button {
@@ -447,27 +339,13 @@
       -webkit-tap-highlight-color: transparent;
       white-space: nowrap;
     }
-    button[hidden] {
-      display: none;
-    }
-    button:not(:disabled):hover {
-      transform: translate(-1px, -1px);
-      box-shadow: 3px 3px 0 var(--line);
-    }
-    button:not(:disabled):active {
-      transform: translate(1.5px, 1.5px) scale(.98);
-      box-shadow: 0.5px 0.5px 0 var(--line);
-    }
-    button:focus-visible,
-    select:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--pink) 55%, transparent);
+    button:not(:disabled):hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--line); }
+    button:not(:disabled):active { transform: translate(1.5px, 1.5px) scale(.98); box-shadow: 0.5px 0.5px 0 var(--line); }
+    button:focus-visible, summary:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible {
+      outline: 3px solid var(--ink);
       outline-offset: 2px;
     }
-    button:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
+    button:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }
     #startBtn {
       background: linear-gradient(135deg, #ff6ac2, #ff9a76);
       color: #1e1714;
@@ -477,60 +355,38 @@
       font-size: 15px;
       padding: 11px 22px;
     }
-    #startBtn:hover {
-      background: linear-gradient(135deg, #ff55b8, #ff8a5c);
-      box-shadow: 4px 4px 0 var(--line);
-    }
+    #startBtn:hover { background: linear-gradient(135deg, #ff55b8, #ff8a5c); box-shadow: 4px 4px 0 var(--line); }
     #pauseBtn {
       background: var(--amber);
       color: #1e1714;
       border: 2px solid var(--line);
       font-weight: 800;
     }
-    #pauseBtn:hover {
-      background: color-mix(in srgb, var(--amber) 88%, #1e1714);
-    }
-    #stopBtn {
-      background: var(--surface);
-      color: var(--ink);
-    }
-    #stopBtn:hover {
-      background: var(--sand);
-    }
-    .control-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    #pauseBtn[data-paused="1"] { background: var(--teal); }
+    #stopBtn { background: var(--surface); color: var(--ink); }
+    #stopBtn:hover { background: var(--sand); }
+    .control-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .notice {
-      margin: 10px 2px 0;
+      margin: 8px 2px 0;
       font-size: 12.5px;
-      font-weight: 600;
+      font-weight: 700;
       line-height: 1.45;
       color: #1e1714;
       background: var(--amber);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
+      border: 1.5px solid #1e1714;
+      box-shadow: 2px 2px 0 #1e1714;
       border-radius: 12px;
       padding: 9px 12px;
-    }
-    .notice[hidden] {
-      display: none;
     }
 
     /* ---------- the two rooms ---------- */
     .console {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 344px;
+      grid-template-columns: minmax(0, 1fr) 316px;
       gap: 18px;
       align-items: stretch;
     }
-    @media (max-width: 900px) {
-      .console {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
+    @media (max-width: 900px) { .console { grid-template-columns: minmax(0, 1fr); } }
     .card {
       background: var(--surface);
       border: 2px solid var(--line);
@@ -558,34 +414,24 @@
       text-transform: uppercase;
       color: #1e1714;
       background: var(--amber);
-      border: 1px solid var(--line);
+      border: 1px solid #1e1714;
       border-radius: 999px;
       padding: 2px 8px;
     }
-    .ghost-chip[hidden] {
-      display: none;
-    }
-    .eyebrow .badge {
+    .stage-top .badge {
       margin-left: auto;
-      font: 700 10px var(--mono);
-      letter-spacing: .06em;
+      font: 700 10.5px var(--mono);
+      letter-spacing: .05em;
       color: var(--ink);
       background: var(--sand);
-      border: 1px solid var(--line);
+      border: 1.5px solid var(--line);
       border-radius: 999px;
-      padding: 3px 9px;
+      padding: 3px 10px;
     }
 
     /* ---------- stage ---------- */
-    .stage {
-      gap: 12px;
-    }
-    .stage-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
+    .stage { gap: 12px; }
+    .stage-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     #ticker {
       --ring: var(--pink);
       box-sizing: border-box;
@@ -609,944 +455,341 @@
       transition: border-color .2s ease, font-size .15s ease, background .2s ease;
     }
     @media (max-width: 640px) {
-      #ticker {
-        height: 185px;
-        min-height: 185px;
-        max-height: 185px;
-        flex: 0 0 185px;
-      }
+      #ticker { height: 185px; min-height: 185px; max-height: 185px; flex: 0 0 185px; }
     }
-    #ticker > div {
-      width: 100%;
-    }
-    #ticker .prev {
-      opacity: 0.62;
-      font-weight: max(300, calc(var(--ticker-weight, 700) - 300));
-    }
-    /* Light bars need more contrast for the previous line than a dark one does. */
+    #ticker > div { width: 100%; }
+    #ticker .prev { opacity: 0.62; font-weight: max(300, calc(var(--ticker-weight, 700) - 300)); }
     #ticker[data-style="paper"] .prev,
     #ticker[data-style="brut"] .prev,
-    #ticker[data-style="hemingway"] .prev {
-      opacity: 0.78;
+    #ticker[data-style="hemingway"] .prev { opacity: 0.78; }
+    #ticker .fresh-lead { color: #fffdf5; font-weight: 700; }
+    #ticker .speaker-tag {
+      display: inline-block; font-size: .52em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+      padding: .08em .45em; margin-right: .3em; border-radius: 999px; vertical-align: .14em;
+      background: color-mix(in srgb, var(--pink) 34%, transparent); color: inherit;
     }
-    #ticker .fresh-lead {
-      color: #fffdf5;
-      font-weight: 700;
-    }
-    #ticker .ghost-fresh {
-      background: rgba(255, 106, 194, 0.34);
-      color: #fffdf5;
-      border-radius: 5px;
-      padding: 0 3px;
-      transition: background .45s ease;
-    }
+    #ticker .ghost-fresh { background: rgba(255, 106, 194, 0.34); color: #fffdf5; border-radius: 5px; padding: 0 3px; transition: background .45s ease; }
     #ticker[data-style="paper"] .ghost-fresh,
     #ticker[data-style="brut"] .ghost-fresh,
-    #ticker[data-style="hemingway"] .ghost-fresh {
-      color: #1e1714;
-      background: rgba(255, 106, 194, 0.32);
-    }
-    #ticker .interim {
-      color: var(--pink);
-    }
+    #ticker[data-style="hemingway"] .ghost-fresh { color: #1e1714; background: rgba(255, 106, 194, 0.32); }
+    #ticker .interim { color: var(--pink); }
     #ticker .interim::after {
-      content: "";
-      display: inline-block;
-      width: .12em;
-      height: .9em;
-      margin-left: .12em;
-      vertical-align: -0.1em;
-      background: var(--pink);
-      border-radius: 2px;
-      animation: caret 1s steps(2) infinite;
+      content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em;
+      background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite;
     }
-    @keyframes caret {
-      to {
-        opacity: 0;
-      }
-    }
+    @keyframes caret { to { opacity: 0; } }
     #ticker .ticker-text {
-      width: 100%;
-      max-height: 100%;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
+      width: 100%; max-height: 100%; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: flex-end;
       -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
       mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
     }
-    #ticker .ticker-text:empty {
-      min-height: 1.2em;
-    }
+    #ticker .ticker-text:empty { min-height: 1.2em; }
+
     /* Dedicated tactile typing bar directly below the Stage box */
-    .typed-bar {
-      position: relative;
-      display: flex;
-      align-items: center;
-      width: 100%;
-    }
+    .typed-bar { position: relative; display: flex; align-items: center; width: 100%; }
     .typed-bar #typed {
       width: 100%;
-      padding: 10px 38px 10px 14px;
+      padding: 9px 40px 9px 14px;
       border: 1.5px solid var(--line);
       box-shadow: 2px 2px 0 var(--line);
       border-radius: 12px;
       background: var(--surface);
       color: var(--ink);
-      font: 600 14px var(--swiss);
+      font: 600 16px var(--swiss);
     }
     .typed-bar #typed:disabled {
-      opacity: .58;
+      opacity: .72;
       background: var(--sand);
       border: 1.5px dashed color-mix(in srgb, var(--line) 45%, transparent);
       box-shadow: none;
       padding-left: 14px;
       cursor: not-allowed;
     }
+    .typed-bar #typed:disabled::placeholder { color: var(--quiet); }
     .typed-kbd {
-      position: absolute;
-      right: 10px;
-      pointer-events: none;
-      font: 700 11px var(--mono);
-      padding: 2px 6px;
-      border-radius: 6px;
+      position: absolute; right: 10px; pointer-events: none;
+      font: 700 11px var(--mono); padding: 2px 6px; border-radius: 6px;
       border: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
-      background: var(--sand);
-      color: var(--quiet);
-    }
-    /* Stage ring & surface styles */
-    #ticker[data-ring="ink"] {
-      --ring: #1e1714;
-    }
-    #ticker[data-ring="paper"] {
-      --ring: #3a2e28;
-    }
-    #ticker[data-ring="clay"] {
-      --ring: #b07a4e;
-    }
-    #ticker[data-ring="pink"],
-    body[data-live="1"] #ticker[data-ring="pink"] {
-      --ring: var(--pink);
-    }
-    #ticker[data-ring="mint"],
-    body[data-live="1"] #ticker[data-ring="mint"] {
-      --ring: var(--teal);
-    }
-    #ticker[data-ring="lilac"],
-    body[data-live="1"] #ticker[data-ring="lilac"] {
-      --ring: var(--violet);
-    }
-    #ticker[data-ring="butter"],
-    body[data-live="1"] #ticker[data-ring="butter"] {
-      --ring: var(--amber);
-    }
-    #ticker[data-ring="none"],
-    body[data-live="1"] #ticker[data-ring="none"] {
-      --ring: transparent;
-    }
-    #ticker[data-flow="settled"] .interim {
-      display: none;
-    }
-    #ticker[data-style="paper"] {
-      background: #fbf1e4;
-      color: #1e1714;
-    }
-    #ticker[data-style="paper"] .fresh-lead {
-      color: #1e1714;
-    }
-    #ticker[data-style="paper"] .interim {
-      color: #1e1714;
-      background: color-mix(in srgb, var(--pink) 32%, transparent);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="paper"] .interim::after {
-      background: #1e1714;
-    }
-    #ticker[data-style="brut"] {
-      background: var(--amber);
-      color: #1e1714;
-    }
-    #ticker[data-style="brut"] .fresh-lead {
-      color: #1e1714;
-    }
-    #ticker[data-style="brut"] .interim {
-      color: #1e1714;
-      background: rgba(30, 23, 20, 0.12);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="brut"] .interim::after {
-      background: #1e1714;
-    }
-    #ticker[data-style="hemingway"] {
-      background: #f7ecdc;
-      color: #2c221e;
-      font-family: var(--face-fraunces), serif;
-    }
-    #ticker[data-style="hemingway"] .fresh-lead {
-      color: #2c221e;
-    }
-    #ticker[data-style="hemingway"] .interim {
-      color: #8c6239;
-      background: rgba(140, 98, 57, 0.1);
-      border-radius: .15em;
-      padding: 0 .12em;
-    }
-    #ticker[data-style="hemingway"] .interim::after {
-      background: #8c6239;
+      background: var(--sand); color: var(--quiet);
     }
 
-    /* ---------- stage controls ---------- */
-    .stage-bar {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .stage-controls {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
+    /* Stage ring & surface styles */
+    #ticker[data-ring="ink"] { --ring: #1e1714; }
+    #ticker[data-ring="paper"] { --ring: #3a2e28; }
+    #ticker[data-ring="clay"] { --ring: #b07a4e; }
+    #ticker[data-ring="pink"] { --ring: var(--pink); }
+    #ticker[data-ring="mint"] { --ring: var(--teal); }
+    #ticker[data-ring="lilac"] { --ring: var(--violet); }
+    #ticker[data-ring="butter"] { --ring: var(--amber); }
+    #ticker[data-flow="settled"] .interim { display: none; }
+    #ticker[data-style="paper"] { background: #fbf1e4; color: #1e1714; }
+    #ticker[data-style="paper"] .fresh-lead { color: #1e1714; }
+    #ticker[data-style="paper"] .interim { color: #1e1714; background: color-mix(in srgb, var(--pink) 32%, transparent); border-radius: .15em; padding: 0 .12em; }
+    #ticker[data-style="paper"] .interim::after { background: #1e1714; }
+    #ticker[data-style="brut"] { background: var(--amber); color: #1e1714; }
+    #ticker[data-style="brut"] .fresh-lead { color: #1e1714; }
+    #ticker[data-style="brut"] .interim { color: #1e1714; background: rgba(30, 23, 20, 0.14); border-radius: .15em; padding: 0 .12em; }
+    #ticker[data-style="brut"] .interim::after { background: #1e1714; }
+    #ticker[data-style="hemingway"] { background: #f7ecdc; color: #2c221e; }
+    #ticker[data-style="hemingway"] .fresh-lead { color: #2c221e; }
+    #ticker[data-style="hemingway"] .interim { color: #724c27; background: rgba(114, 76, 39, 0.11); border-radius: .15em; padding: 0 .12em; }
+    #ticker[data-style="hemingway"] .interim::after { background: #724c27; }
+
+    /* ---------- stage controls (strictly single-row on desktop!) ---------- */
+    .stage-bar { display: flex; flex-direction: column; gap: 10px; }
+    .stage-controls { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
     .segmented-control {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      padding: 3px;
-      border-radius: 999px;
-      background: var(--sand);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
+      display: inline-flex; align-items: center; gap: 1px; padding: 3px;
+      border-radius: 999px; background: var(--sand);
+      border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
     }
     .seg-btn {
-      border: 1px solid transparent;
-      box-shadow: none !important;
-      background: transparent;
-      border-radius: 999px;
-      padding: 5px 11px;
-      font: 700 12px var(--swiss);
-      color: var(--quiet);
+      border: 1px solid transparent; box-shadow: none !important; background: transparent;
+      border-radius: 999px; padding: 5px 8px; font: 700 12px var(--swiss); color: var(--quiet);
     }
-    .seg-btn:hover {
-      background: transparent;
-      border-color: transparent;
-      color: var(--ink);
-      transform: none !important;
-    }
-    .seg-btn.active {
-      background: var(--surface);
-      border-color: var(--line);
-      color: var(--ink);
-      font-weight: 800;
-    }
-    .seg-btn:active {
-      transform: scale(.95) !important;
-    }
-    .segmented-control.swatches {
-      gap: 4px;
-      padding: 3px 5px;
-    }
+    .seg-btn:hover { background: transparent; border-color: transparent; color: var(--ink); transform: none !important; }
+    .seg-btn.active { background: var(--surface); border-color: var(--line); color: var(--ink); font-weight: 800; }
+    .seg-btn:active { transform: scale(.95) !important; }
+    .segmented-control.swatches { gap: 3px; padding: 3px 4px; }
     .segmented-control.swatches .seg-btn {
-      width: 30px;
-      height: 24px;
-      padding: 0;
-      border-radius: 8px;
-      font: 800 11px var(--swiss);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      width: 26px; height: 24px; padding: 0; border-radius: 8px;
+      font: 800 11px var(--swiss); display: inline-flex; align-items: center; justify-content: center;
     }
-    .segmented-control.swatches .seg-btn[data-v="ink"] {
-      background: #1e1714;
-      color: #fffdf5;
-      border-color: rgba(251, 241, 228, 0.28);
-    }
-    .segmented-control.swatches .seg-btn[data-v="paper"] {
-      background: #fbf1e4;
-      color: #1e1714;
-      border-color: rgba(30, 23, 20, 0.25);
-    }
-    .segmented-control.swatches .seg-btn[data-v="brut"] {
-      background: var(--amber);
-      color: #1e1714;
-    }
-    .segmented-control.swatches .seg-btn[data-v="hemingway"] {
-      background: #f7ecdc;
-      color: #8c6239;
-      font-family: var(--face-fraunces), Georgia, serif;
-      font-size: 13px;
-    }
-    .segmented-control.swatches .seg-btn.active {
-      outline: 2px solid var(--ink);
-      outline-offset: 1px;
-    }
-    .face-wrap {
-      width: 128px;
-    }
-    .face-wrap .stage-select-btn {
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 999px;
-    }
-    .more {
-      position: relative;
-      margin-left: auto;
-    }
-    .more summary {
-      cursor: pointer;
-      list-style: none;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      padding: 5px 10px;
-      border-radius: 999px;
-    }
-    .more summary:hover {
-      background: var(--sand);
-    }
-    .more summary::-webkit-details-marker {
-      display: none;
-    }
-    .more summary::after {
-      content: " ▾";
-    }
-    .more[open] summary::after {
-      content: " ▴";
-    }
-    .opt-grid {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 8px);
-      z-index: 45;
-      width: min(380px, 86vw);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 4px 4px 0 var(--line);
-      border-radius: 16px;
-      padding: 12px 14px;
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      gap: 8px 12px;
-      align-items: center;
-    }
-    .opt-label {
-      font-size: 10.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      color: var(--quiet);
-    }
-    .opt-select {
-      font: 600 13px var(--swiss);
-      padding: 7px 28px 7px 12px;
-      border-radius: 999px;
-      justify-self: start;
-      width: auto;
-      background-color: var(--surface);
-    }
-    .keyterms {
-      grid-column: 2 / 4;
-      width: 100%;
-      padding: 8px 12px;
-      font-size: 13px;
-    }
+    .segmented-control.swatches .seg-btn[data-v="ink"] { background: #1e1714; color: #fffdf5; border-color: rgba(251, 241, 228, 0.28); }
+    .segmented-control.swatches .seg-btn[data-v="paper"] { background: #fbf1e4; color: #1e1714; border-color: rgba(30, 23, 20, 0.25); }
+    .segmented-control.swatches .seg-btn[data-v="brut"] { background: var(--amber); color: #1e1714; }
+    .segmented-control.swatches .seg-btn[data-v="hemingway"] { background: #f7ecdc; color: #724c27; font-family: var(--face-fraunces), Georgia, serif; font-size: 13px; }
+    .segmented-control.swatches .seg-btn.active { outline: 2px solid var(--ink); outline-offset: 1px; }
+    .face-wrap { width: 102px; }
+    .face-wrap .stage-select-btn { padding: 6px 9px; font-size: 12px; border-radius: 999px; }
+
     .ring-row {
-      display: inline-flex;
-      gap: 5px;
-      align-items: center;
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: var(--sand);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
+      display: inline-flex; gap: 1px; align-items: center; padding: 2px 4px;
+      border-radius: 999px; background: var(--sand);
+      border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
     }
     .ring {
-      width: 18px;
-      height: 18px;
-      padding: 0;
-      border-radius: 50%;
-      background: var(--c);
-      border: 1.5px solid #1e1714;
-      box-shadow: none !important;
+      width: 24px; height: 24px; padding: 3px; border-radius: 50%;
+      background: transparent; border: 0; box-shadow: none !important;
+      display: inline-grid; place-items: center;
     }
-    .ring[aria-checked="true"] {
-      outline: 2px solid var(--ink);
-      outline-offset: 2px;
-      transform: scale(1.12);
+    .ring::before {
+      content: ""; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--c); border: 1.5px solid #1e1714; display: block;
     }
-    .mini-btn {
-      font: 700 11.5px var(--mono);
-      padding: 6px 10px;
-      border-radius: 8px;
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-    }
-    .mini-btn:hover {
-      background: var(--sand);
-    }
-    #floatBtn {
-      background: color-mix(in srgb, var(--violet) 28%, var(--surface));
-    }
-    #floatBtn:hover {
-      background: color-mix(in srgb, var(--violet) 40%, var(--surface));
-    }
-    /* No room, no image sharing. */
-    #shareImageBtn:disabled {
-      display: none;
-    }
+    .ring[aria-checked="true"]::before { outline: 2px solid var(--ink); outline-offset: 1.5px; transform: scale(1.08); }
 
-    /* Images shared into the room */
-    .asset-tray {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding-top: 12px;
-      border-top: 1px solid var(--hair-soft);
-      flex-wrap: wrap;
+    .more { position: relative; margin-left: auto; }
+    .more summary {
+      cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; color: var(--ink);
+      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+      padding: 5px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;
     }
-    .asset-tray[hidden] {
-      display: none;
+    .more summary:hover { background: var(--sand); }
+    .more summary::-webkit-details-marker { display: none; }
+    .more summary::after { content: "▾"; font-size: 10px; }
+    .more[open] summary::after { content: "▴"; }
+    .opt-grid {
+      position: absolute; right: 0; top: calc(100% + 8px); z-index: 45;
+      width: min(420px, 88vw);
+      background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+      border-radius: 16px; padding: 13px 14px;
+      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 10px; align-items: center;
+    }
+    .opt-label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--quiet); }
+    .opt-input { grid-column: 2 / 4; width: 100%; padding: 8px 11px; font-size: 14px; border-radius: 10px; }
+    .opt-flow { justify-self: start; }
+    .mini-btn {
+      font: 700 11.5px var(--mono); padding: 6px 10px; border-radius: 8px;
+      color: var(--ink); background: var(--surface); border: 1.5px solid var(--line);
+    }
+    .mini-btn:hover { background: var(--sand); }
+    #floatBtn { background: color-mix(in srgb, var(--violet) 28%, var(--surface)); }
+    #floatBtn:hover { background: color-mix(in srgb, var(--violet) 40%, var(--surface)); }
+
+    /* Images shared into the room — Share Image button lives right beside its paste hint & thumbnails */
+    .asset-tray {
+      display: flex; align-items: center; gap: 8px; padding-top: 10px;
+      border-top: 1px solid var(--hair-soft); flex-wrap: wrap;
+    }
+    #shareImageBtn {
+      font-size: 12px; padding: 6px 12px; background: var(--surface);
     }
     .asset-tray .tray-thumb {
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      border-radius: 8px;
-      border: 1px solid var(--hair);
-      overflow: hidden;
-      background: none;
-      box-shadow: none;
+      width: 36px; height: 36px; padding: 0; border-radius: 8px;
+      border: 1.5px solid var(--line); overflow: hidden; background: none; box-shadow: none;
     }
-    .asset-tray .tray-thumb:hover {
-      border-color: color-mix(in srgb, var(--ink) 30%, var(--hair));
-    }
-    .asset-tray img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .asset-tray span {
-      font-size: 11.5px;
-      color: var(--quiet);
-      font-weight: 500;
-      margin-left: 2px;
-    }
-    .asset-tray img[hidden] {
-      display: none;
-    }
+    .asset-tray img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .asset-tray #pasteHint { font-size: 12px; color: var(--quiet); font-weight: 500; }
     .clip-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 12px 5px 5px;
-      border: 1px solid color-mix(in srgb, var(--pink) 45%, var(--hair));
-      background: color-mix(in srgb, var(--pink) 10%, var(--surface));
-      border-radius: 999px;
-      font: 600 12px var(--swiss);
-      color: var(--ink);
+      display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px;
+      border: 1.5px solid var(--line); background: color-mix(in srgb, var(--pink) 18%, var(--surface));
+      border-radius: 999px; font: 700 12px var(--swiss); color: var(--ink);
     }
-    .clip-chip[hidden] {
-      display: none;
-    }
-    .clip-chip img {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      object-fit: cover;
-      border: 1px solid var(--hair);
-    }
-    .stage.drop {
-      outline: 2px dashed color-mix(in srgb, var(--pink) 55%, transparent);
-      outline-offset: -6px;
-    }
+    .clip-chip img { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line); }
+    .stage.drop { outline: 2px dashed var(--pink); outline-offset: -6px; }
 
     /* ---------- small menus ---------- */
-    .menu {
-      position: relative;
-    }
+    .menu { position: relative; }
     .menu > summary {
-      list-style: none;
-      cursor: pointer;
-      font: 700 12px var(--swiss);
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      padding: 5px 11px;
-      border-radius: 999px;
-      white-space: nowrap;
+      list-style: none; cursor: pointer; font: 700 12px var(--swiss); color: var(--ink);
+      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+      padding: 5px 9px; border-radius: 999px; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 4px;
     }
-    .menu > summary::-webkit-details-marker {
-      display: none;
-    }
-    .menu > summary:hover {
-      background: var(--sand);
-    }
+    .menu > summary::-webkit-details-marker { display: none; }
+    .menu > summary:hover { background: var(--sand); }
+    .menu > summary::after { content: "▾"; font-size: 10px; opacity: .8; }
+    .menu[open] > summary::after { content: "▴"; }
     .menu-body {
-      position: absolute;
-      right: 0;
-      top: calc(100% + 6px);
-      z-index: 30;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 184px;
-      background: var(--surface);
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--line);
-      border-radius: 14px;
-      padding: 6px;
-    }
-    .menu > summary::after {
-      content: " ▾";
-      font-size: 10px;
-      opacity: .7;
-    }
-    .menu[open] > summary::after {
-      content: " ▴";
-    }
-    .menu > summary {
-      display: inline-flex;
-      align-items: center;
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+      display: flex; flex-direction: column; gap: 2px; min-width: 184px;
+      background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+      border-radius: 14px; padding: 6px;
     }
     .menu-body button {
-      justify-content: flex-start;
-      border: 1px solid transparent;
-      box-shadow: none !important;
-      background: transparent;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-      font-weight: 600;
-      text-align: left;
+      justify-content: flex-start; border: 1px solid transparent; box-shadow: none !important;
+      background: transparent; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 600; text-align: left;
     }
-    .menu-body button:hover {
-      background: var(--sand);
-      border-color: transparent;
-      transform: none !important;
-    }
-    #displayMenu {
-      display: none;
-    }
-    body[data-live="1"] #displayMenu {
-      display: inline-block;
-    }
+    .menu-body button:hover { background: var(--sand); border-color: transparent; transform: none !important; }
+    #displayMenu { display: none; }
+    body[data-live="1"] #displayMenu { display: inline-block; }
 
     /* ---------- transcript strip ---------- */
     .transcript-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding-top: 12px;
-      border-top: 1.5px solid var(--hair);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding-top: 12px; border-top: 1.5px solid var(--hair);
     }
-    .transcript-bar .eyebrow {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-    #transcriptStat {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0;
-      text-transform: none;
-      color: var(--quiet);
-    }
-    .transcript-actions {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .transcript-actions[hidden] {
-      display: none;
-    }
-    button.icon {
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      border-radius: 9px;
-      color: var(--quiet);
-      background: transparent;
-      border-color: transparent;
-    }
-    button.icon:hover {
-      color: var(--ink);
-      background: var(--sand);
-    }
-    button.icon svg {
-      width: 16px;
-      height: 16px;
-    }
-    .past {
-      margin-top: 8px;
-    }
-    .past[hidden] {
-      display: none;
-    }
-    .past summary {
-      cursor: pointer;
-      list-style: none;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--quiet);
-    }
-    .past summary::-webkit-details-marker {
-      display: none;
-    }
-    .past summary::before {
-      content: "▸ ";
-    }
-    .past[open] summary::before {
-      content: "▾ ";
-    }
-    #pastList {
-      list-style: none;
-      margin: 8px 0 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .transcript-bar .eyebrow { flex: 1 1 auto; min-width: 0; }
+    #transcriptStat { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--quiet); }
+    .transcript-actions { display: flex; align-items: center; gap: 4px; }
+    .past { margin-top: 8px; }
+    .past summary { cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; color: var(--quiet); }
+    .past summary::-webkit-details-marker { display: none; }
+    .past summary::before { content: "▸ "; }
+    .past[open] summary::before { content: "▾ "; }
+    #pastList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
     #pastList li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 12.5px;
-      font-weight: 600;
-      background: var(--sand);
-      border: 1.5px solid var(--line);
-      border-radius: 12px;
-      padding: 9px 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      font-size: 12.5px; font-weight: 600; background: var(--sand);
+      border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 12px;
     }
-    #pastList small {
-      display: block;
-      color: var(--quiet);
-      font-weight: 400;
-      font-size: 11px;
-    }
+    #pastList small { display: block; color: var(--quiet); font-weight: 400; font-size: 11px; }
+    #pastList button { padding: 6px 12px; font-size: 12px; }
 
     /* ---------- the room ---------- */
-    .room {
-      background: var(--sand);
-      gap: 12px;
-      text-align: center;
-    }
-    .qr-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      width: 100%;
-    }
-    .qr-tabs {
-      margin-left: auto;
-    }
+    .room { background: var(--sand); gap: 12px; text-align: center; }
+    .qr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
     .qr-body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      flex: 1 1 auto;
-      width: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 11px; flex: 1 1 auto; width: 100%;
     }
     #qrEmpty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 6px;
-      cursor: pointer;
-      border-radius: 18px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      padding: 8px 6px; cursor: pointer; border-radius: 18px;
       transition: transform .18s var(--spring);
     }
-    #qrEmpty[hidden] {
-      display: none;
-    }
-    #qrEmpty:hover {
-      transform: translateY(-2px);
-    }
-    #qrEmpty:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--pink) 45%, transparent);
-      outline-offset: 2px;
-    }
+    #qrEmpty:hover { transform: translateY(-2px); }
     .qr-slot {
-      width: 168px;
-      height: 168px;
-      border-radius: 18px;
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--pink);
-      display: grid;
-      place-items: center;
-      position: relative;
+      width: 168px; height: 168px; border-radius: 18px;
+      border: 2px solid #1e1714; box-shadow: 4px 4px 0 var(--pink);
+      display: grid; place-items: center; position: relative;
       background-color: #fffdf5;
       background-image:
         linear-gradient(rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px),
         linear-gradient(90deg, rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px);
-      background-size: 12px 12px;
-      background-position: center;
+      background-size: 12px 12px; background-position: center;
     }
-    .qr-slot::before,
-    .qr-slot::after {
-      content: "";
-      position: absolute;
-      width: 28px;
-      height: 28px;
-      border: 4px solid #1e1714;
-      border-radius: 6px;
-      background: #fffdf5;
+    .qr-slot::before, .qr-slot::after {
+      content: ""; position: absolute; width: 28px; height: 28px;
+      border: 4px solid #1e1714; border-radius: 6px; background: #fffdf5;
     }
-    .qr-slot::before {
-      top: 14px;
-      left: 14px;
-      box-shadow: 104px 0 0 -4px #fffdf5, 104px 0 0 0 #1e1714;
-    }
-    .qr-slot::after {
-      bottom: 14px;
-      left: 14px;
-    }
-    .qr-sub-hint {
-      font-size: 11.5px;
-      color: var(--quiet);
-      font-weight: 600;
-      margin-top: -4px;
-    }
+    .qr-slot::before { top: 14px; left: 14px; box-shadow: 104px 0 0 -4px #fffdf5, 104px 0 0 0 #1e1714; }
+    .qr-slot::after { bottom: 14px; left: 14px; }
+    .qr-sub-hint { font-size: 11.5px; color: var(--quiet); font-weight: 600; margin-top: -4px; }
     .qr-slot span {
-      font: 800 13px var(--mono);
-      letter-spacing: .16em;
-      text-indent: .16em;
-      color: #1e1714;
-      background: var(--pink);
-      border: 1.5px solid #1e1714;
-      box-shadow: 2px 2px 0 #1e1714;
-      border-radius: 999px;
-      padding: 5px 12px;
+      font: 800 13px var(--mono); letter-spacing: .16em; text-indent: .16em;
+      color: #1e1714; background: var(--pink); border: 1.5px solid #1e1714;
+      box-shadow: 2px 2px 0 #1e1714; border-radius: 999px; padding: 5px 12px;
       animation: breatheDot 3.2s ease-in-out infinite;
     }
-    #qrEmpty p {
-      margin: 0;
-      font-size: 13px;
-      color: var(--ink);
-      font-weight: 700;
-      line-height: 1.45;
-      max-width: 18em;
-    }
+    #qrEmpty p { margin: 0; font-size: 13px; color: var(--ink); font-weight: 700; line-height: 1.45; max-width: 18em; }
     #qrGraphic {
-      padding: 12px;
-      background: #fffdf5;
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--pink);
-      border-radius: 18px;
-      line-height: 0;
-      transition: box-shadow .2s var(--spring), transform .2s var(--spring);
+      padding: 12px; background: #fffdf5; border: 2px solid #1e1714; box-shadow: 4px 4px 0 var(--pink);
+      border-radius: 18px; line-height: 0; transition: box-shadow .2s var(--spring), transform .2s var(--spring);
     }
-    #qrGraphic[data-mode="mic"] {
-      box-shadow: 4px 4px 0 var(--violet);
-    }
-    #qrGraphic.pop {
-      animation: bump .35s var(--spring);
-    }
-    #qrGraphic:empty {
-      display: none;
-    }
-    #qrGraphic svg {
-      width: 168px;
-      height: 168px;
-    }
+    #qrGraphic.pop { animation: bump .35s var(--spring); }
+    #qrGraphic:empty { display: none; }
+    #qrGraphic svg { width: 168px; height: 168px; }
     .qr-talk {
-      margin: 0;
-      font-size: 12.5px;
-      font-weight: 700;
-      color: var(--quiet);
-      max-width: 20em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      margin: 0; font-size: 12.5px; font-weight: 700; color: var(--quiet);
+      max-width: 20em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .qr-talk[hidden] {
-      display: none;
+    .join-host {
+      margin: 0; font: 700 12px var(--mono); color: var(--quiet); letter-spacing: .02em;
     }
-    /* The four letters ARE the join instruction. Nothing else belongs here. */
     .join-line {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 12px;
-      padding: 6px 14px;
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+      border-radius: 12px; padding: 6px 14px;
     }
-    .join-line[hidden] {
-      display: none;
-    }
-    .join-line b {
-      font: 800 30px/1 var(--mono);
-      letter-spacing: .22em;
-      text-indent: .22em;
-      color: var(--ink);
-    }
-    .qr-hint {
-      margin: 0;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--quiet);
-    }
-    .qr-hint[hidden] {
-      display: none;
-    }
+    .join-line b { font: 800 30px/1 var(--mono); letter-spacing: .22em; text-indent: .22em; color: var(--ink); }
+    .qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--quiet); }
     .room-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding-top: 12px;
-      border-top: 1.5px solid var(--hair);
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding-top: 12px; border-top: 1.5px solid var(--hair);
     }
-    .room-actions[hidden] {
-      display: none;
-    }
-    .room-actions button {
-      flex: 1;
-      font-size: 12.5px;
-      padding: 9px 10px;
-      background: var(--surface);
-    }
-    /* Kept in the DOM for the copy button and the tests; never shown. */
-    .url-pill,
-    #qrTitle,
-    #qrSub,
-    #joinHost {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-      border: 0;
-      padding: 0;
-      margin: -1px;
+    .room-actions button { flex: 1; font-size: 12.5px; padding: 9px 10px; background: var(--surface); }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+      white-space: nowrap; border: 0; padding: 0; margin: -1px;
     }
 
     /* ---------- footer ---------- */
     .deck-footer {
-      display: flex;
-      justify-content: center;
-      gap: 14px;
-      flex-wrap: wrap;
-      font-size: 11.5px;
-      color: var(--quiet);
-      font-weight: 600;
-      padding: 2px;
+      display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;
+      font-size: 11.5px; color: var(--quiet); font-weight: 600; padding: 2px;
     }
+    .deck-footer a { color: var(--ink); font-weight: 700; text-underline-offset: 2px; }
     kbd {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      box-shadow: 1px 1px 0 var(--line);
-      border-radius: 5px;
-      padding: 2px 6px;
-      font-family: var(--mono);
-      font-size: 10.5px;
-      color: var(--ink);
+      background: var(--surface); border: 1px solid var(--line); box-shadow: 1px 1px 0 var(--line);
+      border-radius: 5px; padding: 2px 6px; font-family: var(--mono); font-size: 10.5px; color: var(--ink);
     }
-    @media (hover: none) {
-      .deck-footer {
-        display: none;
-      }
-    }
+    @media (hover: none) { .deck-footer { display: none; } }
 
     /* ---------- fullscreen QR ---------- */
     #fsModal {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(30, 23, 20, 0.82);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      position: fixed; inset: 0; z-index: 100; background: rgba(30, 23, 20, 0.84);
+      display: none; align-items: center; justify-content: center; padding: 24px;
     }
-    #fsModal.open {
-      display: flex;
-    }
-    #fsModal.open .fs-card {
-      animation: cardIn .3s var(--spring);
-    }
-    @keyframes cardIn {
-      from {
-        transform: translateY(16px);
-        opacity: 0;
-      }
-    }
+    #fsModal.open { display: flex; }
+    #fsModal.open .fs-card { animation: cardIn .28s var(--spring); }
+    @keyframes cardIn { from { transform: translateY(16px); opacity: 0; } }
     .fs-card {
-      background: var(--surface);
-      border: 2.5px solid var(--line);
-      box-shadow: 6px 6px 0 var(--line);
-      border-radius: 28px;
-      padding: 30px;
-      max-width: 560px;
-      width: 90vw;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
+      background: var(--surface); border: 2.5px solid var(--line); box-shadow: 6px 6px 0 var(--line);
+      border-radius: 28px; padding: 28px; max-width: 560px; width: 90vw;
+      text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px;
     }
     #fsQr {
-      background: #fffdf5;
-      padding: 14px;
-      border: 2px solid #1e1714;
-      box-shadow: 4px 4px 0 var(--pink);
-      border-radius: 18px;
-      line-height: 0;
+      background: #fffdf5; padding: 14px; border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--pink);
+      border-radius: 18px; line-height: 0;
     }
-    #fsQr svg {
-      width: min(62vw, 300px);
-      height: min(62vw, 300px);
+    #fsQr[data-mode="mic"] { box-shadow: 4px 4px 0 var(--violet); }
+    #fsQr svg { width: min(62vw, 300px); height: min(62vw, 300px); }
+    .fs-host {
+      margin: 0; font: 800 clamp(16px, 2.8vw, 22px)/1.2 var(--mono); color: var(--ink);
+      background: var(--sand); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 16px;
     }
-    .fs-code {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-    }
-    .fs-code[hidden] {
-      display: none;
-    }
-    .fs-code span {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .14em;
-      color: var(--quiet);
-    }
-    .fs-code b {
-      font: 700 clamp(38px, 8vw, 60px)/1 var(--mono);
-      letter-spacing: .2em;
-      text-indent: .2em;
-      color: var(--ink);
-    }
-    #fsNote {
-      margin: 0;
-      color: var(--quiet);
-      font-weight: 600;
-      font-size: 12.5px;
-      max-width: 30em;
-    }
+    .fs-code { display: flex; align-items: baseline; gap: 12px; }
+    .fs-code span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: var(--quiet); }
+    .fs-code b { font: 800 clamp(38px, 8vw, 60px)/1 var(--mono); letter-spacing: .2em; text-indent: .2em; color: var(--ink); }
+    #fsNote { margin: 0; color: var(--quiet); font-weight: 600; font-size: 13px; max-width: 30em; }
+    #closeFsBtn { background: var(--amber); color: #1e1714; border-color: #1e1714; }
 
     @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        animation-duration: .001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .001ms !important;
+      *, *::before, *::after {
+        animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important;
       }
     }
     </style>
@@ -1559,153 +802,130 @@
           <p class="sub">Speak. Every phone in the room reads along.</p>
         </div>
         <div class="status-pills">
-          <span class="pill-badge" id="liveBadge"><span class="pulse-dot" id="liveDot"></span><span id="liveText">Ready</span><span class="pill-sep">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
+          <span class="pill-badge" id="liveBadge" role="status"><span class="pulse-dot" id="liveDot" aria-hidden="true"></span><span id="liveText">Ready</span><span class="pill-sep" aria-hidden="true">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
           <span class="pill-badge" id="countBadge">Room empty</span>
-          <button type="button" class="vibe-pill" id="vibePill" title="Cycle tabletop atmosphere" aria-label="Tabletop atmosphere">
-            <span class="vibe-dot"></span>
+          <button type="button" class="vibe-pill" id="vibePill" title="Cycle tabletop atmosphere">
+            <span class="vibe-dot" aria-hidden="true"></span>
             <span id="vibeLabel">Peach Sunset</span>
           </button>
         </div>
       </header>
 
-      <!-- THE TALK BAR: name it, then start it. Two fields fold away once live. -->
-      <section class="bar">
+      <!-- THE TALK BAR: name it, then start it. Language & Engine fold away once live. -->
+      <section class="bar" aria-label="Talk setup">
         <div class="field field-title">
           <div class="field-head">
             <label for="title">Title</label>
             <button type="button" class="words-chip" id="wordsChip" hidden></button>
           </div>
-          <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false"
-            placeholder="Optional" aria-label="Talk title">
+          <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Optional" aria-label="Talk title">
         </div>
-        <label class="field field-lang"><span>Language</span>
-          <select id="lang" aria-label="Language">
-                  <option value="en-AU">English (Australia)</option>
-                  <option value="en-GB">English (UK)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="en-IN">English (India)</option>
-                  <option value="es-ES">Español (España)</option>
-                  <option value="es-MX">Español (México)</option>
-                  <option value="fr-FR">Français</option>
-                  <option value="de-DE">Deutsch</option>
-                  <option value="it-IT">Italiano</option>
-                  <option value="pt-BR">Português (Brasil)</option>
-                  <option value="nl-NL">Nederlands</option>
-                  <option value="pl-PL">Polski</option>
-                  <option value="tr-TR">Türkçe</option>
-                  <option value="ru-RU">Русский</option>
-                  <option value="ar-SA">العربية</option>
-                  <option value="hi-IN">हिन्दी</option>
-                  <option value="id-ID">Bahasa Indonesia</option>
-                  <option value="vi-VN">Tiếng Việt</option>
-                  <option value="th-TH">ไทย</option>
-                  <option value="zh-CN">中文 (普通话)</option>
-                  <option value="zh-TW">中文 (台灣)</option>
-                  <option value="yue-Hant-HK">粵語 (香港)</option>
-                  <option value="ja-JP">日本語</option>
-                  <option value="ko-KR">한국어</option>
-          </select>
-        </label>
-        <label class="field field-engine"><span>Engine</span>
-          <select id="engine" aria-label="Speech engine">
+        <div class="field field-lang">
+          <span class="field-label" id="langLabel">Language</span>
+          <select id="lang" aria-labelledby="langLabel"></select>
+        </div>
+        <div class="field field-engine">
+          <span class="field-label" id="engineLabel">Engine</span>
+          <select id="engine" aria-labelledby="engineLabel">
             <option value="browser">Browser · free</option>
             <option value="deepgram">Deepgram · relay</option>
           </select>
-        </label>
+        </div>
         <div class="control-row">
-          <button id="startBtn">Start captions</button>
-          <button id="pauseBtn" hidden><span class="btn-label">Pause</span></button>
-          <button id="stopBtn" hidden>End</button>
+          <button id="startBtn" type="button">Start captions</button>
+          <button id="pauseBtn" type="button" hidden><span class="btn-label">Pause</span></button>
+          <button id="stopBtn" type="button" hidden>End</button>
         </div>
         <p id="engineHint" class="hint" hidden></p>
-        <p id="notice" class="notice" hidden></p>
+        <p id="notice" class="notice" role="alert" hidden></p>
       </section>
 
       <div class="console">
-        <!-- THE STAGE: the product, its dressing, and the transcript under it. -->
-        <section class="card stage">
+        <!-- THE STAGE: monitor, typing bar, single-row controls, image tray, transcript. -->
+        <section class="card stage" aria-labelledby="stageHeading">
           <div class="stage-top">
-            <p class="eyebrow">Stage <span class="ghost-chip" id="ghostChip" hidden>sample</span></p>
+            <h2 class="eyebrow" id="stageHeading">Stage <span class="ghost-chip" id="ghostChip" hidden>sample</span></h2>
             <span class="badge" id="monitorStyleBadge">Ink · Standard</span>
           </div>
-          <div id="ticker" role="group" aria-label="Live caption preview">
+          <div id="ticker" role="region" aria-label="Live caption preview" dir="auto">
             <div class="ticker-text"></div>
           </div>
           <div class="stage-bar">
-          <div class="typed-bar">
-            <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled
-              placeholder="Type a line · Enter" aria-label="Type a caption">
-            <kbd class="typed-kbd" aria-hidden="true">↵</kbd>
-          </div>
-          <div class="stage-controls">
-            <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
-              <button class="seg-btn" data-v="28px" title="Compact" aria-label="Compact">S</button>
-              <button class="seg-btn" data-v="38px" title="Standard" aria-label="Standard">M</button>
-              <button class="seg-btn" data-v="50px" title="Jumbotron" aria-label="Jumbotron">L</button>
+            <div class="typed-bar">
+              <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled placeholder="Type a line · Enter" aria-label="Type a caption">
+              <kbd class="typed-kbd" aria-hidden="true">↵</kbd>
             </div>
-            <div class="segmented-control swatches" data-pref="style" role="group" aria-label="Ticker style">
-              <button class="seg-btn" data-v="ink" title="Ink" aria-label="Ink">Aa</button>
-              <button class="seg-btn" data-v="paper" title="Paper" aria-label="Paper">Aa</button>
-              <button class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut">Aa</button>
-              <button class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway">Aa</button>
-            </div>
-            <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Stage ring accent">
-              <button class="ring" data-v="mint" style="--c: var(--teal)" title="Mint frame" aria-label="Mint frame" role="radio" aria-checked="true"></button>
-              <button class="ring" data-v="pink" style="--c: var(--pink)" title="Pink frame" aria-label="Pink frame" role="radio" aria-checked="false"></button>
-              <button class="ring" data-v="lilac" style="--c: var(--violet)" title="Lilac frame" aria-label="Lilac frame" role="radio" aria-checked="false"></button>
-              <button class="ring" data-v="butter" style="--c: var(--amber)" title="Amber frame" aria-label="Amber frame" role="radio" aria-checked="false"></button>
-            </div>
-            <div class="face-wrap">
-              <select id="faceSelect" data-pref="face" aria-label="Stage typeface">
-                <option value="atkinson">Atkinson</option>
-                <option value="inter">Inter</option>
-                <option value="fraunces">Fraunces</option>
-                <option value="mono">JetBrains Mono</option>
-                <option value="system">Swiss Sans</option>
-              </select>
-            </div>
-            <details class="menu" id="displayMenu">
-              <summary>Display</summary>
-              <div class="menu-body">
-                <button id="floatBtn" disabled>Float over slides</button>
-                <button id="screenBtn" disabled>Second screen</button>
+            <div class="stage-controls">
+              <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
+                <button type="button" class="seg-btn" data-v="28px" title="Compact" aria-label="S Compact" aria-pressed="false">S</button>
+                <button type="button" class="seg-btn" data-v="38px" title="Standard" aria-label="M Standard" aria-pressed="false">M</button>
+                <button type="button" class="seg-btn" data-v="50px" title="Jumbotron" aria-label="L Jumbotron" aria-pressed="false">L</button>
               </div>
-            </details>
-            <button id="shareImageBtn" disabled title="Share an image with the room">Image</button>
-            <input id="imageFile" type="file" accept="image/*" hidden>
-            <details class="more" id="moreTicker">
-              <summary>More</summary>
-              <div class="opt-grid">
-                <span class="opt-label">Names</span>
-                <input id="keyterms" class="opt-select keyterms" type="text" maxlength="300"
-                  placeholder="Pibulus, SoftStack, Fraunces" aria-label="Names and words to get right"
-                  autocomplete="off" spellcheck="false">
-                <span class="opt-label">Flow</span>
-                <div class="segmented-control" data-pref="flow">
-                  <button class="seg-btn" data-v="live">Live words</button>
-                  <button class="seg-btn" data-v="settled">Settled sentences</button>
+              <div class="segmented-control swatches" data-pref="style" role="group" aria-label="Ticker style">
+                <button type="button" class="seg-btn" data-v="ink" title="Ink" aria-label="Ink style" aria-pressed="false">Aa</button>
+                <button type="button" class="seg-btn" data-v="paper" title="Paper" aria-label="Paper style" aria-pressed="false">Aa</button>
+                <button type="button" class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut style" aria-pressed="false">Aa</button>
+                <button type="button" class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway style" aria-pressed="false">Aa</button>
+              </div>
+              <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Stage ring accent">
+                <button type="button" class="ring" data-v="mint" style="--c: var(--teal)" title="Mint frame" aria-label="Mint frame" role="radio" aria-checked="true"></button>
+                <button type="button" class="ring" data-v="pink" style="--c: var(--pink)" title="Pink frame" aria-label="Pink frame" role="radio" aria-checked="false"></button>
+                <button type="button" class="ring" data-v="lilac" style="--c: var(--violet)" title="Lilac frame" aria-label="Lilac frame" role="radio" aria-checked="false"></button>
+                <button type="button" class="ring" data-v="butter" style="--c: var(--amber)" title="Amber frame" aria-label="Amber frame" role="radio" aria-checked="false"></button>
+              </div>
+              <div class="face-wrap">
+                <select id="faceSelect" data-pref="face" aria-label="Stage typeface">
+                  <option value="atkinson">Atkinson</option>
+                  <option value="inter">Inter</option>
+                  <option value="fraunces">Fraunces</option>
+                  <option value="mono">JetBrains Mono</option>
+                  <option value="system">Swiss Sans</option>
+                </select>
+              </div>
+              <details class="menu" id="displayMenu">
+                <summary>Display</summary>
+                <div class="menu-body">
+                  <button type="button" id="floatBtn" disabled>Float over slides</button>
+                  <button type="button" id="screenBtn" disabled>Second screen</button>
                 </div>
-                <button id="shuffleTicker" class="mini-btn" title="Shuffle the look">Shuffle</button>
-              </div>
-            </details>
+              </details>
+              <details class="more" id="moreTicker">
+                <summary>More</summary>
+                <div class="opt-grid">
+                  <label class="opt-label" for="keyterms">Names</label>
+                  <input id="keyterms" class="opt-input" type="text" maxlength="300" placeholder="Pibulus, SoftStack, Fraunces" autocomplete="off" spellcheck="false">
+                  <label class="opt-label" for="roomLinks">Links</label>
+                  <input id="roomLinks" class="opt-input" type="text" maxlength="800" placeholder="Slides or take-home URLs (comma separated)" autocomplete="off" spellcheck="false">
+                  <span class="opt-label" id="flowLabel">Flow</span>
+                  <div class="segmented-control opt-flow" data-pref="flow" role="group" aria-labelledby="flowLabel">
+                    <button type="button" class="seg-btn" data-v="live" aria-pressed="false">Live words</button>
+                    <button type="button" class="seg-btn" data-v="settled" aria-pressed="false">Settled</button>
+                  </div>
+                  <button type="button" id="shuffleTicker" class="mini-btn" title="Shuffle the look">Shuffle</button>
+                </div>
+              </details>
+            </div>
           </div>
-          </div>
+
           <div class="asset-tray" id="assetTray" hidden>
-            <button class="clip-chip" id="clipChip" hidden>
+            <button type="button" id="shareImageBtn" disabled title="Share an image with the room">Image</button>
+            <input id="imageFile" type="file" accept="image/*" hidden>
+            <button type="button" class="clip-chip" id="clipChip" hidden>
               <img alt="" id="clipThumb">
-              <span>Share the clipboard image</span>
+              <span>Share clipboard image</span>
             </button>
             <span id="pasteHint">Copy a screenshot, then ⌘V on this page.</span>
           </div>
+
           <div class="transcript-bar">
-            <p class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></p>
+            <h2 class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></h2>
             <div class="transcript-actions" id="transcriptActions" hidden>
               <details class="menu" id="exportMenu">
                 <summary aria-label="Export the transcript">Export</summary>
                 <div class="menu-body">
-                  <button id="copyTx" disabled><span class="btn-label">Copy transcript</span></button>
-                  <button id="saveTxTxt" disabled>Text file (.txt)</button>
-                  <button id="saveTxMd" disabled>Substack / Zine (.md)</button>
+                  <button type="button" id="copyTx" disabled><span class="btn-label">Copy transcript</span></button>
+                  <button type="button" id="saveTxTxt" disabled>Text file (.txt)</button>
+                  <button type="button" id="saveTxMd" disabled>Substack / Zine (.md)</button>
                 </div>
               </details>
             </div>
@@ -1716,14 +936,10 @@
           </details>
         </section>
 
-        <!-- THE ROOM: what a stranger's phone needs, and nothing about the plumbing. -->
-        <section class="card room qr-card">
+        <!-- THE ROOM: clean audience QR + visible join host + 4-letter code. Lapel mic QR lives safely behind Mic modal. -->
+        <section class="card room" aria-labelledby="joinHeading">
           <div class="qr-top">
-            <p class="eyebrow">Join</p>
-            <div class="qr-tabs segmented-control" role="tablist" aria-label="QR mode">
-              <button type="button" class="seg-btn active" id="qrTabRoom" role="tab" aria-selected="true">Room</button>
-              <button type="button" class="seg-btn" id="qrTabMic" role="tab" aria-selected="false">Phone mic</button>
-            </div>
+            <h2 class="eyebrow" id="joinHeading">Join</h2>
           </div>
           <div class="qr-body">
             <div id="qrEmpty" role="button" tabindex="0" aria-label="Start captions and show the room code">
@@ -1731,18 +947,16 @@
               <p>Start captions and the live QR lands right here.</p>
               <span class="qr-sub-hint">Phones scan to read along or pair as lapel mic.</span>
             </div>
-            <div id="qrGraphic"></div>
+            <div id="qrGraphic" role="img" aria-label="Audience QR code"></div>
             <p class="qr-talk" id="qrTalk" hidden></p>
+            <p class="join-host" id="joinHost" hidden></p>
             <div class="join-line" id="joinLine" hidden><b id="joinCode"></b></div>
             <p class="qr-hint" id="qrHint" hidden>Point a phone camera at the code.</p>
-            <span id="qrTitle" hidden></span>
-            <span id="qrSub" hidden></span>
-            <span id="joinHost" hidden></span>
-            <div class="url-pill" id="urlDisplay" hidden>Standby</div>
+            <span class="sr-only" id="urlDisplay" hidden>Standby</span>
             <div class="room-actions" id="qrActions" hidden>
-              <button id="copyUrlBtn" disabled aria-label="Copy the room link"><span class="btn-label">Copy link</span></button>
-              <button id="fsQrBtn" disabled aria-label="Show the code full screen">Full screen</button>
-              <button id="micBtn" disabled aria-label="Pair a phone as the lapel mic" title="Pair a phone as the lapel mic">Mic</button>
+              <button type="button" id="copyUrlBtn" disabled><span class="btn-label">Copy link</span></button>
+              <button type="button" id="fsQrBtn" disabled>Full screen</button>
+              <button type="button" id="micBtn" disabled title="Pair a phone as the lapel mic">Mic</button>
             </div>
           </div>
         </section>
@@ -1753,24 +967,23 @@
         <span><kbd>⌥ F</kbd> Float</span>
         <span><kbd>⌥ Q</kbd> Fullscreen QR</span>
         <span><kbd>Esc</kbd> Close</span>
+        <a href="/demo">Live demo</a>
       </footer>
     </main>
 
-
-
-    <!-- Pre-Talk Fullscreen QR Projector Modal -->
-    <div id="fsModal">
+    <!-- Pre-Talk Fullscreen QR Projector Modal (also hosts private Lapel Mic pairing QR) -->
+    <div id="fsModal" role="dialog" aria-modal="true" aria-labelledby="fsTitle" aria-describedby="fsNote">
       <div class="fs-card">
-        <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;gap:12px">
           <div style="text-align:left">
-            <p id="fsTalk" style="margin:0 0 4px;font-weight:600;font-size:13px;color:var(--quiet)" hidden></p>
-            <h2 id="fsTitle" style="margin:0;font-size:1.6rem;letter-spacing:-0.03em">Read along on a phone</h2>
+            <p id="fsTalk" style="margin:0 0 4px;font-weight:700;font-size:13px;color:var(--quiet)" hidden></p>
+            <h2 id="fsTitle" style="margin:0;font-size:1.55rem;letter-spacing:-0.03em">Read along on a phone</h2>
           </div>
-          <button id="closeFsBtn" class="butter">Close</button>
+          <button type="button" id="closeFsBtn">Close</button>
         </div>
-        <div id="fsQr"></div>
+        <div id="fsQr" role="img" aria-label="Fullscreen QR code"></div>
+        <p class="fs-host" id="fsHost" hidden></p>
         <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
-        <div class="url-pill" id="fsUrl" style="font-size:1.2rem;padding:10px 18px"></div>
         <p id="fsNote">Project on screen before the talk kicks off.</p>
       </div>
     </div>
@@ -1778,28 +991,20 @@
     <script>
     const $ = (s, r = document) => r.querySelector(s);
     const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-    const store = {
-      get: (k) => {
-        try {
-          return localStorage.getItem(k);
-        } catch {
-          return null;
-        }
-      },
-      set: (k, v) => {
-        try {
-          localStorage.setItem(k, v);
-        } catch {}
-      },
-      del: (k) => {
-        try {
-          localStorage.removeItem(k);
-        } catch {}
-      },
-    };
+    const {
+      esc, store, fileStem, words, download, extractLinks, applyRoomWords, prose, fillLanguages, isRtlLang,
+    } = window.StageTypeShared;
     const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
+    const PASTE_KEY = isMac ? "⌘V" : "Ctrl+V";
+    $("#pasteHint").textContent = `Copy a screenshot, then ${PASTE_KEY} on this page.`;
+
+    fillLanguages($("#lang"), store.get("st-lang") || "en-AU");
+    $("#lang").addEventListener("change", () => store.set("st-lang", $("#lang").value));
 
     let room = null;
+    let opening = false;
     let rec = null;
     let localLive = false;
     let sseSource = null;
@@ -1814,13 +1019,15 @@
     let keepaliveInterval = null;
     let paused = false;
     let phoneLive = false;
-    let transcript = []; // every final line of this talk, in room order, for export. `finals` is just the ticker's tail.
-    let transcriptTimes = []; // when each line landed, so exports can paragraph by pause
-    let transcriptSpeakers = []; // optional speaker label per line
+    let transcript = [];
+    let transcriptTimes = [];
+    let transcriptSpeakers = [];
+    let seen = 0;
     let saveTimer = null;
-    let pausedByPhone = false; // the laptop mic stepped aside for the phone; only then may it step back in on its own
+    let pausedByPhone = false;
+    let fsOpener = null;
 
-    // Page Atmosphere / Vibe Pill
+    // Page Atmosphere / Vibe Pill (4 curated palettes)
     const VIBES = {
       peach: { name: "Peach Sunset", accent: "#ff6ac2" },
       stage: { name: "Stage Lights", accent: "#2dd4bf" },
@@ -1835,81 +1042,28 @@
       document.documentElement.dataset.vibe = currentVibe;
       document.documentElement.style.setProperty("--vibe-accent", v.accent);
       store.set("st-vibe", currentVibe);
-      const lbl = $("#vibeLabel");
-      if (lbl) lbl.textContent = v.name;
+      $("#vibeLabel").textContent = v.name;
     }
-    $("#vibePill")?.addEventListener("click", () => {
-      const next = VIBE_KEYS[(VIBE_KEYS.indexOf(currentVibe) + 1) % VIBE_KEYS.length];
-      applyVibe(next);
+    $("#vibePill").addEventListener("click", () => {
+      applyVibe(VIBE_KEYS[(VIBE_KEYS.indexOf(currentVibe) + 1) % VIBE_KEYS.length]);
     });
     applyVibe(currentVibe);
 
-    const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
-    const fileStem = (title, roomId, when) => `${title ? slug(title) : "stagetype-" + roomId}-${new Date(when).toISOString().split("T")[0]}`;
-    const words = (lines) => lines.reduce((n, l) => n + l.split(/\s+/).filter(Boolean).length, 0);
-    function download(filename, content, type) {
-      const url = URL.createObjectURL(new Blob([content], { type }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-    // Pause-based prose paragraphing (8s silence) + sentence-grouped fallback (~420 chars) + speaker turns.
-    const prose = (lines, times = [], speakers = [], md = false) => {
-      const paras = [];
-      let para = [];
-      let paraChars = 0;
-      let lastSpeaker = "";
-      for (let i = 0; i < lines.length; i++) {
-        const gap = i > 0 && times[i] && times[i - 1] ? times[i] - times[i - 1] : 0;
-        const spk = speakers[i] || "";
-        const spkChanged = i > 0 && spk !== lastSpeaker;
-        const sentenceEnd = para.length > 0 && /[.!?]["'’”)]?$/.test(para[para.length - 1]);
-        if ((gap > 8000 || spkChanged || (paraChars >= 420 && sentenceEnd)) && para.length) {
-          paras.push(para.join(" "));
-          para = [];
-          paraChars = 0;
-        }
-        let lineText = lines[i];
-        if (spk && spk !== lastSpeaker) {
-          lineText = md ? `**${spk}:** ${lineText}` : `${spk}: ${lineText}`;
-        }
-        lastSpeaker = spk;
-        para.push(lineText);
-        paraChars += lineText.length;
-      }
-      if (para.length) paras.push(para.join(" "));
-      return paras.join("\n\n");
-    };
-    const LINK_EXTRACT_RE = /(?:https?:\/\/[^\s<>"']+|www\.[^\s<>"']+\b|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|app|org|net|dev|io|club|fm|co|edu|gov|xyz|art|sh|me|tv|studio|ai|to)\b(?:\/[^\s<>"']*[^\s<>"'.,;:!?)])?)/gi;
-    const extractLinks = (lines) => {
-      const out = [];
-      for (const l of lines) {
-        for (const m of l.matchAll(LINK_EXTRACT_RE)) {
-          const raw = m[0].replace(/[.,;:!?)]+$/, "");
-          const href = /^https?:/i.test(raw) ? raw : `https://${raw.replace(/^www\./i, "")}`;
-          if (!out.includes(href)) out.push(href);
-        }
-      }
-      return out;
-    };
+    const parsedRoomLinks = () =>
+      extractLinks([], $("#roomLinks").value.split(/[\s,]+/).filter(Boolean));
+
     const asMarkdown = (t) => {
-      const foundLinks = extractLinks(t.lines || []);
+      const foundLinks = extractLinks(t.lines || [], t.links || []);
       const linkSection = foundLinks.length ? `## Links Mentioned\n\n${foundLinks.map((h) => `- ${h}`).join("\n")}\n\n---\n\n` : "";
       return `# ${t.title || "StageType Live Transcript"}\n\n- **Date**: ${
         new Date(t.startedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-      }\n- **Words**: ${words(t.lines)}\n- **Captions**: StageType, room \`${t.id}\`${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${linkSection}${
+      }\n- **Words**: ${words(t.lines)}\n- **Captions**: [StageType](${location.origin}/demo)${t.code ? ` (code ${t.code})` : ""}\n\n---\n\n${linkSection}${
         prose(t.lines, t.times, t.speakers, true)
       }\n`;
     };
     const asText = (t) =>
       (t.title ? `${t.title}\n${new Date(t.startedAt).toLocaleDateString()}\n\n` : "") + prose(t.lines, t.times, t.speakers, false);
 
-    // The transcript survives on this machine: saved under the room id as lines arrive, listed under
-    // Previous talks, and the open room itself is remembered for this tab so a reload mid-talk resumes.
     const talkRecord = (ended) => ({
       id: room.id,
       title: room.title || "",
@@ -1917,17 +1071,15 @@
       lines: transcript,
       times: transcriptTimes,
       speakers: transcriptSpeakers,
+      links: parsedRoomLinks(),
       startedAt: room.startedAt || Date.now(),
       updatedAt: Date.now(),
       ended,
     });
     function persist(rec) {
       store.set(`st-talk-${rec.id}`, JSON.stringify(rec));
-      let idx = [];
-      try {
-        idx = JSON.parse(localStorage.getItem("st-talks")) || [];
-      } catch {}
-      idx = idx.filter((t) => t.id !== rec.id);
+      let idx = store.json("st-talks", []);
+      idx = idx.filter((t) => t && t.id !== rec.id);
       idx.unshift({
         id: rec.id,
         title: rec.title,
@@ -1938,7 +1090,7 @@
       });
       while (idx.length > 10) {
         const old = idx.pop();
-        store.del(`st-talk-${old.id}`);
+        if (old?.id) store.del(`st-talk-${old.id}`);
       }
       store.set("st-talks", JSON.stringify(idx));
       renderPastTalks();
@@ -1947,9 +1099,7 @@
     function saveTalk() {
       if (!room) return;
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        if (room) persist(talkRecord(false));
-      }, 800);
+      saveTimer = setTimeout(() => { if (room) persist(talkRecord(false)); }, 800);
     }
     function updateTranscriptStat() {
       const n = words(transcript);
@@ -1960,47 +1110,44 @@
       for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
     }
     function renderPastTalks() {
-      let idx = [];
-      try {
-        idx = JSON.parse(localStorage.getItem("st-talks")) || [];
-      } catch {}
-      const past = idx.filter((t) => !room || t.id !== room.id);
+      const idx = store.json("st-talks", []);
+      const past = idx.filter((t) => t && (!room || t.id !== room.id));
       $("#pastTalks").hidden = past.length === 0;
       const list = $("#pastList");
-      list.innerHTML = "";
+      list.replaceChildren();
       for (const t of past) {
         const li = document.createElement("li");
         const span = document.createElement("span");
         span.textContent = t.title || "Untitled talk";
         const small = document.createElement("small");
         small.textContent = `${
-          new Date(t.startedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
-        } · ${t.words} words`;
+          new Date(t.startedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+        } · ${t.words || 0} words`;
         span.append(small);
         const btn = document.createElement("button");
-        btn.className = "ground small";
+        btn.type = "button";
         btn.textContent = "Save .md";
         btn.onclick = () => {
-          try {
-            const rec = JSON.parse(localStorage.getItem(`st-talk-${t.id}`));
-            if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown");
-          } catch {}
+          const rec = store.json(`st-talk-${t.id}`, null);
+          if (rec) download(`${fileStem(rec.title, rec.id, rec.startedAt)}.md`, asMarkdown(rec), "text/markdown");
         };
         li.append(span, btn);
         list.append(li);
       }
     }
-    let exportRoom = null; // the last talk's identity, kept after End so the export buttons still know what to name
+    let exportRoom = null;
     const currentRecord = () => (room ? talkRecord(false) : exportRoom);
     $("#copyTx").onclick = async () => {
       const rec = currentRecord();
       if (!rec) return;
+      const lbl = $("#copyTx").querySelector(".btn-label");
       try {
-        await navigator.clipboard.writeText(rec.lines.join("\n\n"));
-        const lbl = $("#copyTx").querySelector(".btn-label");
+        await navigator.clipboard.writeText(prose(rec.lines, rec.times, rec.speakers, false));
         lbl.textContent = "Copied!";
-        setTimeout(() => (lbl.textContent = "Copy transcript"), 1500);
-      } catch {}
+      } catch {
+        lbl.textContent = "Blocked";
+      }
+      setTimeout(() => (lbl.textContent = "Copy transcript"), 1500);
     };
     $("#saveTxTxt").onclick = () => {
       const rec = currentRecord();
@@ -2012,37 +1159,31 @@
     };
 
     const engine = () => $("#engine").value;
-    let dg = null; // the relay-side audio link when the Deepgram engine is on
-
+    let dg = null;
     const notice = (msg) => {
       const n = $("#notice");
       n.textContent = msg || "";
       n.hidden = !msg;
     };
 
-    // Web Audio Meter State
-    let audioCtx = null;
-    let analyser = null;
-    let meterStream = null;
-    let animMeterId = null;
-
-    const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-
     function renderTicker() {
       const tail = finals.slice(-Number(prefs.depth));
       let html = "";
-      for (const line of tail.slice(0, -1)) html += `<span class="prev">${esc(line)}</span> `;
+      let lastSpeaker = "";
+      for (const item of tail.slice(0, -1)) {
+        const spk = item.speaker && item.speaker !== lastSpeaker ? `<b class="speaker-tag">${esc(item.speaker)}</b> ` : "";
+        lastSpeaker = item.speaker || "";
+        html += `<span class="prev">${spk}${esc(item.text)}</span> `;
+      }
       if (tail.length > 0) {
-        html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
+        const latest = tail[tail.length - 1];
+        const spk = latest.speaker && latest.speaker !== lastSpeaker ? `<b class="speaker-tag">${esc(latest.speaker)}</b> ` : "";
+        html += `<span class="fresh-lead">${spk}${esc(latest.text)}</span>`;
       }
-      if (interim) {
-        html += ` <span class="interim">${esc(interim)}</span>`;
-      }
+      if (interim) html += ` <span class="interim">${esc(interim)}</span>`;
       for (const el of tickerEls) {
-        // The console ticker holds the typing field too, so only its text layer is rewritten.
         const holder = el.querySelector?.(".ticker-text") || el;
         holder.innerHTML = html ? `<div>${html}</div>` : "";
-        el.classList?.toggle("empty", !html);
       }
     }
 
@@ -2053,9 +1194,8 @@
         s.querySelector(".stage-select-btn")?.setAttribute("aria-expanded", "false");
       }
     }
-    // Native <details> stays open on an outside click; these are popovers, so close them.
     document.addEventListener("click", (e) => {
-      for (const m of $$(".menu[open]")) if (!m.contains(e.target)) m.open = false;
+      for (const m of $$(".menu[open], .more[open]")) if (!m.contains(e.target)) m.open = false;
       for (const s of $$(".stage-select.open")) {
         if (!s.contains(e.target)) {
           s.classList.remove("open");
@@ -2065,16 +1205,18 @@
     });
 
     // Progressive enhancement for <select> -> tactile Neo-Toybrut .stage-select popovers
+    const CHEV_SVG = `<svg width="11" height="7" viewBox="0 0 12 8" aria-hidden="true"><path d="M1.5 1.5 6 6 10.5 1.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const stageSelectSyncers = new Map();
     function initStageSelects() {
       for (const sel of $$("#lang, #engine, #faceSelect")) {
         if (sel.parentElement?.classList.contains("stage-select")) continue;
-        const fieldLabel = sel.closest("label, .field")?.querySelector(".field-label, span, label")?.textContent?.trim();
+        const fieldLabel = sel.closest(".field")?.querySelector(".field-label")?.textContent?.trim();
         const ariaName = sel.getAttribute("aria-label") || fieldLabel || "Select option";
         const wrap = document.createElement("div");
         wrap.className = "stage-select";
         sel.parentNode.insertBefore(wrap, sel);
         sel.tabIndex = -1;
+        sel.setAttribute("aria-hidden", "true");
         wrap.appendChild(sel);
         const btn = document.createElement("button");
         btn.type = "button";
@@ -2085,7 +1227,8 @@
         const labelSpan = document.createElement("span");
         const chev = document.createElement("i");
         chev.className = "stage-select-chev";
-        chev.textContent = "▾";
+        chev.setAttribute("aria-hidden", "true");
+        chev.innerHTML = CHEV_SVG;
         btn.append(labelSpan, chev);
         const menu = document.createElement("div");
         menu.className = "stage-select-menu";
@@ -2167,10 +1310,9 @@
     }
     const syncStageSelects = () => stageSelectSyncers.forEach((fn) => fn());
 
-    // Stage ticker preferences: size, face, weight, depth, flow, ring, style. Remembered on this machine.
+    // Stage ticker preferences: modular customization (style preset + direct ring & face controls).
     const SIZE_DEPTH = { "28px": "1", "38px": "2", "50px": "3" };
     const SIZE_NAME = { "28px": "Compact", "38px": "Standard", "50px": "Jumbo" };
-    // Each style carries its default frame, face, and weight; the presenter can also tweak ring or face directly.
     const STYLE_PRESETS = {
       ink: { ring: "mint", face: "atkinson", weight: "700", name: "Ink" },
       paper: { ring: "paper", face: "inter", weight: "500", name: "Paper" },
@@ -2178,44 +1320,23 @@
       hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
     };
     const termsFrom = (text) =>
-      text.split(/[^\p{L}\p{N}'-]+/u)
-        .filter((w) => w.length >= 3 && /\p{Lu}/u.test(w))
-        .slice(0, 8)
-        .join(", ");
+      text.split(/[^\p{L}\p{N}'-]+/u).filter((w) => w.length >= 3 && /\p{Lu}/u.test(w)).slice(0, 8).join(", ");
     const keyterms = () =>
       $("#keyterms").value.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 20);
-    // Client-side Room Words primer so Browser SpeechRecognition also gets proper-noun casing & spelling.
-    function applyRoomWords(text, terms = keyterms()) {
-      if (!text || !terms.length) return text;
-      let out = text;
-      for (const term of terms) {
-        if (term.length < 2) continue;
-        const escTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${escTerm}(?![\\p{L}\\p{N}])`, "giu"), () => term);
-        // Also match split CamelCase compounds (e.g. "stage type" -> "StageType", "soft stack" -> "SoftStack")
-        if (/[a-z][A-Z]/.test(term)) {
-          const splitPat = escTerm.replace(/([a-z])([A-Z])/g, "$1\\s+$2");
-          out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${splitPat}(?![\\p{L}\\p{N}])`, "giu"), () => term);
-        }
-      }
-      return out;
-    }
+
     function updateWordsChip() {
       const chip = $("#wordsChip");
-      if (!chip) return;
       const n = keyterms().length;
       chip.hidden = n === 0;
       chip.textContent = n ? `${n} word${n === 1 ? "" : "s"} primed` : "";
     }
-    $("#wordsChip")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+    $("#wordsChip").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
       const more = $("#moreTicker");
-      if (more) {
-        more.open = true;
-        $("#keyterms")?.focus();
-      }
+      more.open = true;
+      $("#keyterms").focus();
     });
+
     const initStyle = STYLE_PRESETS[store.get("st-style")] ? store.get("st-style") : "ink";
     const prefs = {
       size: store.get("st-size") || "38px",
@@ -2235,7 +1356,7 @@
         weight: p.weight,
         depth: prefs.depth,
         flow: prefs.flow,
-        ring: "none",
+        ring: prefs.ring || p.ring,
         size: prefs.size,
       });
       return `${location.origin}/ticker/${room.id}?${q}`;
@@ -2254,24 +1375,21 @@
         el.dataset.ring = ring;
         el.dataset.style = prefs.style;
       }
-      const badge = $("#monitorStyleBadge");
-      if (badge) badge.textContent = `${p.name} · ${SIZE_NAME[prefs.size] || ""}`;
+      $("#monitorStyleBadge").textContent = `${p.name} · ${SIZE_NAME[prefs.size] || ""}`;
       $$("[data-pref]").forEach((group) => {
         const v = prefs[group.dataset.pref];
-        if (group.tagName === "SELECT") {
-          group.value = v;
-          return;
-        }
+        if (group.tagName === "SELECT") { group.value = v; return; }
         $$("button", group).forEach((b) => {
-          b.classList.toggle("active", b.dataset.v === v);
-          if (b.classList.contains("ring")) b.setAttribute("aria-checked", String(b.dataset.v === v));
+          const active = b.dataset.v === v;
+          b.classList.toggle("active", active);
+          if (b.classList.contains("ring")) b.setAttribute("aria-checked", String(active));
+          else b.setAttribute("aria-pressed", String(active));
         });
       });
       syncStageSelects();
       renderTicker();
     }
 
-    // Shuffle picks a look, a size and a flow. The look already owns its face and weight.
     function shuffleTicker() {
       const styles = Object.keys(STYLE_PRESETS);
       const sizes = Object.keys(SIZE_DEPTH);
@@ -2286,17 +1404,15 @@
       store.set("st-ring", prefs.ring);
       applyPrefs();
     }
-    $("#shuffleTicker")?.addEventListener("click", shuffleTicker);
+    $("#shuffleTicker").addEventListener("click", shuffleTicker);
 
-    // Images are compressed here, on this machine, before the relay ever sees them: a 12 MP phone
-    // photo leaves as a ~250 KB WebP, EXIF and all stripped, plus a 320px thumb for the catch.
+    // Client-side image compression before upload (1280px WebP + 320px thumb, EXIF stripped).
     function encodeCanvas(src, max, quality) {
       const scale = Math.min(1, max / Math.max(src.width, src.height));
       const w = Math.max(1, Math.round(src.width * scale));
       const h = Math.max(1, Math.round(src.height * scale));
       const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
+      canvas.width = w; canvas.height = h;
       canvas.getContext("2d").drawImage(src, 0, 0, w, h);
       return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/webp", quality));
     }
@@ -2340,46 +1456,42 @@
 
     function addTrayImage(thumb, assetId) {
       const tray = $("#assetTray");
-      if (assetId && tray.querySelector(`.tray-thumb[data-asset="${assetId}"]`)) return;
+      if (assetId && tray.querySelector(`.tray-thumb[data-asset="${CSS.escape(assetId)}"]`)) return;
       const button = document.createElement("button");
+      button.type = "button";
       button.className = "tray-thumb";
       button.dataset.asset = assetId;
       button.title = "Pull this picture back";
-      button.setAttribute("aria-label", "Pull back the last image shared");
+      const idx = tray.querySelectorAll(".tray-thumb").length + 1;
+      button.setAttribute("aria-label", `Pull back shared image ${idx}`);
       button.onclick = () => pullBack(assetId);
       const img = document.createElement("img");
-      img.src = thumb;
-      img.alt = "";
+      img.src = thumb; img.alt = "";
       button.append(img);
       tray.append(button);
       tray.hidden = false;
       paintTray();
     }
-
     function removeTrayThumb(assetId) {
-      $(`#assetTray .tray-thumb[data-asset="${assetId}"]`)?.remove();
+      $(`#assetTray .tray-thumb[data-asset="${CSS.escape(assetId)}"]`)?.remove();
       paintTray();
     }
-
     function clearTray() {
       const tray = $("#assetTray");
       tray.querySelectorAll(".tray-thumb").forEach((b) => b.remove());
-      $("#clipChip").hidden = true;
+      hideClipChip();
       tray.hidden = true;
       paintTray();
     }
-
     function paintTray() {
-      const tray = $("#assetTray");
-      const n = tray.querySelectorAll(".tray-thumb").length;
+      const n = $("#assetTray").querySelectorAll(".tray-thumb").length;
       $("#pasteHint").textContent = n
         ? `${n} shared · tap a picture to pull it back`
-        : "Copy a screenshot, then ⌘V on this page.";
+        : `Copy a screenshot, then ${PASTE_KEY} on this page.`;
     }
-
     async function pullBack(assetId) {
       if (!room) return;
-      const button = $(`#assetTray .tray-thumb[data-asset="${assetId}"]`);
+      const button = $(`#assetTray .tray-thumb[data-asset="${CSS.escape(assetId)}"]`);
       const src = button?.querySelector("img")?.src;
       button?.remove();
       paintTray();
@@ -2395,10 +1507,7 @@
       }
     }
 
-    // The clipboard is the smoothest source there is: copy a screenshot anywhere, and the console
-    // picks it up. Browsers refuse to watch the clipboard in the background (there is no event, and
-    // read() needs a gesture or a granted permission), so this watches the two moments it can:
-    // a paste, and the window coming back into focus once clipboard-read has been granted.
+    // Clipboard offering: returning to window only offers the chip; explicit paste/click shares.
     let lastClipHash = null;
     let clipboardReadGranted = false;
     const hashBytes = async (blob) => {
@@ -2406,11 +1515,8 @@
         const buf = await blob.arrayBuffer();
         const digest = await crypto.subtle.digest("SHA-256", buf);
         return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
-      } catch {
-        return String(blob.size);
-      }
+      } catch { return String(blob.size); }
     };
-
     async function clipboardImage() {
       if (!navigator.clipboard?.read) return null;
       try {
@@ -2420,40 +1526,19 @@
           const blob = await item.getType(type);
           return new File([blob], "clipboard", { type });
         }
-      } catch { /* denied or empty: the file picker is still there */ }
+      } catch {}
       return null;
     }
-
-    async function sharesFreshClipboard() {
-      if (!room) return false;
-      const file = await clipboardImage();
-      if (!file) return false;
-      const hash = await hashBytes(file);
-      if (hash === lastClipHash) return false;
-      lastClipHash = hash;
-      await shareImage(file);
-      return true;
-    }
-
     navigator.permissions?.query?.({ name: "clipboard-read" })
-      .then((p) => {
-        clipboardReadGranted = p.state === "granted";
-        p.onchange = () => (clipboardReadGranted = p.state === "granted");
-      })
+      .then((p) => { clipboardReadGranted = p.state === "granted"; p.onchange = () => (clipboardReadGranted = p.state === "granted"); })
       .catch(() => {});
 
-    // Clicking Image with a screenshot already copied sends it; otherwise the file picker opens.
-    $("#shareImageBtn").onclick = async () => {
-      if (await sharesFreshClipboard()) return;
-      $("#imageFile").click();
-    };
+    $("#shareImageBtn").onclick = () => $("#imageFile").click();
     $("#imageFile").onchange = (e) => {
       const file = e.target.files?.[0];
       e.target.value = "";
       if (file) shareImage(file);
     };
-
-    // Paste anywhere on the console while a talk is live.
     document.addEventListener("paste", (e) => {
       if (!room) return;
       const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
@@ -2464,8 +1549,6 @@
       shareImage(file);
     });
 
-    // Coming back to the console never sends anything by itself. It looks, and offers:
-    // a screenshot of a private DM on the clipboard should not walk into a room of eighty.
     let clipPending = null;
     let clipObjectUrl = null;
     function hideClipChip() {
@@ -2498,18 +1581,12 @@
       shareImage(file);
     };
     addEventListener("focus", peekClipboard);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") peekClipboard();
-    });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") peekClipboard(); });
 
     const stageCard = $(".stage");
-    stageCard?.addEventListener("dragover", (e) => {
-      if (!room) return;
-      e.preventDefault();
-      stageCard.classList.add("drop");
-    });
-    stageCard?.addEventListener("dragleave", () => stageCard.classList.remove("drop"));
-    stageCard?.addEventListener("drop", (e) => {
+    stageCard.addEventListener("dragover", (e) => { if (!room) return; e.preventDefault(); stageCard.classList.add("drop"); });
+    stageCard.addEventListener("dragleave", () => stageCard.classList.remove("drop"));
+    stageCard.addEventListener("drop", (e) => {
       stageCard.classList.remove("drop");
       if (!room) return;
       e.preventDefault();
@@ -2517,7 +1594,7 @@
       if (file) shareImage(file);
     });
 
-    // Typed captions: the room is a chat room, and this is the simplest way in.
+    // Typed captions
     let typedTimer = null;
     $("#typed").addEventListener("input", () => {
       if (!room) return;
@@ -2533,9 +1610,17 @@
       if (text) push({ text, final: true, source: "typed" });
       else push({ text: "", final: false, source: "typed" });
     });
-    $("#screenBtn").onclick = () => {
-      if (room) window.open(tickerUrl(), "_blank", "noopener");
-    };
+
+    // Presenter-pinned Take-Home Links (synced live to every phone's #linksTray)
+    let linksSyncTimer = null;
+    $("#roomLinks").addEventListener("input", () => {
+      store.set("st-links", $("#roomLinks").value);
+      if (!room) return;
+      clearTimeout(linksSyncTimer);
+      linksSyncTimer = setTimeout(() => { if (room) push({ links: parsedRoomLinks() }); }, 500);
+    });
+
+    $("#screenBtn").onclick = () => { if (room) window.open(tickerUrl(), "_blank", "noopener"); };
     $$("[data-pref]").forEach((group) => {
       const key = group.dataset.pref;
       if (group.tagName === "SELECT") {
@@ -2569,9 +1654,9 @@
       $("#fsTalk").textContent = t;
       $("#fsTalk").hidden = !t;
       document.title = t ? `${t} · StageType` : "StageType · Presenter Console";
+      $("#ticker").dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
     }
 
-    // Update QR Code
     function qrSvgFor(url, cellSize) {
       const qr = qrcode(0, "M");
       qr.addData(url);
@@ -2579,109 +1664,43 @@
       return qr.createSvgTag({ cellSize, margin: 0, scalable: true });
     }
     const roomUrl = () => `${lanBase}/live/${room.id}`;
-    // The lapel mic inherits the talk's language and engine at scan time, so the phone
-    // never asks the same two questions a second time.
+    const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
     const micUrl = () => {
       const q = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
       for (const term of keyterms()) q.append("keyterm", term);
       return `${lanBase}/mic/${room.id}?${q}#${room.token}`;
     };
 
-    let qrMode = "room";
-    function setQrTab(mode) {
-      qrMode = mode === "mic" ? "mic" : "room";
-      $("#qrTabRoom")?.classList.toggle("active", qrMode === "room");
-      $("#qrTabRoom")?.setAttribute("aria-selected", String(qrMode === "room"));
-      $("#qrTabMic")?.classList.toggle("active", qrMode === "mic");
-      $("#qrTabMic")?.setAttribute("aria-selected", String(qrMode === "mic"));
-      const g = $("#qrGraphic");
-      if (g) g.dataset.mode = qrMode;
-      if (room) {
-        const qrTarget = qrMode === "mic" ? micUrl() : roomUrl();
-        g.innerHTML = qrSvgFor(qrTarget, 5);
-        g.classList.remove("pop");
-        void g.offsetWidth;
-        g.classList.add("pop");
-        $("#qrHint").textContent = qrMode === "mic"
-          ? "Keys ride in this code — scan on a phone, keep off the projector."
-          : "Point a phone camera at the code.";
-      }
-    }
-    $("#qrTabRoom")?.addEventListener("click", () => setQrTab("room"));
-    $("#qrTabMic")?.addEventListener("click", () => setQrTab("mic"));
-
-    // The card always carries the room code link on #urlDisplay; the QR tab can preview either Room or Phone mic.
     function updateQR() {
       if (!room) return;
       const targetUrl = roomUrl();
-      const qrTarget = qrMode === "mic" ? micUrl() : targetUrl;
-      $("#qrGraphic").dataset.mode = qrMode;
-      $("#qrGraphic").innerHTML = qrSvgFor(qrTarget, 5);
+      $("#qrGraphic").innerHTML = qrSvgFor(targetUrl, 5);
       $("#qrGraphic").classList.remove("pop");
       void $("#qrGraphic").offsetWidth;
       $("#qrGraphic").classList.add("pop");
       $("#urlDisplay").textContent = targetUrl;
+      $("#joinHost").textContent = joinHostText();
+      $("#joinHost").hidden = !room.code;
       $("#joinLine").hidden = !room.code;
       $("#joinCode").textContent = room.code || "";
       $("#joinCode").setAttribute("aria-label", `Room code ${(room.code || "").split("").join(" ")}`);
-      $("#joinHost").textContent = `${lanBase.replace(/^https?:\/\//, "")}/join`;
     }
 
-    // isMic: the pairing card, which carries the write key and never goes on the projector.
+    // Fullscreen modal: Room QR (for projector) OR private Lapel Mic QR (never writes secret token into #urlDisplay).
     function renderModalQR(isMic) {
       if (!room) return;
       const target = isMic ? micUrl() : roomUrl();
+      $("#fsQr").dataset.mode = isMic ? "mic" : "room";
       $("#fsQr").innerHTML = qrSvgFor(target, 9);
-      $("#fsUrl").textContent = target;
-      $("#urlDisplay").textContent = target;
+      $("#fsHost").textContent = isMic ? "" : joinHostText();
+      $("#fsHost").hidden = isMic || !room.code;
       $("#fsCode").hidden = isMic || !room.code;
       $("#fsCodeText").textContent = isMic ? "" : room.code || "";
+      $("#fsCodeText").setAttribute("aria-label", isMic ? "" : `Room code ${(room.code || "").split("").join(" ")}`);
       $("#fsTitle").textContent = isMic ? "Pair the lapel mic" : "Read along on a phone";
       $("#fsNote").textContent = isMic
-        ? "Keys ride in this code. Scan it, then keep it off the projector."
+        ? "Keys ride in this code. Scan it on your phone, then close before projecting."
         : "Project on screen before the talk kicks off.";
-    }
-
-    // Audio Level Meter
-    async function initAudioMeter() {
-      if (audioCtx) return;
-      try {
-        meterStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaStreamSource(meterStream);
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 64;
-        analyser.smoothingTimeConstant = 0.5;
-        source.connect(analyser);
-
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        function drawMeter() {
-          if (!audioCtx || paused || phoneLive) {
-            document.documentElement.style.setProperty("--vu", "0");
-            return;
-          }
-          animMeterId = requestAnimationFrame(drawMeter);
-          analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-          const avg = sum / dataArray.length;
-          const pct = Math.min(100, Math.round((avg / 90) * 100));
-          document.documentElement.style.setProperty("--vu", (pct / 100).toFixed(2));
-        }
-        drawMeter();
-      } catch (err) {
-        console.warn("Audio meter inactive:", err);
-      }
-    }
-
-    function stopAudioMeter() {
-      if (animMeterId) cancelAnimationFrame(animMeterId);
-      animMeterId = null;
-      meterStream?.getTracks().forEach((t) => t.stop());
-      meterStream = null;
-      audioCtx?.close();
-      audioCtx = null;
-      document.documentElement.style.setProperty("--vu", "0");
     }
 
     // SSE Stream Connection
@@ -2690,21 +1709,22 @@
       sseSource = new EventSource(`/api/room/${roomId}/stream`);
 
       sseSource.addEventListener("backlog", (e) => {
-        const { lines, offset = 0, phone, assets = [], speakers = [] } = JSON.parse(e.data);
+        const { lines = [], offset = 0, phone, assets = [], speakers = [] } = JSON.parse(e.data);
         for (const a of assets) addTrayImage(a.thumb, a.id);
-        if (lines && lines.length > 0) {
-          finals = lines.slice(-50);
-          // A resumed console may have missed lines while it was away: append what the relay has past our count.
-          const have = transcript.length;
-          if (have < offset + lines.length) {
-            const startIdx = Math.max(0, have - offset);
+        if (lines.length > 0) {
+          const tailStart = Math.max(0, lines.length - 50);
+          finals = lines.slice(tailStart).map((text, i) => ({ text, speaker: speakers[tailStart + i] || "" }));
+          if (seen < offset + lines.length) {
+            const startIdx = Math.max(0, seen - offset);
             const fresh = lines.slice(startIdx);
-            transcript.push(...fresh);
             const now = Date.now();
             for (let i = 0; i < fresh.length; i++) {
+              transcript.push(fresh[i]);
               transcriptTimes.push(now);
               transcriptSpeakers.push(speakers[startIdx + i] || "");
             }
+            seen = offset + lines.length;
+            updateTranscriptStat();
             saveTalk();
           }
           renderTicker();
@@ -2712,17 +1732,17 @@
         if (phone && !phoneLive) onPhone(true, false);
       });
 
-      // Finals come back from the relay whichever mic produced them (this tab or the phone),
-      // so the ticker shows exactly what the room sees.
       sseSource.addEventListener("final", (e) => {
-        const { text, speaker = "" } = JSON.parse(e.data);
+        const { text, speaker = "", seq } = JSON.parse(e.data);
         if (text) {
           lastWordTime = Date.now();
-          finals.push(text);
+          finals.push({ text, speaker });
           if (finals.length > 50) finals.shift();
           transcript.push(text);
           transcriptTimes.push(Date.now());
           transcriptSpeakers.push(speaker);
+          seen = typeof seq === "number" ? Math.max(seen + 1, seq) : seen + 1;
+          updateTranscriptStat();
           saveTalk();
         }
         interim = "";
@@ -2736,36 +1756,26 @@
         renderTicker();
       });
 
-      sseSource.addEventListener("end", () => {
-        handleTalkEnded(false);
-      });
+      sseSource.addEventListener("end", () => handleTalkEnded(false));
 
       sseSource.addEventListener("source", (e) => {
         const { source, live, lost } = JSON.parse(e.data);
         if (source === "phone") onPhone(live, lost);
       });
 
-      // Images: the relay is the source of truth, so the tray refills after a reload and empties
-      // when a picture is pulled back.
       sseSource.addEventListener("asset", (e) => {
         const { id, thumb } = JSON.parse(e.data);
         addTrayImage(thumb, id);
       });
-      sseSource.addEventListener("asset-gone", (e) => {
-        removeTrayThumb(JSON.parse(e.data).id);
-      });
+      sseSource.addEventListener("asset-gone", (e) => removeTrayThumb(JSON.parse(e.data).id));
     }
 
-    // Push transcript chunk to room
     async function push(body) {
       if (!room) return false;
       try {
         const r = await fetch(`/api/room/${room.id}`, {
           method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Bearer ${room.token}`,
-          },
+          headers: { "content-type": "application/json", authorization: `Bearer ${room.token}` },
           body: JSON.stringify(body),
         });
         if (r.status === 404) {
@@ -2774,7 +1784,6 @@
         }
         const j = await r.json();
         if (typeof j.listeners === "number") {
-          // This console holds one of the stream connections itself; don't count it as an audience member.
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
           const label = others === 0 ? "Room empty" : `${others} reading`;
           $("#qrHint").hidden = others > 0;
@@ -2803,7 +1812,6 @@
       }
     }
 
-    // Local Speech Recognition
     const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
     async function startDeepgram() {
@@ -2820,10 +1828,7 @@
             setPaused(true, false);
           },
         });
-        if (!localLive || paused || !room) {
-          started.stop();
-          return;
-        }
+        if (!localLive || paused || !room) { started.stop(); return; }
         dg = started;
         updateMicLabel(true);
       } catch (err) {
@@ -2835,11 +1840,7 @@
     let recRestartTimer = null;
     function startLocalRec() {
       clearTimeout(recRestartTimer);
-      if (engine() === "deepgram") {
-        startDeepgram();
-        return;
-      }
-      initAudioMeter();
+      if (engine() === "deepgram") { startDeepgram(); return; }
       if (!Rec) {
         notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
         $("#micSource").textContent = "Phone mic only";
@@ -2858,13 +1859,14 @@
           const t = applyRoomWords(e.results[i][0].transcript.trim(), activeTerms);
           if (e.results[i].isFinal) {
             if (t) {
-              // The relay echoes it back as a "final" event; only keep it locally if the relay is down.
               push({ text: t, final: true, source: "mic" }).then((ok) => {
                 if (!ok) {
-                  finals.push(t);
+                  finals.push({ text: t, speaker: "" });
                   transcript.push(t);
                   transcriptTimes.push(Date.now());
                   transcriptSpeakers.push("");
+                  seen++;
+                  updateTranscriptStat();
                   saveTalk();
                   renderTicker();
                 }
@@ -2885,15 +1887,11 @@
         if (e.error === "network") {
           setPaused(true, false);
           const isBrave = await (navigator.brave?.isBrave?.() ?? false);
-          if (isBrave) {
-            notice(
-              "Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, use Chrome/Safari/Edge, or pair the phone lapel mic.",
-            );
-          } else {
-            notice(
-              "Speech recognition stopped: network error. Browser speech uses cloud recognition servers. Check connection, use Chrome/Safari, or pair the phone lapel mic.",
-            );
-          }
+          notice(
+            isBrave
+              ? "Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, use Chrome/Safari/Edge, or pair the phone lapel mic."
+              : "Speech recognition stopped: network error. Browser speech uses cloud recognition servers. Check connection, use Chrome/Safari, or pair the phone lapel mic.",
+          );
         } else if (FATAL_REC.has(e.error)) {
           setPaused(true, false);
           notice(
@@ -2914,27 +1912,21 @@
       try {
         rec.start();
       } catch (err) {
-        console.warn("Speech recognition failed to start:", err);
         notice(`Couldn't start speech recognition: ${err.message}. Pair the phone lapel mic instead.`);
         setPaused(true, false);
-        return;
       }
     }
 
-    // The phone lapel mic is the presenter's voice when it's live, so the laptop mic steps aside:
-    // two recognisers on one voice would put every sentence in the transcript twice.
     function onPhone(live, lost) {
       phoneLive = live;
       const label = $("#micSource");
       if (live) {
-        stopAudioMeter();
         label.textContent = "Phone mic live";
         if (localLive && !paused) {
           pausedByPhone = true;
-          setPaused(true, false);
+          setPaused(true, false, false);
         }
         $("#liveText").textContent = "Live";
-        // Clear only our own earlier phone notices; leave anything else (a resume note, a relay warning) alone.
         if (/^(Phone mic|The phone mic)/.test($("#notice").textContent)) notice("");
       } else if (lost) {
         label.textContent = "Phone mic dropped";
@@ -2947,9 +1939,7 @@
         }
       } else {
         label.textContent = "Phone mic paused";
-        if (pausedByPhone) {
-          notice("Phone mic paused. Resume the laptop mic with Space or Resume.");
-        }
+        if (pausedByPhone) notice("Phone mic paused. Resume the laptop mic with Space or Resume.");
       }
       updateMicLabel();
     }
@@ -2960,22 +1950,21 @@
       label.textContent = paused ? "Laptop mic paused" : (engine() === "deepgram" ? "Laptop mic · Deepgram" : "Laptop mic");
     }
 
-    // Pause keeps the room open (phones stay connected, phone mic still works); only this tab's mic stops.
-    function setPaused(on, restart = true) {
+    function setPaused(on, restart = true, tellRoom = true) {
       paused = on;
       if (!on) pausedByPhone = false;
       $("#pauseBtn").querySelector(".btn-label").textContent = on ? "Resume" : "Pause";
-      $("#pauseBtn").classList.toggle("butter", on);
+      $("#pauseBtn").dataset.paused = on ? "1" : "0";
+      if (tellRoom && room && !phoneLive) push({ paused: on });
       if (on) {
         clearTimeout(recRestartTimer);
         clearTimeout(interimTimer);
         rec?.stop();
         dg?.stop();
         dg = null;
-        stopAudioMeter();
         interim = "";
         renderTicker();
-        $("#liveText").textContent = "Live";
+        $("#liveText").textContent = phoneLive ? "Live" : "Paused";
       } else if (restart && localLive) {
         notice("");
         $("#liveText").textContent = "Live";
@@ -2985,15 +1974,12 @@
       updateMicLabel(true);
     }
 
-    // Room Lifecycle
     async function lanBaseFor() {
       const onLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
       const infoRes = onLocalhost ? await fetch("/api/info").then((r) => r.json()).catch(() => ({})) : {};
       return (onLocalhost && infoRes.lan) ? infoRes.lan : location.origin;
     }
 
-    // Until a real room opens, the stage runs a quiet sample talk at human speaking cadence (~135 WPM).
-    // The console shows what it does instead of describing it; the first Start clears it.
     const GHOST = [
       "Every room has a back row.",
       "Tonight the back row reads along, in its own type, own size, own light.",
@@ -3009,14 +1995,16 @@
       const fresh = wordsArr.slice(Math.max(0, count - 2), count).join(" ");
       const leadHtml = (settled ? `${esc(settled)} ` : "") + (fresh ? `<span class="ghost-fresh">${esc(fresh)}</span>` : "");
       holder.innerHTML = `<div>${(prev ? `<span class="prev">${esc(prev)}</span> ` : "")}<span class="fresh-lead">${leadHtml}</span></div>`;
-      $("#ticker").classList.remove("empty");
     }
     function startGhost() {
       if (ghostTimer) return;
       $("#ghostChip").hidden = false;
-      $("#ticker").classList.add("ghosting");
-      ghostLine = 0;
-      ghostWord = 0;
+      if (reduced) {
+        const holder = $("#ticker .ticker-text");
+        if (holder) holder.innerHTML = `<div><span class="prev">${esc(GHOST[0])}</span> <span class="fresh-lead">${esc(GHOST[1])}</span></div>`;
+        return;
+      }
+      ghostLine = 0; ghostWord = 0;
       const step = () => {
         if (!ghostTimer) return;
         const wordsArr = GHOST[ghostLine].split(/\s+/);
@@ -3027,8 +2015,7 @@
             ghostTimer = setTimeout(() => stopGhost(false), 900);
             return;
           }
-          ghostLine += 1;
-          ghostWord = 0;
+          ghostLine += 1; ghostWord = 0;
           ghostTimer = setTimeout(step, 680);
           return;
         }
@@ -3038,55 +2025,49 @@
       };
       ghostTimer = setTimeout(step, 120);
     }
-    // The sample stops typing when it runs out of lines, and is wiped when a real room opens.
     function stopGhost(clear = false) {
       clearTimeout(ghostTimer);
-      clearInterval(ghostTimer);
       ghostTimer = null;
       if (!clear) return;
       $("#ghostChip").hidden = true;
-      $("#ticker").classList.remove("ghosting");
       const holder = $("#ticker .ticker-text");
       if (holder) holder.innerHTML = "";
     }
 
     async function openRoom() {
-      if (room) return;
+      if (room || opening) return;
+      opening = true;
       notice("");
-      lanBase = await lanBaseFor();
-      const title = $("#title").value.trim();
-      let created;
       try {
+        lanBase = await lanBaseFor();
+        const title = $("#title").value.trim();
         const roomRes = await fetch("/api/room", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ title }),
+          body: JSON.stringify({ title, lang: $("#lang").value, links: parsedRoomLinks() }),
         });
         if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
-        created = await roomRes.json();
+        const created = await roomRes.json();
+        created.startedAt = Date.now();
+        if (!$("#keyterms").value.trim() && title) {
+          $("#keyterms").value = termsFrom(title);
+          updateWordsChip();
+        }
+        transcript = [];
+        transcriptTimes = [];
+        transcriptSpeakers = [];
+        seen = 0;
+        attachRoom(created);
       } catch (err) {
         notice(`Couldn't open a room on the relay (${err.message}). Check that the server process is running.`);
-        return;
+      } finally {
+        opening = false;
       }
-      created.startedAt = Date.now();
-      // First talk on this machine: the title already knows the names worth getting right.
-      if (!$("#keyterms").value.trim() && title) {
-        $("#keyterms").value = termsFrom(title);
-        updateWordsChip();
-      }
-      transcript = [];
-      transcriptTimes = [];
-      transcriptSpeakers = [];
-      attachRoom(created);
     }
 
-    // A reload mid-talk shouldn't lose the room: this tab remembers it (sessionStorage, so the token
-    // never leaves the tab) and picks it back up if the relay still has it.
     async function resumeRoom() {
       let saved = null;
-      try {
-        saved = JSON.parse(sessionStorage.getItem("st-room"));
-      } catch {}
+      try { saved = JSON.parse(sessionStorage.getItem("st-room")); } catch {}
       if (!saved?.id || !saved?.token) return false;
       const alive = await fetch(`/api/room/${saved.id}`, {
         method: "POST",
@@ -3094,23 +2075,16 @@
         body: JSON.stringify({ ping: true }),
       }).then((r) => r.ok).catch(() => false);
       if (!alive) {
-        try {
-          sessionStorage.removeItem("st-room");
-        } catch {}
+        try { sessionStorage.removeItem("st-room"); } catch {}
         return false;
       }
       lanBase = await lanBaseFor();
       $("#title").value = saved.title || "";
-      try {
-        const rec = JSON.parse(localStorage.getItem(`st-talk-${saved.id}`));
-        transcript = rec?.lines || [];
-        transcriptTimes = rec?.times || [];
-        transcriptSpeakers = rec?.speakers || [];
-      } catch {
-        transcript = [];
-        transcriptTimes = [];
-        transcriptSpeakers = [];
-      }
+      const rec = store.json(`st-talk-${saved.id}`, null);
+      transcript = Array.isArray(rec?.lines) ? rec.lines : [];
+      transcriptTimes = Array.isArray(rec?.times) ? rec.times : [];
+      transcriptSpeakers = Array.isArray(rec?.speakers) ? rec.speakers : [];
+      seen = transcript.length;
       while (transcriptTimes.length < transcript.length) transcriptTimes.push(saved.startedAt || Date.now());
       while (transcriptSpeakers.length < transcript.length) transcriptSpeakers.push("");
       attachRoom(saved);
@@ -3120,20 +2094,17 @@
 
     function attachRoom(r) {
       room = r;
-      try {
-        sessionStorage.setItem("st-room", JSON.stringify(room));
-      } catch {}
+      try { sessionStorage.setItem("st-room", JSON.stringify(room)); } catch {}
       exportRoom = null;
 
       stopGhost(true);
       closeStageSelects();
-      // Fresh talk, fresh ticker
       finals = [];
       interim = "";
       paused = false;
       phoneLive = false;
       pausedByPhone = false;
-      setQrTab("room");
+      $("#countBadge").textContent = "Room empty";
       updateMicLabel(true);
       applyRoomStyle();
       renderTicker();
@@ -3151,6 +2122,7 @@
       $("#startBtn").hidden = true;
       $("#stopBtn").hidden = false;
       $("#pauseBtn").hidden = false;
+      $("#pauseBtn").dataset.paused = "0";
       $("#pauseBtn").querySelector(".btn-label").textContent = "Pause";
       $("#floatBtn").disabled = false;
       $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (⌥ + F)" : "Pop out ticker over slides (⌥ + F)";
@@ -3171,30 +2143,14 @@
       lastWordTime = Date.now();
       startLocalRec();
 
-      // Keep the room alive through a long pause or Q&A (idle rooms are swept after 30 min), and
-      // refresh the "reading" count even when the phone is doing all the talking.
       clearInterval(keepaliveInterval);
       keepaliveInterval = setInterval(() => push({ ping: true }), 30_000);
 
-      // Silence monitor & Brave voice activity watchdog
       clearInterval(silenceInterval);
       silenceInterval = setInterval(() => {
         if (!localLive || paused || phoneLive) return;
         const quietSeconds = Math.round((Date.now() - lastWordTime) / 1000);
-        if (quietSeconds > 25) {
-          $("#liveText").textContent = "Mic quiet";
-        } else {
-          $("#liveText").textContent = "Live";
-        }
-        // Watchdog: If voice level is detected on mic but speech recognition yields no words
-        if (isBraveBrowser && engine() === "browser" && quietSeconds > 5 && transcript.length === 0 && !interim) {
-          const vu = parseFloat(document.documentElement.style.getPropertyValue("--vu") || "0");
-          if (vu > 0.04) {
-            notice(
-              "Hearing microphone audio, but Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, or scan the QR code to pair the phone lapel mic.",
-            );
-          }
-        }
+        $("#liveText").textContent = quietSeconds > 25 ? "Mic quiet" : "Live";
       }, 3000);
     }
 
@@ -3206,19 +2162,16 @@
       clearTimeout(recRestartTimer);
       clearTimeout(interimTimer);
       clearTimeout(typedTimer);
+      clearTimeout(linksSyncTimer);
       closeStageSelects();
-      setQrTab("room");
+      closeFullscreenQR();
       rec?.stop();
       dg?.stop();
       dg = null;
       updateMicLabel(true);
-      stopAudioMeter();
       clearInterval(silenceInterval);
       clearInterval(keepaliveInterval);
-      if (sseSource) {
-        sseSource.close();
-        sseSource = null;
-      }
+      if (sseSource) { sseSource.close(); sseSource = null; }
       if (callServer && room) {
         fetch(`/api/room/${room.id}`, {
           method: "DELETE",
@@ -3230,15 +2183,15 @@
         exportRoom = talkRecord(true);
         if (transcript.length) persist(exportRoom);
       }
-      try {
-        sessionStorage.removeItem("st-room");
-      } catch {}
+      try { sessionStorage.removeItem("st-room"); } catch {}
       room = null;
+      notice("");
       updateTranscriptStat();
       renderPastTalks();
 
       $("#liveDot").classList.remove("active");
       $("#liveText").textContent = "Ended";
+      $("#countBadge").textContent = "Room empty";
       delete document.body.dataset.live;
       $("#startBtn").hidden = false;
       $("#stopBtn").hidden = true;
@@ -3248,7 +2201,9 @@
       clearTray();
       $("#engine").disabled = false;
       $("#qrEmpty").hidden = false;
+      $("#qrTalk").hidden = true;
       $("#qrHint").hidden = true;
+      $("#joinHost").hidden = true;
       $("#urlDisplay").hidden = true;
       $("#copyUrlBtn").disabled = true;
       $("#fsQrBtn").disabled = true;
@@ -3266,60 +2221,54 @@
       $("#qrGraphic").innerHTML = "";
       $("#joinLine").hidden = true;
       $("#fsCode").hidden = true;
+      $("#fsHost").hidden = true;
     }
 
     $("#startBtn").onclick = () => openRoom();
-    $("#qrEmpty").onclick = () => {
-      if (!room) openRoom();
-    };
+    $("#qrEmpty").onclick = () => { if (!room) openRoom(); };
     $("#qrEmpty").onkeydown = (e) => {
       if (!room && (e.key === "Enter" || e.key === " ")) {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         openRoom();
       }
     };
     $("#stopBtn").onclick = () => handleTalkEnded(true);
     $("#pauseBtn").onclick = () => setPaused(!paused);
 
-    // One room code on the card. The pairing code for the lapel mic lives in the
-    // fullscreen modal, one tap away, because it carries the write key.
-
-    // Copy link button
     $("#copyUrlBtn").onclick = async () => {
-      const text = $("#urlDisplay").textContent;
-      if (!text || text.startsWith("Standby")) return;
+      const text = room ? roomUrl() : "";
+      if (!text) return;
+      const lbl = $("#copyUrlBtn").querySelector(".btn-label");
+      const orig = lbl.textContent;
       try {
         await navigator.clipboard.writeText(text);
-        const lbl = $("#copyUrlBtn").querySelector(".btn-label");
-        const orig = lbl.textContent;
         lbl.textContent = "Copied!";
-        setTimeout(() => {
-          lbl.textContent = orig;
-        }, 1500);
-      } catch {}
+      } catch {
+        lbl.textContent = "Blocked";
+      }
+      setTimeout(() => (lbl.textContent = orig), 1500);
     };
 
-    // Fullscreen Modal
     const openFullscreenQR = (isMic = false) => {
       if (!room) return;
+      fsOpener = document.activeElement;
       renderModalQR(isMic);
       $("#fsModal").classList.add("open");
+      $("#closeFsBtn").focus();
     };
     const closeFullscreenQR = () => {
+      if (!$("#fsModal").classList.contains("open")) return;
       $("#fsModal").classList.remove("open");
-      if (room) updateQR();
+      fsOpener?.focus?.();
+      fsOpener = null;
     };
-
     $("#fsQrBtn").onclick = () => openFullscreenQR(false);
     $("#micBtn").onclick = () => openFullscreenQR(true);
     $("#closeFsBtn").onclick = closeFullscreenQR;
-    $("#fsModal").onclick = (e) => {
-      if (e.target === $("#fsModal")) closeFullscreenQR();
-    };
+    $("#fsModal").onclick = (e) => { if (e.target === $("#fsModal")) closeFullscreenQR(); };
 
-    // Float Ticker via Document Picture-in-Picture with sleek popup fallback
-    // The floating bar is sized to what it holds: wide, and tall enough for the chosen font and
-    // line count, so a 50px Jumbotron never arrives in a 160px letterbox.
+    // Float Ticker via Document Picture-in-Picture with popup fallback.
+    // Crucially resets min-height: 0; flex: 1 1 auto so compact/standard PiP windows never clip captions!
     function floatBox() {
       const size = Number(prefs.size.replace("px", "")) || 38;
       const lines = Number(prefs.depth) || 2;
@@ -3327,7 +2276,6 @@
       const width = Math.round(Math.min(1440, Math.max(720, innerWidth - 120)));
       return { width, height };
     }
-
     const floatTickerWindow = async () => {
       if (!room) return;
       const box = floatBox();
@@ -3338,23 +2286,21 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "#fbf1e4", brut: "#ffc74d", hemingway: "#f4ede2" };
-          pip.document.body.style.cssText = `margin:0;background:${
+          const bgMap = { ink: "#1e1714", paper: "#fbf1e4", brut: "#ffc74d", hemingway: "#f7ecdc" };
+          pip.document.body.style.cssText = `margin:0;min-height:0;height:100vh;background:${
             bgMap[prefs.style] || "#1e1714"
-          };display:flex;align-items:center;justify-content:center;overflow:hidden;`;
+          };background-image:none;display:flex;flex-direction:column;overflow:hidden;`;
 
           const t = pip.document.createElement("div");
           t.id = "ticker";
           t.style.cssText = [
-            "position:static;transform:none;width:100vw;height:100vh;max-height:none",
-            "border-radius:0;box-shadow:none;border:0;padding:16px 28px",
+            "position:static;transform:none;width:100vw;height:100vh;min-height:0;max-height:none;flex:1 1 auto",
+            "border-radius:0;box-shadow:none;border-width:3px;padding:12px 24px",
           ].join(";");
           pip.document.body.append(t);
           tickerEls.push(t);
           applyRoomStyle();
           applyPrefs();
-          t.style.setProperty("--ticker-size", prefs.size);
-          t.style.boxShadow = "none";
 
           pip.addEventListener("pagehide", () => {
             tickerEls = tickerEls.filter((el) => el !== t);
@@ -3364,8 +2310,6 @@
           console.warn("Document Picture-in-Picture unavailable, falling back to popup window:", err);
         }
       }
-
-      // Universal fallback: minimal floating popup window for Brave, Safari, Firefox
       const w = Math.min(box.width, Math.round(screen.availWidth * 0.92));
       const h = box.height;
       const left = Math.round((screen.availWidth - w) / 2);
@@ -3375,26 +2319,17 @@
         "StageTypeFloatTicker",
         `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`,
       );
-      if (!pop) {
-        notice("Pop-up blocked. Allow pop-ups for this site so the ticker can float over slides.");
-      } else {
-        pop.focus();
-      }
+      if (!pop) notice("Pop-up blocked. Allow pop-ups for this site so the ticker can float over slides.");
+      else pop.focus();
     };
     $("#floatBtn").onclick = floatTickerWindow;
 
-    // Engine: browser recognition is always there; Deepgram only if the relay has a key.
-    let isBraveBrowser = false;
     if (navigator.brave && typeof navigator.brave.isBrave === "function") {
       navigator.brave.isBrave().then((b) => {
-        isBraveBrowser = Boolean(b);
-        if (isBraveBrowser && engine() === "browser") {
-          const hint = $("#engineHint");
-          if (hint) {
-            hint.innerHTML =
-              'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or pair the phone lapel mic.';
-            hint.hidden = false;
-          }
+        if (b && engine() === "browser") {
+          $("#engineHint").innerHTML =
+            'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or pair the phone lapel mic.';
+          $("#engineHint").hidden = false;
         }
       });
     }
@@ -3410,63 +2345,54 @@
       opt.disabled = !e.deepgram;
       if (!e.deepgram) {
         opt.textContent = "Deepgram (key needed on relay)";
-        if (engine() === "deepgram") {
-          $("#engine").value = "browser";
-          store.set("st-engine", "browser");
-        }
-        // The engine select already says what is on offer; no banner needed on a first visit.
+        if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
       }
       syncStageSelects();
     }).catch(() => {});
 
-    // Slide-o-Matic bridge: seed #title and #keyterms from ?title=&words= query params
+    // Slide-o-Matic bridge: seed #title, #keyterms, and #roomLinks from URL params
     const initQp = new URLSearchParams(location.search);
     if (initQp.get("title")) $("#title").value = initQp.get("title").slice(0, 80);
     $("#keyterms").value = initQp.get("words") || initQp.get("keyterms") || store.get("st-keyterms") || "";
-    $("#keyterms").addEventListener("input", () => {
-      updateWordsChip();
-      if (room && qrMode === "mic") setQrTab("mic");
-    });
-    $("#keyterms").addEventListener("change", () => {
-      store.set("st-keyterms", $("#keyterms").value);
-      updateWordsChip();
-      if (room && qrMode === "mic") setQrTab("mic");
-    });
+    $("#roomLinks").value = initQp.get("links") || store.get("st-links") || "";
+    $("#keyterms").addEventListener("input", updateWordsChip);
+    $("#keyterms").addEventListener("change", () => { store.set("st-keyterms", $("#keyterms").value); updateWordsChip(); });
     updateWordsChip();
     initStageSelects();
     applyPrefs();
     renderPastTalks();
     updateTranscriptStat();
-    resumeRoom().then((resumed) => {
-      if (!resumed) startGhost();
-    });
+    resumeRoom().then((resumed) => { if (!resumed) startGhost(); });
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (never hijack interactive controls or Space inside modal!)
     window.addEventListener("keydown", (e) => {
+      const fsOpen = $("#fsModal").classList.contains("open");
       if (e.key === "Escape") {
         const openSel = $(".stage-select.open .stage-select-btn");
-        closeStageSelects();
-        openSel?.focus();
-        for (const m of $$(".menu[open], .more[open]")) m.open = false;
+        if (openSel) { closeStageSelects(); openSel.focus(); return; }
+        for (const m of $$(".menu[open], .more[open]")) {
+          m.open = false;
+          m.querySelector("summary")?.focus();
+          return;
+        }
         closeFullscreenQR();
         return;
       }
-      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA") return;
+      if (fsOpen) {
+        if (e.key === "Tab") { e.preventDefault(); $("#closeFsBtn").focus(); }
+        return;
+      }
+      if (e.target.closest?.('input, select, textarea, button, summary, a, [role="button"], [role="tab"], [role="radio"], [role="option"], [contenteditable]')) {
+        return;
+      }
       if (e.altKey && (e.code === "KeyF" || e.key.toLowerCase() === "f")) {
-        e.preventDefault();
-        floatTickerWindow();
+        e.preventDefault(); floatTickerWindow();
       } else if (e.altKey && (e.code === "KeyR" || e.key.toLowerCase() === "r")) {
-        e.preventDefault();
-        shuffleTicker();
+        e.preventDefault(); shuffleTicker();
       } else if (e.altKey && (e.code === "KeyQ" || e.key.toLowerCase() === "q")) {
-        e.preventDefault();
-        openFullscreenQR(false);
+        e.preventDefault(); openFullscreenQR(false);
       } else if (e.code === "Space") {
-        // Space never ends the talk: that's a deliberate click on "End talk".
         e.preventDefault();
-        if (document.activeElement && typeof document.activeElement.blur === "function") {
-          document.activeElement.blur();
-        }
         if (room) setPaused(!paused);
         else openRoom();
       }

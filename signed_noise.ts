@@ -9,11 +9,21 @@
 // Zero dependencies, WebCrypto only: runs in Deno, browsers, Workers and Node 20+.
 
 const enc = new TextEncoder();
+const MAX_CACHED_KEYS = 16;
 const keys = new Map<string, Promise<CryptoKey>>();
 const key = (secret: string) => {
+  if (!secret) throw new Error("signed_noise requires a non-empty secret");
   let k = keys.get(secret);
   if (!k) {
-    k = crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    if (keys.size >= MAX_CACHED_KEYS) {
+      const oldest = keys.keys().next().value;
+      if (oldest !== undefined) keys.delete(oldest);
+    }
+    k = crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"])
+      .catch((err) => {
+        keys.delete(secret);
+        throw err;
+      });
     keys.set(secret, k);
   }
   return k;

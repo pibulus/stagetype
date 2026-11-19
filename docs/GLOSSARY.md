@@ -15,10 +15,13 @@ The presenter's mission control deck. Manages room creation, language and engine
 The high-contrast, always-on-top caption bar. In the browser, it leverages Chrome/Edge's **Document Picture-in-Picture API** (`requestWindow`) to stay pinned over full-screen Keynote, PowerPoint, terminal sessions, or browser tabs. Renders the *Rolling Tail* so long talks never overflow the display.
 
 #### 📱 Appendage Mic (`mic.html` / `/mic/:id#token`)
-The Wii U / Appendage pattern: transforms a presenter's phone into a wireless stage lapel mic. Uses the device's microphone, locks the screen awake via the Screen Wake Lock API, provides haptic feedback, and includes a double-tap confirmation guard to prevent pocket accidents.
+The Wii U / Appendage pattern: transforms a presenter's phone into a wireless stage lapel mic. Uses the device's microphone, locks the screen awake via the Screen Wake Lock API, provides haptic feedback, strips the `#token` into `sessionStorage` on load, and offers both a double-tap end-talk guard and a **Pocket lock** touch shield while live.
 
 #### 👥 Audience Reader (`audience.html` / `/live/:id`)
-The zero-install, zero-auth viewport for attendees. Opens instantly in any mobile browser when scanning the presenter's QR code. Provides client-side reading comfort controls: 4 themes (Cream, Espresso, Contrast, Night), dyslexic loose spacing, font scaling, jump-to-live auto-scroll, and post-talk Markdown/TXT/PDF export.
+The zero-install, zero-auth viewport for attendees. Opens instantly in any mobile browser when scanning the presenter's QR code. Provides client-side reading comfort controls: 4 themes (Cream, Espresso, Contrast, Night), dyslexic loose spacing, font scaling, jump-to-live auto-scroll, tap-to-keep quotes (with drag or keyboard reorder and 1-tap client-side **Quote Card PNG** export), and post-talk Markdown/TXT/PDF export.
+
+#### 🔗 Take-Home Links (`links`)
+Optional comma-separated URLs pinned under **More → Links** on the Stage Console. Delivered live to every reader's links tray and included in Markdown exports and offline saved copies so audiences leave with the talk's slides, repos, or handouts.
 
 #### 🔤 Join Code
 Four letters (no I, O, Q; nothing rude) shown beside the audience QR and large on the projector card. Typed at `/join` or used as `/j/CODE`. Released when the talk ends.

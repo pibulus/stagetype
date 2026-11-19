@@ -2,17 +2,20 @@
 
 A living note of the product and business thinking behind StageType, so decisions don't evaporate between sessions. Update it when a decision is made or reversed.
 
-## Where it sits (8 Nov 2026)
+## Where it sits (19 Nov 2026)
 
-Working, local, not deployed. `deno task dev`, then open http://localhost:8787.
+Hardened, visually unified across all 6 pages, accessible, and ready for first live HTTPS deploy (CHONK systemd + `cloudflared` or Fly `syd`). Run `deno task dev`, then open http://localhost:8787 (or `/demo`).
 
-**The ten-second test:** land on the console. A sample talk types itself into the stage (`SAMPLE`). The room card says *"Start captions and the code lands in this square."* Click it (or Start), the QR appears, a phone camera reads it, and the phone scrolls the words in its own font and size. Say something; watch it land in three places.
+**The ten-second test:** land on `/demo` or the console. A sample talk types itself into the stage (`SAMPLE`). Click **Start captions**, the QR + visible `/join` host + 4-letter code appear, a phone camera reads it, and the phone scrolls words in its own font, size, and theme. Say something; watch it land in three places.
 
-**What is real:** console (talk bar, stage with x-ray styles, room card, transcript, image tray), phone reader (four themes, five faces, keep-a-line, live links, take-home card with share/copy/.md/print), phone mic with handoff, standalone ticker, join codes, `/demo`, live images via clipboard with compression on the device and a pull-back, everything local-first with no accounts.
+**What is real:** unified Soft Neo Toybrut design across all 6 pages (`presenter`, `audience`, `mic`, `join`, `demo`, `ticker`), fixed-height console + clipped-free Document PiP float (`⌥+F`), Take-Home Pack (presenter-pinned links + kept-line starring/editing/keyboard+touch reordering + 1-tap client-side Quote Card PNG + prose `.md`/PDF export + offline Service Worker), multi-phone lapel mic with unique session IDs + pocket lock + automatic handoff, Room Words primer, zero-internet LAN whisper pipe (`deno task listen-local`), full SEO/OG/PWA baseline, and sealed single-box relay (`HOST`/`TRUST_PROXY`, global RAM cap, streaming upload cap, magic-byte image checks, Deepgram pass gate, `/healthz`, `/version.json`).
 
-**What is deliberately not:** no server storage (rooms keep 400 lines + 40 images in memory and die), no audio stored, no accounts, no landing page in front of the console, no native app yet.
+**What is deliberately not:** no server storage (rooms keep 400 lines + 40 images in memory and die), no audio stored, no accounts, no Q&A/emoji spam, no 4-app LLM synthesis loop.
 
-**The next three, in order:** the take-home pack (links and a deck that the presenter places, rather than only links that happen to be spoken); deploy (one lane, `fly.toml` ready, no domain yet, no Deepgram key wired); the mic handshake (request-and-approve, so the reader page can become the mic without handing out the write key).
+**The next three, in order:**
+1. **Deploy live on `stagetype.app`** (CHONK systemd + `cloudflared` first, Browser-speech open + pass-gated Deepgram rehearsal with a real Nova-3 key) and wire the 1-click Slide-o-Matic `?title=&words=` bridge button.
+2. **Live translation (10–15 languages on the relay)** — each final line translated once per active audience language and fanned out via SSE. This is the feature that wins Wordly's budget.
+3. **Zero-subscription Event Passes ($15 / $39 / $89 with $1/pass to Palestine)** + BYO Deepgram escape hatch + AGPL-3.0 relicense once hosted passes open. Mac host app ($29 one-time) later once web pull is proven.
 
 ## The one-line position
 

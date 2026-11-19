@@ -84,11 +84,17 @@ if (import.meta.main) {
   }
   if (!urlArg) {
     console.error(
-      'Usage: whisper-stream ... | deno task listen-local "http://localhost:8787/mic/<roomId>#<token>" [--speaker Name] [--cmd "..."]',
+      'Usage: STAGETYPE_MIC_URL="http://localhost:8787/mic/<roomId>#<token>" whisper-stream ... | deno task listen-local [--speaker Name] [--cmd "..."]',
     );
     Deno.exit(1);
   }
   const target = parseMicTarget(urlArg, speaker);
+  const parsedOrigin = new URL(target.origin);
+  if (parsedOrigin.protocol === "http:" && !["localhost", "127.0.0.1", "::1"].includes(parsedOrigin.hostname)) {
+    console.error(
+      `[StageType listen-local] Warning: sending write token over unencrypted http://${parsedOrigin.host}. Use https:// outside a trusted LAN.`,
+    );
+  }
   target.phoneId = `cli-${crypto.randomUUID().slice(0, 8)}`;
 
   const sendPing = async (live: boolean): Promise<boolean> => {
@@ -119,12 +125,6 @@ if (import.meta.main) {
   );
 
   let child: Deno.ChildProcess | null = null;
-  let sourceStream: ReadableStream<Uint8Array> = Deno.stdin.readable;
-  if (cmd) {
-    child = new Deno.Command("sh", { args: ["-c", cmd], stdout: "piped", stderr: "inherit" }).spawn();
-    sourceStream = child.stdout;
-  }
-
   const heartbeat = setInterval(() => {
     sendPing(true);
   }, 20_000);
@@ -141,7 +141,14 @@ if (import.meta.main) {
     Deno.addSignalListener("SIGTERM", shutdown);
   } catch { /* signal listeners optional */ }
 
+  // Spawn inside try/finally so any permission or command launch error always releases the phone-mic lock.
   try {
+    let sourceStream: ReadableStream<Uint8Array> = Deno.stdin.readable;
+    if (cmd) {
+      child = new Deno.Command("sh", { args: ["-c", cmd], stdout: "piped", stderr: "inherit" }).spawn();
+      sourceStream = child.stdout;
+    }
+
     const decoder = new TextDecoder();
     let buf = "";
     for await (const chunk of sourceStream) {

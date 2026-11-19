@@ -1,0 +1,21 @@
+{
+  "name": "StageType",
+  "short_name": "StageType",
+  "description": "Live presentation captions ticker, wireless phone lapel mic, and instant audience QR reader.",
+  "start_url": "/join",
+  "display": "standalone",
+  "background_color": "#fff6e6",
+  "theme_color": "#fff6e6",
+  "icons": [
+    {
+      "src": "/ghost.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

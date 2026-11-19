@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1714">
+<meta name="robots" content="noindex, nofollow">
 <title>StageType · Ticker</title>
 <link rel="stylesheet" href="/vendor/fonts.css">
 <style>
   /* The stage bar on its own. Fill a second screen, or size it as a strip in an OBS browser source.
-     Options ride in the query string: style=ink|paper face=system|inter|atkinson|fraunces|mono
-     weight=400|500|700 size=<px> depth=1|2|3 flow=live|settled ring=mint|pink|lilac|butter|none */
+     Options ride in the query string: style=ink|paper|brut|hemingway face=system|inter|atkinson|fraunces|mono
+     weight=400|500|700 size=<px> depth=1|2|3 flow=live|settled ring=mint|pink|lilac|butter|ink|paper|clay|none */
   :root {
-    --ground: #fffef7; --paper: #fbf1e4; --ink: #1e1714; --line: #3a2e28;
-    --pink: #ffb3d1; --mint: #b8f0d8; --lilac: #d9c8ff; --butter: #fff0a8;
+    --ground: #fffdf5; --paper: #fbf1e4; --ink: #1e1714;
+    --pink: #ff6ac2; --mint: #2dd4bf; --lilac: #a78bfa; --butter: #ffc74d;
     --face: var(--face-system); --weight: 700; --depth: 2; --size: clamp(22px, 5.2vw, 64px); --ring: var(--mint);
   }
   * { box-sizing: border-box; }
@@ -22,67 +25,188 @@
     display: flex; flex-direction: column; justify-content: flex-end;
     padding: 4vh 4vw; box-shadow: inset 0 0 0 3px var(--ring);
     font: var(--weight) var(--size)/1.25 var(--face); letter-spacing: -0.01em;
+    position: relative;
   }
   body[data-style="paper"] { background: var(--paper); color: var(--ink); }
-  body[data-style="brut"] { background: #ffe853; color: var(--ink); --ring: var(--ink); }
-  body[data-style="hemingway"] { background: #f4ede2; color: #2c221e; --face: var(--face-fraunces); }
+  body[data-style="brut"] { background: #ffc74d; color: var(--ink); }
+  body[data-style="hemingway"] { background: #f7ecdc; color: #2c221e; }
   body[data-ring="none"] { box-shadow: none; }
-  body[data-face="fraunces"] { font-variation-settings: "SOFT" 100, "WONK" 0; }
-  #ticker { max-height: calc(var(--depth) * 1.25em); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
-  .prev { opacity: .55; font-weight: max(300, calc(var(--weight) - 200)); }
-  .fresh-lead { animation: land .55s ease-out; }
-  @keyframes land { 0% { opacity: 0; text-shadow: 0 0 0 var(--ring); } 35% { opacity: 1; text-shadow: 0 0 18px var(--ring); } 100% { text-shadow: 0 0 0 transparent; } }
-  body[data-ring="none"] .fresh-lead { animation: none; }
-  .interim { color: var(--pink); opacity: .9; }
-  body[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, transparent); border-radius: .15em; padding: 0 .12em; }
+  main { width: 100%; }
+  #ticker { max-height: calc(var(--depth) * 1.32em); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; }
+  #ticker > div { width: 100%; }
+  .prev { opacity: .62; font-weight: max(300, calc(var(--weight) - 200)); }
+  body[data-style="paper"] .prev,
+  body[data-style="brut"] .prev,
+  body[data-style="hemingway"] .prev { opacity: .78; }
+  .fresh-lead.land { animation: land .48s ease-out; }
+  @keyframes land { 0% { opacity: .2; text-shadow: 0 0 0 var(--ring); } 40% { opacity: 1; text-shadow: 0 0 14px var(--ring); } 100% { text-shadow: 0 0 0 transparent; } }
+  body[data-ring="none"] .fresh-lead.land { animation: none; }
+  .speaker-tag {
+    display: inline-block; font-size: .56em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    padding: .08em .45em; margin-right: .32em; border-radius: 999px; vertical-align: .14em;
+    background: color-mix(in srgb, var(--pink) 34%, transparent); color: inherit;
+  }
+  .interim { color: var(--pink); opacity: .95; }
+  body[data-style="paper"] .interim { color: var(--ink); background: color-mix(in srgb, var(--pink) 32%, transparent); border-radius: .15em; padding: 0 .12em; }
   body[data-style="brut"] .interim { color: var(--ink); background: rgba(30, 23, 20, 0.14); border-radius: .15em; padding: 0 .12em; }
-  body[data-style="hemingway"] .interim { color: #8c6239; background: rgba(140, 98, 57, 0.12); border-radius: .15em; padding: 0 .12em; }
-  .interim::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: currentColor; border-radius: 2px; animation: caret 1s steps(2) infinite; }
+  body[data-style="hemingway"] .interim { color: #724c27; background: rgba(114, 76, 39, 0.11); border-radius: .15em; padding: 0 .12em; }
+  .interim:empty { display: none; }
+  .interim:not(:empty)::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em; background: currentColor; border-radius: 2px; animation: caret 1s steps(2) infinite; }
   @keyframes caret { to { opacity: 0; } }
   body[data-flow="settled"] .interim { display: none; }
-  #ticker:empty::before { content: "Captions appear here in real time"; opacity: .35; font-weight: 500; }
-  #ticker.over:empty::before { content: "Talk ended"; }
+  #ticker.empty::before { content: "Captions appear here in real time"; opacity: .64; font-weight: 500; }
+  #ticker.over.empty::before { content: "Talk ended"; }
+  #statusPill {
+    position: fixed; top: 12px; right: 16px;
+    font: 800 12px "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 4px 11px; border-radius: 999px;
+    background: #ffc74d; color: #1e1714; border: 1.5px solid #1e1714;
+  }
+  #statusPill[hidden] { display: none !important; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    white-space: nowrap; border: 0; padding: 0; margin: -1px;
+  }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } }
 </style>
 </head>
 <body>
-<div id="ticker" aria-live="polite"></div>
+<span id="statusPill" role="status" hidden></span>
+<main>
+  <div id="ticker" class="empty" dir="auto">
+    <div id="wrap"><span id="settled"></span> <span id="interim" class="interim"></span></div>
+  </div>
+</main>
+<div id="liveAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 <script>
 const roomId = location.pathname.split("/").pop();
 const q = new URLSearchParams(location.search);
 const pick = (k, allowed, fallback) => (allowed.includes(q.get(k)) ? q.get(k) : fallback);
 const style = pick("style", ["ink", "paper", "brut", "hemingway"], "ink");
-const face = pick("face", ["system", "inter", "atkinson", "fraunces", "mono"], "system");
+const face = pick("face", ["system", "inter", "atkinson", "fraunces", "mono"], style === "hemingway" ? "fraunces" : "system");
 const weight = pick("weight", ["400", "500", "700"], "700");
 const depth = pick("depth", ["1", "2", "3"], "2");
 const flow = pick("flow", ["live", "settled"], "live");
-const ring = pick("ring", ["mint", "pink", "lilac", "butter", "none"], "mint");
+const ring = pick("ring", ["mint", "pink", "lilac", "butter", "ink", "paper", "clay", "none"], "mint");
 const size = /^\d{2,3}px$/.test(q.get("size") || "") ? q.get("size") : null;
+const RING_MAP = {
+  mint: "var(--mint)",
+  pink: "var(--pink)",
+  lilac: "var(--lilac)",
+  butter: "var(--butter)",
+  ink: "#1e1714",
+  paper: "#3a2e28",
+  clay: "#b07a4e",
+  none: "transparent",
+};
 const root = document.documentElement.style;
 root.setProperty("--face", `var(--face-${face})`);
 root.setProperty("--weight", weight);
 root.setProperty("--depth", depth);
-root.setProperty("--ring", ring === "none" ? "transparent" : `var(--${ring})`);
+root.setProperty("--ring", RING_MAP[ring] || "var(--mint)");
 if (size) root.setProperty("--size", size);
 Object.assign(document.body.dataset, { style, face, flow, ring });
 
 const el = document.querySelector("#ticker");
-const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-let finals = [], interim = "";
-function render() {
-  const tail = finals.slice(-Number(depth));
-  let html = "";
-  for (const line of tail.slice(0, -1)) html += `<span class="prev">${esc(line)}</span> `;
-  if (tail.length) html += `<span class="fresh-lead">${esc(tail[tail.length - 1])}</span>`;
-  if (interim) html += ` <span class="interim">${esc(interim)}</span>`;
-  el.innerHTML = html ? `<div>${html}</div>` : "";
+const settledEl = document.querySelector("#settled");
+const interimEl = document.querySelector("#interim");
+const statusPill = document.querySelector("#statusPill");
+const announcer = document.querySelector("#liveAnnouncer");
+let finals = [];
+let interim = "";
+
+function setStatus(label) {
+  statusPill.textContent = label || "";
+  statusPill.hidden = !label;
 }
+
+function updateEmpty() {
+  const hasVisibleInterim = flow !== "settled" && Boolean(interim);
+  el.classList.toggle("empty", finals.length === 0 && !hasVisibleInterim);
+}
+
+// Render settled lines only when finals change so interim updates never strobe already-landed text.
+function renderSettled(animateLatest = false) {
+  const tail = finals.slice(-Number(depth));
+  const frag = document.createDocumentFragment();
+  let lastSpeaker = "";
+  tail.forEach((item, idx) => {
+    const isLatest = idx === tail.length - 1;
+    const span = document.createElement("span");
+    span.className = isLatest ? (animateLatest ? "fresh-lead land" : "fresh-lead") : "prev";
+    if (item.speaker && item.speaker !== lastSpeaker) {
+      const tag = document.createElement("b");
+      tag.className = "speaker-tag";
+      tag.textContent = item.speaker;
+      span.append(tag, " ");
+    }
+    lastSpeaker = item.speaker || "";
+    span.append(item.text);
+    frag.append(span);
+    if (!isLatest) frag.append(" ");
+  });
+  settledEl.replaceChildren(frag);
+  updateEmpty();
+}
+
+function renderInterim() {
+  interimEl.textContent = interim;
+  updateEmpty();
+}
+
 const es = new EventSource(`/api/room/${roomId}/stream`);
-es.addEventListener("backlog", (e) => { const { lines, title } = JSON.parse(e.data); finals = lines.slice(-3); if (title) document.title = `${title} · Ticker`; render(); });
-es.addEventListener("final", (e) => { const { text } = JSON.parse(e.data); if (text) finals.push(text); if (finals.length > 10) finals.shift(); interim = ""; render(); });
-es.addEventListener("interim", (e) => { interim = JSON.parse(e.data).text || ""; render(); });
-es.addEventListener("end", () => { es.close(); interim = ""; el.classList.add("over"); render(); });
-es.onerror = () => { if (es.readyState === EventSource.CLOSED) { el.classList.add("over"); interim = ""; render(); } };
+es.addEventListener("open", () => {
+  if (statusPill.textContent === "Reconnecting") setStatus("");
+});
+es.addEventListener("backlog", (e) => {
+  const { lines = [], speakers = [], title, lang, paused } = JSON.parse(e.data);
+  if (title) document.title = `${title} · Ticker`;
+  if (lang) {
+    document.documentElement.lang = lang;
+    el.dir = /^(ar|he|fa|ur)\b/i.test(lang) ? "rtl" : "auto";
+  }
+  setStatus(paused ? "Paused" : "");
+  const start = Math.max(0, lines.length - 10);
+  finals = lines.slice(start).map((text, i) => ({ text, speaker: speakers[start + i] || "" }));
+  renderSettled(false);
+});
+es.addEventListener("final", (e) => {
+  const { text, speaker = "" } = JSON.parse(e.data);
+  if (text) {
+    finals.push({ text, speaker });
+    if (finals.length > 10) finals.shift();
+    announcer.textContent = speaker ? `${speaker}: ${text}` : text;
+  }
+  interim = "";
+  renderSettled(true);
+  renderInterim();
+});
+es.addEventListener("interim", (e) => {
+  interim = JSON.parse(e.data).text || "";
+  renderInterim();
+});
+es.addEventListener("paused", (e) => {
+  const { paused } = JSON.parse(e.data);
+  setStatus(paused ? "Paused" : "");
+});
+es.addEventListener("end", () => {
+  es.close();
+  interim = "";
+  el.classList.add("over");
+  setStatus("Talk ended");
+  renderInterim();
+});
+es.onerror = () => {
+  if (es.readyState === EventSource.CLOSED) {
+    el.classList.add("over");
+    interim = "";
+    setStatus("Talk ended");
+    renderInterim();
+  } else {
+    setStatus("Reconnecting");
+  }
+};
 </script>
 </body>
 </html>

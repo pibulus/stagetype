@@ -35,7 +35,7 @@ StageType's **Floating Ticker** uses the native **Document Picture-in-Picture AP
 ### 2. The Zero-Hardware Lapel Mic (Wii U Appendage Pattern)
 Presenters are normally tethered to their MacBook's built-in microphone at the lectern or stuck troubleshooting Bluetooth AirPods. 
 
-Pictures ride along too: copy a screenshot anywhere, come back to the console, and it lands in everyone's transcript, compressed on this machine before it is sent.
+Pictures ride along too: copy a screenshot anywhere, come back to the console, and a one-tap chip offers to share it (or press ⌘V / Ctrl+V directly) — compressed on this machine before it is sent, and pull-back-able at any time.
 
 StageType implements the **Appendage Architecture**: scan the **Phone lapel mic** QR code, slide your smartphone into your shirt pocket, and walk the stage freely. Your phone captures your voice, keeps the screen awake via the Screen Wake Lock API, and streams transcript tokens straight to the room relay.
 
@@ -51,7 +51,7 @@ Every talk gets a four-letter code (no I, O or Q, nothing rude). It's on the con
 In large lecture halls or crowded meetups, attendees in the back or individuals with neurodivergent/hearing differences can point their camera at the screen to read along live in their palm:
 * **Client-Side Comfort Controls:** Attendees choose their own font size, loose dyslexic spacing, and theme (**Cream**, **Espresso**, **High-Contrast Black/Gold**, or **Night**).
 * **Smooth Backlog Replay:** Late joiners instantly receive previous sentences without jarring layout shifts.
-* **Instant Take-Home Notes:** When the talk wraps, attendees download the formatted lecture transcript as `.md`, `.txt`, or print a clean PDF with one tap.
+* **Instant Take-Home Notes:** When the talk wraps, attendees copy, share, generate a 1-tap Quote Card PNG, download a prose `.md` file (with kept quotes and pinned links), or print a clean PDF. Saved talks reopen offline via Service Worker.
 
 ## 🚀 Quick Start
 

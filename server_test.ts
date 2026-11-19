@@ -1,8 +1,24 @@
-import { checkPhones, cleanSpeaker, handler, keytermsFrom, lanIp, newCode, rooms, sameToken, sweep } from "./server.ts";
+import {
+  checkPhones,
+  cleanLinks,
+  cleanSpeaker,
+  handler,
+  keytermsFrom,
+  lanIp,
+  newCode,
+  rooms,
+  sameToken,
+  sniffImageType,
+  sweep,
+} from "./server.ts";
 import { cleanTranscriptLine, parseMicTarget, postLocalLine } from "./scripts/listen-local.ts";
 import { mockDeepgram } from "./e2e/mock_deepgram.ts";
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
+
+// Valid minimal image magic headers for asset tests
+const FAKE_WEBP = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20]);
+const FAKE_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00]);
 
 const base = "http://x";
 const post = (
@@ -82,12 +98,12 @@ Deno.test("join codes: four safe letters, resolvable, redirecting, released on e
   assertEquals((await (await handler(new Request(`${base}/api/join/${r.code.toLowerCase()}`))).json()).id, r.id);
   const redir = await handler(new Request(`${base}/j/${r.code}`));
   assertEquals(redir.status, 302);
-  assertEquals(new URL(redir.headers.get("location")!).pathname, `/live/${r.id}`);
+  assertEquals(redir.headers.get("location"), `/live/${r.id}`);
   await del(`/api/room/${r.id}`, r.token);
   assertEquals((await handler(new Request(`${base}/api/join/${r.code}`))).status, 404);
   const gone = await handler(new Request(`${base}/j/${r.code}`));
   assertEquals(gone.status, 302);
-  assert(gone.headers.get("location")!.endsWith(`/join?nope=${r.code}`));
+  assertEquals(gone.headers.get("location"), `/join?nope=${r.code}`);
   assertEquals((await handler(new Request(`${base}/join`))).status, 200);
   assertEquals((await handler(new Request(`${base}/live`))).status, 200);
 });
@@ -437,12 +453,12 @@ Deno.test("demo rooms: nothing until a signed scan, then small, short and typing
 
 Deno.test("assets: an image needs the write token, rides out as a thumb, and comes back whole", async () => {
   const { id, token } = await mkRoom();
-  const full = new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]);
-  const thumb = new Uint8Array([1, 2, 3]);
-  const form = (type: string, body = full) => {
+  const full = new Uint8Array([...FAKE_WEBP, 1, 2, 3, 4]);
+  const thumb = new Uint8Array([...FAKE_WEBP, 9]);
+  const form = (type: string, body = full, thumbBody = thumb) => {
     const f = new FormData();
     f.append("full", new File([body], "full.webp", { type }));
-    f.append("thumb", new File([thumb], "thumb.webp", { type }));
+    f.append("thumb", new File([thumbBody], "thumb.webp", { type }));
     return f;
   };
 
@@ -450,14 +466,17 @@ Deno.test("assets: an image needs the write token, rides out as a thumb, and com
   await read(); // backlog
 
   // no token, no image
-  assertEquals((await handler(new Request(`${base}/api/room/${id}/asset`, { method: "POST", body: form("image/png") }))).status, 403);
-  // not an image
+  assertEquals(
+    (await handler(new Request(`${base}/api/room/${id}/asset`, { method: "POST", body: form("image/png", FAKE_PNG, FAKE_PNG) }))).status,
+    403,
+  );
+  // not a real image (spoofed MIME with non-image magic bytes must be refused 415)
   assertEquals(
     (await handler(
       new Request(`${base}/api/room/${id}/asset`, {
         method: "POST",
         headers: { authorization: `Bearer ${token}` },
-        body: form("text/html"),
+        body: form("image/webp", new Uint8Array([60, 104, 116, 109, 108, 62]), new Uint8Array([1, 2, 3])),
       }),
     )).status,
     415,
@@ -486,13 +505,15 @@ Deno.test("assets: an image needs the write token, rides out as a thumb, and com
   assertEquals(new Uint8Array(await got.arrayBuffer()), full);
   assertEquals((await handler(new Request(`${base}/api/room/${id}/asset/${"0".repeat(24)}`))).status, 404);
 
-  // a late joiner's backlog carries the recent thumbs
+  // a late joiner's backlog carries the recent thumbs AND live assetIds
   const late = await openStream(id);
-  assert((await late.read()).includes('"assets":[{"id"'));
+  const lateBacklog = await late.read();
+  assert(lateBacklog.includes('"assets":[{"id"') && lateBacklog.includes('"assetIds":["' + saved.id + '"]'));
   await late.reader.cancel();
 
   // oversize is refused before it lands in memory
   const tooBig = new Uint8Array(2_000_001);
+  tooBig.set(FAKE_WEBP);
   assertEquals(
     (await handler(
       new Request(`${base}/api/room/${id}/asset`, {
@@ -510,10 +531,9 @@ Deno.test("assets: an image needs the write token, rides out as a thumb, and com
 
 Deno.test("assets: the presenter can pull one back", async () => {
   const { id, token } = await mkRoom();
-  const full = new Uint8Array([1, 2, 3, 4]);
   const form = new FormData();
-  form.append("full", new File([full], "full.webp", { type: "image/webp" }));
-  form.append("thumb", new File([new Uint8Array([9])], "thumb.webp", { type: "image/webp" }));
+  form.append("full", new File([FAKE_WEBP], "full.webp", { type: "image/webp" }));
+  form.append("thumb", new File([FAKE_WEBP], "thumb.webp", { type: "image/webp" }));
   const saved = await (await handler(
     new Request(`${base}/api/room/${id}/asset`, {
       method: "POST",
@@ -540,8 +560,9 @@ Deno.test("assets: the presenter can pull one back", async () => {
 Deno.test("assets: a bad thumb is refused before anything is broadcast or evicted", async () => {
   const { id, token } = await mkRoom();
   const bigThumb = new Uint8Array(70_000); // base64 pushes this past MAX_THUMB_CHARS
+  bigThumb.set(FAKE_WEBP);
   const form = new FormData();
-  form.append("full", new File([new Uint8Array([1, 2, 3])], "f.webp", { type: "image/webp" }));
+  form.append("full", new File([FAKE_WEBP], "f.webp", { type: "image/webp" }));
   form.append("thumb", new File([bigThumb], "t.webp", { type: "image/webp" }));
   const res = await handler(
     new Request(`${base}/api/room/${id}/asset`, {
@@ -561,9 +582,10 @@ Deno.test("assets: the oldest goes quietly and the room is told", async () => {
   const { id, token } = await mkRoom();
   let firstId = "";
   for (let i = 0; i < 41; i++) {
+    const body = new Uint8Array([...FAKE_WEBP, i]);
     const form = new FormData();
-    form.append("full", new File([new Uint8Array([i])], "f.webp", { type: "image/webp" }));
-    form.append("thumb", new File([new Uint8Array([i])], "t.webp", { type: "image/webp" }));
+    form.append("full", new File([body], "f.webp", { type: "image/webp" }));
+    form.append("thumb", new File([body], "t.webp", { type: "image/webp" }));
     const saved = await (await handler(
       new Request(`${base}/api/room/${id}/asset`, {
         method: "POST",
@@ -582,8 +604,8 @@ Deno.test("assets: the oldest goes quietly and the room is told", async () => {
 Deno.test("assets: the frame is GET only, nosniff, and not cached for an hour", async () => {
   const { id, token } = await mkRoom();
   const form = new FormData();
-  form.append("full", new File([new Uint8Array([7])], "f.webp", { type: "image/webp" }));
-  form.append("thumb", new File([new Uint8Array([7])], "t.webp", { type: "image/webp" }));
+  form.append("full", new File([FAKE_WEBP], "f.webp", { type: "image/webp" }));
+  form.append("thumb", new File([FAKE_WEBP], "t.webp", { type: "image/webp" }));
   const saved = await (await handler(
     new Request(`${base}/api/room/${id}/asset`, {
       method: "POST",
@@ -601,20 +623,22 @@ Deno.test("assets: the frame is GET only, nosniff, and not cached for an hour", 
   await del(`/api/room/${id}`, token);
 });
 
-Deno.test("join codes: lookups are rate limited per address", async () => {
+Deno.test("join codes: lookups on both /api/join and /j/:code are rate limited per address", async () => {
   const addr = fromAddr("203.0.113.9");
   let limited = 0;
-  for (let i = 0; i < 130; i++) {
+  for (let i = 0; i < 310; i++) {
     const res = await handler(new Request(`${base}/api/join/ABCD`), addr);
     if (res.status === 429) limited++;
   }
-  assert(limited > 0, "the 130th lookup from one address should be refused");
+  assert(limited > 0, "the 310th lookup from one address should be refused");
+  // /j/:code shares the same door and cannot bypass the rate limit
+  assertEquals((await handler(new Request(`${base}/j/ABCD`), addr)).status, 429);
 });
 
 Deno.test("sweep clears expired rate-limit buckets", async () => {
   const addr = fromAddr("198.51.100.7");
   let last = 0;
-  for (let i = 0; i < 130; i++) last = (await handler(new Request(`${base}/api/join/ZZZZ`), addr)).status;
+  for (let i = 0; i < 310; i++) last = (await handler(new Request(`${base}/api/join/ZZZZ`), addr)).status;
   assertEquals(last, 429);
   // a window later the address is welcome again, and the stored bucket went with the sweep
   sweep(Date.now() + 2 * 60_000);
@@ -690,4 +714,93 @@ Deno.test("multi-phone tracking: room stays phone-live until the last paired pho
   assertEquals(rooms.get(id)!.phones.size, 0);
   assertEquals(rooms.get(id)!.phone.live, false);
   await del(`/api/room/${id}`, token);
+});
+
+Deno.test("security & ops: headers, healthz, version, HEAD 404, cross-site guard, pinned links, paused broadcast", async () => {
+  const home = await handler(new Request(`${base}/`));
+  assertEquals(home.headers.get("x-frame-options"), "DENY");
+  assert(home.headers.get("content-security-policy")?.includes("frame-ancestors 'none'"));
+  const ticker = await handler(new Request(`${base}/ticker/abc123`));
+  assertEquals(ticker.headers.get("x-frame-options"), null);
+  assert(ticker.headers.get("content-security-policy")?.includes("frame-ancestors *"));
+  assertEquals((await handler(new Request(`${base}/vendor/fonts/nope.woff2`, { method: "HEAD" }))).status, 404);
+  assertEquals((await handler(new Request(`${base}/healthz`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/version.json`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/robots.txt`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/sitemap.xml`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/shared.js`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/manifest.webmanifest`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/sw.js`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/apple-touch-icon.png`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/og-image.png`))).status, 200);
+  assertEquals((await post("/api/room", {}, undefined, { "sec-fetch-site": "cross-site" })).status, 403);
+  assertEquals(sniffImageType(FAKE_WEBP), "image/webp");
+  assertEquals(sniffImageType(FAKE_PNG), "image/png");
+  assertEquals(sniffImageType(new Uint8Array([1, 2, 3])), null);
+  assertEquals(cleanLinks(["madebypablo.app", "javascript:alert(1)", "https://stagetype.app"]), [
+    "https://madebypablo.app/",
+    "https://stagetype.app/",
+  ]);
+
+  const created = await (await post("/api/room", { title: "Links talk", lang: "ar-SA", links: ["madebypablo.app"] })).json();
+  const s = await openStream(created.id);
+  const first = await s.read();
+  assert(first.includes('"lang":"ar-SA"') && first.includes('"links":["https://madebypablo.app/"]'));
+  await post(`/api/room/${created.id}`, { paused: true }, created.token);
+  assert((await s.read()).includes('event: paused\ndata: {"paused":true}'));
+  await post(`/api/room/${created.id}`, { links: ["https://stagetype.app"] }, created.token);
+  assert((await s.read()).includes('event: links\ndata: {"links":["https://stagetype.app/"]}'));
+  await s.reader.cancel();
+  await del(`/api/room/${created.id}`, created.token);
+});
+
+Deno.test({
+  name: "deepgram phone pause: closing a Deepgram phone socket does not resurrect phone.live",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  async fn() {
+    const dg = mockDeepgram(0);
+    Deno.env.set("DEEPGRAM_URL", `ws://localhost:${dg.addr.port}/listen`);
+    Deno.env.set("DEEPGRAM_API_KEY", "test-key");
+    const relay = Deno.serve({ port: 0, onListen() {} }, handler);
+    const origin = `ws://localhost:${relay.addr.port}`;
+    const { id, token } = await mkRoom();
+
+    await post(`/api/room/${id}`, { ping: true, source: "phone", live: true, phone: "ph-1" }, token);
+    const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=phone&lang=en-AU&phone=ph-1`, ["bearer", token]);
+    await new Promise<void>((r) => {
+      ws.onopen = () => r();
+    });
+    ws.send(JSON.stringify({ type: "stop" }));
+    await new Promise<void>((r) => {
+      ws.onclose = () => r();
+    });
+    // Now pause the phone: room.phone.live must become and STAY false
+    await post(`/api/room/${id}`, { ping: true, source: "phone", live: false, phone: "ph-1" }, token);
+    assertEquals(rooms.get(id)!.phone.live, false);
+    assertEquals(rooms.get(id)!.phones.size, 0);
+
+    await del(`/api/room/${id}`, token);
+    Deno.env.delete("DEEPGRAM_API_KEY");
+    Deno.env.delete("DEEPGRAM_URL");
+    await relay.shutdown();
+    await dg.shutdown();
+  },
+});
+
+Deno.test("deepgram pass gate: STAGETYPE_DEEPGRAM_PASS blocks ungated audio upgrades", async () => {
+  Deno.env.set("DEEPGRAM_API_KEY", "test-key");
+  Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "club-secret");
+  const eng = await (await handler(new Request(`${base}/api/engines`))).json();
+  assertEquals(eng, { browser: true, deepgram: true, passRequired: true });
+  const { id, token } = await mkRoom();
+  const denied = await handler(
+    new Request(`${base}/api/room/${id}/audio?source=mic`, {
+      headers: { upgrade: "websocket", "sec-websocket-protocol": `bearer, ${token}` },
+    }),
+  );
+  assertEquals(denied.status, 403);
+  await del(`/api/room/${id}`, token);
+  Deno.env.delete("STAGETYPE_DEEPGRAM_PASS");
+  Deno.env.delete("DEEPGRAM_API_KEY");
 });

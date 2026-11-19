@@ -1,6 +1,7 @@
 # fly launch --copy-config --no-deploy
 # fly secrets set STAGETYPE_SECRET=$(openssl rand -hex 32)   # required: signs /demo room ids
 # fly secrets set DEEPGRAM_API_KEY=dg_...                     # optional: the Deepgram engine
+# fly secrets set STAGETYPE_DEEPGRAM_PASS=$(openssl rand -hex 16) # required if DEEPGRAM_API_KEY is set publicly
 # fly deploy
 # Full checklist: docs/DEPLOY.md
 # One machine, never scaled to zero: rooms live in memory and a sleeping machine ends every talk.
@@ -11,6 +12,9 @@ primary_region = "syd"
 
 [env]
   PORT = "8787"
+  HOST = "0.0.0.0"
+  TRUST_PROXY = "fly"
+  MAX_ASSET_RAM_MB = "128"
 
 [http_service]
   internal_port = 8787
@@ -19,6 +23,13 @@ primary_region = "syd"
   auto_start_machines = true
   min_machines_running = 1
 
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"
+
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = "512mb"

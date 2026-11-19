@@ -3,99 +3,137 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#fbf1e4">
+<meta name="theme-color" content="#fff6e6">
 <title>Join a talk · StageType</title>
+<meta name="description" content="Enter a four-letter StageType code to read live presentation captions on your phone in your own font, size, and theme.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Join a talk · StageType">
+<meta property="og:description" content="Type the four-letter room code to read live captions on any phone. No app, no account.">
+<meta property="og:image" content="/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/og-image.png">
+<script src="/shared.js"></script>
 <style>
   :root {
-    --ground: #fbf1e4; --ink: #1e1714; --line: #3a2e28; --pink: #ffb3d1; --mint: #b8f0d8; --butter: #fff0a8;
-    --muted: color-mix(in srgb, var(--ink) 66%, transparent);
+    --ground: #fff6e6; --surface: #fffdf5; --sand: #fdf1e0; --ink: #1e1714; --line: #1e1714;
+    --pink: #ff6ac2; --mint: #2dd4bf; --butter: #ffc74d;
+    --muted: #5a4b42;
     --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
     --spring: cubic-bezier(.2, .9, .3, 1.35);
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; background: var(--ground); color: var(--ink); font-family: var(--swiss); -webkit-font-smoothing: antialiased; }
-  body::before {
-    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    background:
-      radial-gradient(28rem 20rem at 82% -6%, color-mix(in srgb, var(--mint) 18%, transparent), transparent 70%),
-      radial-gradient(26rem 18rem at 6% 104%, color-mix(in srgb, var(--pink) 14%, transparent), transparent 68%);
+  [hidden] { display: none !important; }
+  html, body {
+    margin: 0; min-height: 100%; background: var(--ground); color: var(--ink);
+    font-family: var(--swiss); -webkit-font-smoothing: antialiased;
   }
   body {
     display: grid; place-items: center; min-height: 100dvh;
-    padding: calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
+    background-image: radial-gradient(rgba(30, 23, 20, 0.08) 1.1px, transparent 1.3px);
+    background-size: 22px 22px;
+    padding: calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 24px);
   }
-  main { width: min(100%, 420px); display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
-  .wordmark { font-size: 1.35rem; font-weight: 900; letter-spacing: -0.045em; }
+  main { width: min(100%, 430px); display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+  .wordmark { font-size: 1.45rem; font-weight: 900; letter-spacing: -0.045em; text-decoration: none; color: var(--ink); }
   .wordmark::after { content: "."; color: var(--pink); }
+  .join-card {
+    width: 100%; background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
+    border-radius: 24px; padding: 24px 20px; display: flex; flex-direction: column; gap: 14px; align-items: center;
+  }
   h1 { margin: 0; font-size: 2rem; letter-spacing: -0.04em; font-weight: 900; line-height: 1; }
   h1::after { content: "."; color: var(--pink); }
-  p { margin: 0; color: var(--muted); font-weight: 600; font-size: 15px; line-height: 1.45; }
-  form { width: 100%; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  p { margin: 0; color: var(--muted); font-weight: 600; font-size: 14.5px; line-height: 1.45; }
+  .hint-note { font-size: 12.5px; color: var(--muted); }
+  form { width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; }
   #code {
     width: 100%; text-align: center; text-transform: uppercase;
-    font: 900 clamp(44px, 16vw, 64px)/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .28em; text-indent: .28em;
-    color: var(--ink); background: #fffef7; border: 1px solid rgba(58, 46, 40, 0.13); border-radius: 24px; padding: 18px 8px;
-    caret-color: var(--pink); transition: box-shadow .2s ease, border-color .2s;
+    font: 900 clamp(44px, 15vw, 62px)/1 var(--mono); letter-spacing: .26em; text-indent: .26em;
+    color: var(--ink); background: var(--sand); border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line);
+    border-radius: 18px; padding: 16px 8px; caret-color: var(--pink);
+    transition: transform .16s var(--spring), box-shadow .16s var(--spring), background .16s;
   }
-  #code::placeholder { color: color-mix(in srgb, var(--ink) 22%, transparent); letter-spacing: .28em; }
-  #code:focus { outline: none; border-color: var(--pink); }
+  #code::placeholder { color: rgba(30, 23, 20, 0.34); letter-spacing: .26em; }
+  #code:focus { outline: 3px solid var(--ink); outline-offset: 3px; background: var(--surface); }
   #code.shake { animation: shake .4s; }
   @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
   button {
-    font: 700 17px var(--swiss); color: var(--ink); background: var(--mint); border: 1px solid rgba(58, 46, 40, 0.16); border-radius: 999px;
-    height: 52px; padding: 0 28px; width: 100%; cursor: pointer;
-        transition: transform .22s var(--spring), box-shadow .22s ease; -webkit-tap-highlight-color: transparent;
+    font: 800 16px var(--swiss); color: var(--ink); background: var(--mint);
+    border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line); border-radius: 999px;
+    min-height: 50px; padding: 0 26px; width: 100%; cursor: pointer;
+    transition: transform .18s var(--spring), box-shadow .18s var(--spring); -webkit-tap-highlight-color: transparent;
   }
-  button:active { transform: scale(.97); transition-duration: .06s; }
-  button:focus-visible { outline: 3px solid color-mix(in srgb, var(--pink) 65%, transparent); outline-offset: 3px; }
-  #err { min-height: 1.4em; color: var(--ink); font-weight: 600; background: color-mix(in srgb, var(--butter) 55%, #fffef7); border: 1px solid rgba(58, 46, 40, 0.1); border-radius: 14px; padding: 10px 14px; }
-  #err:empty { display: none; }
-  #saved { width: 100%; text-align: left; margin-top: 8px; }
-  #saved[hidden] { display: none; }
-  #saved h2 { margin: 0 0 10px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  #savedList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  @media (hover: hover) { button:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); } }
+  button:active { transform: translate(1.5px, 1.5px) scale(.98); box-shadow: 1px 1px 0 var(--line); transition-duration: .06s; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+  #err {
+    width: 100%; color: var(--ink); font-weight: 700; font-size: 13.5px;
+    background: var(--butter); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+    border-radius: 14px; padding: 10px 14px;
+  }
+  #err:empty { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; box-shadow: none; overflow: hidden; clip-path: inset(50%); }
+
+  #saved { width: 100%; text-align: left; }
+  #saved h2 { margin: 0 0 4px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .shelf-line { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  #savedList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
   #savedList a {
     display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; color: var(--ink);
-    background: #fffef7; border: 1px solid rgba(58, 46, 40, 0.1); border-radius: 16px; padding: 13px 15px;
-    transition: transform .22s var(--spring), box-shadow .22s ease;
+    background: var(--surface); border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line);
+    border-radius: 16px; padding: 13px 15px; transition: transform .18s var(--spring), box-shadow .18s var(--spring);
   }
-  #savedList a:active { transform: scale(.99); box-shadow: none; }
+  @media (hover: hover) { #savedList a:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); } }
+  #savedList a:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--line); }
   #savedList b { font-size: 15px; font-weight: 800; }
   #savedList small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; margin-top: 2px; }
-  #savedList .live { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
-  #exportAll {
-    margin-top: 10px; width: auto; height: 44px; padding: 0 18px;
-    font-size: 13px; font-weight: 600; background: transparent; border-color: rgba(58, 46, 40, 0.14); color: var(--muted);
+  #savedList .live {
+    font-size: 11px; font-weight: 800; letter-spacing: .04em; color: var(--ink);
+    background: var(--mint); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 9px; white-space: nowrap;
   }
-  #exportAll:active { transform: scale(.97); }
-  footer { font-size: 13px; color: var(--muted); font-weight: 600; }
-  footer a { color: inherit; }
+  #exportAll {
+    margin-top: 12px; width: auto; min-height: 44px; padding: 0 18px;
+    font-size: 13.5px; font-weight: 700; background: var(--surface); color: var(--ink);
+  }
+  footer { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; }
+  footer a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 </style>
 </head>
 <body>
 <main>
-  <div class="wordmark">StageType</div>
-  <div>
-    <h1>Join a talk</h1>
-    <p style="margin-top:8px">Type the four-letter code on the screen.</p>
-  </div>
-  <form id="form" autocomplete="off">
-    <input id="code" name="code" inputmode="latin" autocapitalize="characters" autocorrect="off" spellcheck="false"
-           maxlength="4" pattern="[A-Za-z]{4}" placeholder="ABCD" aria-label="Four-letter join code" autofocus>
-    <p id="err" role="alert"></p>
-    <button type="submit">Read along</button>
-  </form>
+  <a class="wordmark" href="/demo">StageType</a>
+  <section class="join-card" aria-labelledby="joinHeading">
+    <div>
+      <h1 id="joinHeading">Join a talk</h1>
+      <p style="margin-top:8px">Type the four-letter code on the screen.</p>
+    </div>
+    <form id="form" autocomplete="off">
+      <input id="code" name="code" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false"
+             maxlength="4" pattern="[A-Za-z]{4}" placeholder="ABCD" aria-label="Four-letter join code" aria-describedby="joinAutoHint" autofocus>
+      <p id="joinAutoHint" class="hint-note">Opens automatically once 4 letters are entered.</p>
+      <p id="err" role="alert"></p>
+      <button type="submit">Read along</button>
+    </form>
+  </section>
   <section id="saved" hidden>
     <h2>Saved on this phone</h2>
-    <p class="shelf-line">Talks this phone read along with. Any one reopens.</p>
+    <p class="shelf-line">Talks read along on this device. Any one reopens offline.</p>
     <ul id="savedList"></ul>
-    <button id="exportAll" class="quiet">Take the shelf</button>
+    <button id="exportAll" type="button">Export all (.md)</button>
   </section>
-  <footer>Or point a phone camera at the stage QR code · <a href="https://talktype.app">StageType</a></footer>
+  <footer>
+    <span>Point a phone camera at the stage QR</span>
+    <span aria-hidden="true">·</span>
+    <a href="/demo">Try the demo</a>
+    <span aria-hidden="true">·</span>
+    <a href="/">Open console</a>
+  </footer>
 </main>
 <script>
+const { store, download, prose, extractLinks } = window.StageTypeShared;
 const code = document.querySelector("#code"), err = document.querySelector("#err"), form = document.querySelector("#form");
 const params = new URLSearchParams(location.search);
 const NOPE = "No talk is using that code right now. Check the screen and try again.";
@@ -109,7 +147,7 @@ async function go() {
   try {
     const r = await fetch("/api/join/" + c);
     if (r.ok) { location.href = "/live/" + (await r.json()).id; return; }
-    err.textContent = r.status === 404 ? NOPE : "Couldn't reach the relay. Try again in a moment.";
+    err.textContent = r.status === 404 ? NOPE : r.status === 429 ? "Room is busy joining — try again in a few seconds." : "Couldn't reach the relay. Try again in a moment.";
   } catch { err.textContent = "Couldn't reach the relay. Try again in a moment."; }
   code.classList.remove("shake"); void code.offsetWidth; code.classList.add("shake");
   if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
@@ -119,53 +157,48 @@ form.onsubmit = (e) => { e.preventDefault(); go(); };
 code.oninput = () => { code.value = code.value.replace(/[^A-Za-z]/g, "").toUpperCase(); err.textContent = ""; if (code.value.length === 4) go(); };
 if (code.value.length === 4 && !params.get("nope")) go();
 
-// Talks this phone has read along with, newest first. Each link reopens the reader, which restores
-// its saved copy even after the room is long gone.
-try {
-  const talks = JSON.parse(localStorage.getItem("stl-talks") || "[]");
-  if (talks.length) {
-    const list = document.querySelector("#savedList");
-    for (const t of talks) {
-      const li = document.createElement("li");
-      const a = document.createElement("a"); a.href = `/live/${t.id}`;
-      const text = document.createElement("span");
-      const b = document.createElement("b"); b.textContent = t.title || "Untitled talk";
-      const small = document.createElement("small");
-      small.textContent = [
-        new Date(t.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
-        `${t.words} word${t.words === 1 ? "" : "s"}`,
-        t.kept ? `${t.kept} kept` : "",
-      ].filter(Boolean).join(" · ");
-      text.append(b, small); a.append(text);
-      if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "in progress"; a.append(tag); }
-      li.append(a); list.append(li);
-    }
-    document.querySelector("#saved").hidden = false;
-
-    // Safari can clear site data when a tab goes untouched for a few weeks, and a semester of
-    // lectures is worth more than a nudge. One tap takes the whole shelf as a single file.
-    document.querySelector("#exportAll").onclick = () => {
-      const parts = [];
-      for (const t of talks) {
-        let rec = null;
-        try { rec = JSON.parse(localStorage.getItem(`stl-talk-${t.id}`)); } catch {}
-        if (!rec?.lines?.length) continue;
-        const when = new Date(rec.updatedAt || t.updatedAt).toLocaleDateString();
-        parts.push(`# ${rec.title || "Untitled talk"}\n\n_${when} · ${t.words} words · StageType_\n\n${rec.lines.join("\n\n")}`);
-      }
-      if (!parts.length) return;
-      const url = URL.createObjectURL(new Blob([parts.join("\n\n---\n\n") + "\n"], { type: "text/markdown" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `stagetype-shelf-${new Date().toISOString().split("T")[0]}.md`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      const btn = document.querySelector("#exportAll");
-      btn.textContent = "Saved";
-      setTimeout(() => (btn.textContent = "Take the shelf"), 1500);
-    };
+// Talks saved on this phone, newest first. Each link reopens the reader offline or online.
+const talks = store.json("stl-talks", []);
+if (talks.length) {
+  const list = document.querySelector("#savedList");
+  for (const t of talks) {
+    if (!t?.id) continue;
+    const li = document.createElement("li");
+    const a = document.createElement("a"); a.href = `/live/${t.id}`;
+    const text = document.createElement("span");
+    const b = document.createElement("b"); b.textContent = t.title || "Untitled talk";
+    const small = document.createElement("small");
+    small.textContent = [
+      new Date(t.updatedAt || Date.now()).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }),
+      `${t.words || 0} word${t.words === 1 ? "" : "s"}`,
+      t.kept ? `${t.kept} kept` : "",
+    ].filter(Boolean).join(" · ");
+    text.append(b, small); a.append(text);
+    if (!t.ended) { const tag = document.createElement("span"); tag.className = "live"; tag.textContent = "in progress"; a.append(tag); }
+    li.append(a); list.append(li);
   }
-} catch {}
+  if (list.children.length) document.querySelector("#saved").hidden = false;
+
+  document.querySelector("#exportAll").onclick = () => {
+    const parts = [];
+    for (const t of talks) {
+      const rec = store.json(`stl-talk-${t.id}`, null);
+      if (!rec?.lines?.length) continue;
+      const when = new Date(rec.updatedAt || t.updatedAt || Date.now()).toLocaleDateString();
+      const keptLines = (Array.isArray(rec.stars) ? rec.stars : []).map((i) => rec.lines[i]).filter(Boolean);
+      const keptBlock = keptLines.length ? `## Kept\n\n${keptLines.map((k) => `> ${k}`).join("\n>\n")}\n\n` : "";
+      const foundLinks = extractLinks(rec.lines, rec.links || []);
+      const linkBlock = foundLinks.length ? `## Links\n\n${foundLinks.map((h) => `- ${h}`).join("\n")}\n\n` : "";
+      parts.push(`# ${rec.title || "Untitled talk"}\n\n_${when} · ${t.words || 0} words · StageType_\n\n${keptBlock}${linkBlock}${prose(rec.lines, rec.times, rec.speakers, true)}`);
+    }
+    if (!parts.length) return;
+    download(`stagetype-shelf-${new Date().toISOString().split("T")[0]}.md`, parts.join("\n\n---\n\n") + "\n", "text/markdown");
+    const btn = document.querySelector("#exportAll");
+    btn.textContent = "Saved";
+    setTimeout(() => (btn.textContent = "Export all (.md)"), 1500);
+  };
+}
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

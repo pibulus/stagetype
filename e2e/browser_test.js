@@ -60,19 +60,27 @@ ok((await p.$$eval("#qrGraphic svg", (n) => n.length)) === 1, "QR svg rendered")
 ok(!(await p.$eval("#pauseBtn", (b) => b.hidden)), "pause button visible while live");
 ok(!(await p.isVisible("#startBtn")) && await p.isVisible("#stopBtn"), "start button really hidden while live, end talk shown");
 const roomId = url.split("/").pop();
-// one code on the card; the lapel mic pairing card is a modal away and carries the key
+// one code on the card; the lapel mic pairing card is a modal away and carries the key without ever leaking it into #urlDisplay
 await p.click("#micBtn");
-const micUrl = await p.textContent("#urlDisplay");
+const micUrl = await p.evaluate(() => micUrl());
 const token = micUrl.split("#")[1];
 ok(token && token.length === 32, "mic pairing URL carries 32-char token");
+ok((await p.textContent("#urlDisplay")).endsWith(roomId), "secret mic token never leaks into #urlDisplay");
 ok((await p.textContent("#fsNote")).includes("Keys ride"), "pairing card warns about projecting the mic QR");
 ok(await p.$eval("#fsModal", (m) => m.classList.contains("open")), "pairing card opens the modal");
 await p.keyboard.press("Escape");
-ok((await p.textContent("#urlDisplay")).endsWith(roomId), "card goes back to the room link after the pairing card closes");
+ok((await p.textContent("#urlDisplay")).endsWith(roomId), "card keeps the room link after the pairing card closes");
 await p.click("#fsQrBtn"); ok(await p.$eval("#fsModal", (m) => m.classList.contains("open")), "fullscreen modal opens");
+ok(await p.isVisible("#fsHost") && (await p.textContent("#fsHost")).includes("/join"), "fullscreen projector visibly prints the /join host");
 ok((await p.textContent("#fsNote")).includes("Project"), "projector card is the audience copy");
 await p.keyboard.press("Escape"); ok(await p.$eval("#fsModal", (m) => !m.classList.contains("open")), "escape closes modal");
 ok(await p.evaluate(() => window.__rec()?.started === true), "local recogniser started");
+// Verify live stage toolbar stays strictly single-row at desktop width!
+const rowCheck = await p.evaluate(() => {
+  const tops = [...document.querySelectorAll(".stage-controls > *")].filter((el) => getComputedStyle(el).display !== "none").map((el) => Math.round(el.getBoundingClientRect().top));
+  return Math.max(...tops) - Math.min(...tops) <= 6;
+});
+ok(rowCheck, "live stage controls stay on one crisp single row");
 
 // Audience
 const a = await ctx.newPage(); track(a, "audience");
@@ -129,13 +137,16 @@ await p.screenshot({ path: `${SHOTS}/presenter.png` });
 await a.setViewportSize({ width: 430, height: 880 });
 await a.screenshot({ path: `${SHOTS}/audience.png` });
 await m.setViewportSize({ width: 430, height: 880 });
-await m.evaluate(() => { document.body.classList.add("live"); document.querySelector("#go").classList.add("live"); document.querySelector("#pulseAura").classList.add("active"); document.querySelector("#stateText").textContent = "Live on stage"; document.querySelector("#state").classList.add("on"); finals.push("Second sentence.", "Local line."); words = 4; listeners = 2; stats(); render("and this is what"); });
+await m.evaluate(() => { document.body.classList.add("live", "started"); document.querySelector("#go").classList.add("live"); document.querySelector("#goLabel").textContent = "Pause"; document.querySelector("#goSub").textContent = "Broadcasting to room"; document.querySelector("#pulseAura").classList.add("active"); document.querySelector("#stateText").textContent = "Live on stage"; document.querySelector("#state").classList.add("on"); document.querySelector("#pocketBtn").hidden = false; finals.push("Second sentence.", "Local line."); words = 4; listeners = 2; stats(); renderSettled(false); render("and this is what"); });
+await new Promise((r) => setTimeout(r, 260));
 await m.screenshot({ path: `${SHOTS}/mic.png` });
 
 // End talk
 await p.click("#stopBtn");
 await a.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok(true, "audience got end card");
+// Verify [hidden] buttons inside #endCard are genuinely NOT visible (no dead Share / Copy kept / Quote card leaks!)
+ok(!(await a.isVisible("#copyKeptBtn")) && !(await a.isVisible("#quoteCardBtn")), "audience end card hides kept-only buttons when 0 lines are kept");
 await new Promise((r) => setTimeout(r, 700));
 await a.setViewportSize({ width: 430, height: 880 });
 await a.screenshot({ path: `${SHOTS}/audience-end.png` });
@@ -167,14 +178,22 @@ await p.waitForSelector("#stopBtn:not([hidden])");
 ok((await p.textContent("#qrTalk")) === "COMP1010 Week 3" && !(await p.$eval("#qrTalk", (e) => e.hidden)), "title shown on QR card");
 ok(await p.$eval("#title", (i) => i.disabled), "title locked while live");
 const url2 = await p.textContent("#urlDisplay"); const room2 = url2.split("/").pop();
-await p.click("#micBtn"); const tok2 = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
+const tok2 = (await p.evaluate(() => micUrl())).split("#")[1];
 // ticker prefs: a style is a whole look (frame, face, weight), size carries the lines
-await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
 await p.click('[data-pref="size"] [data-v="50px"]');
-await p.click('[data-pref="flow"] [data-v="settled"]');
 await p.click('[data-pref="style"] [data-v="hemingway"]');
+await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
+await p.click('[data-pref="flow"] [data-v="settled"]');
 const tk = await p.$eval("#ticker", (t) => ({ face: t.dataset.face, flow: t.dataset.flow, ring: t.dataset.ring, style: t.dataset.style, ff: getComputedStyle(t).fontFamily, fw: getComputedStyle(t).fontWeight, depth: t.style.getPropertyValue("--ticker-depth") }));
 ok(tk.style === "hemingway" && tk.face === "fraunces" && tk.ff.includes("Fraunces") && tk.fw === "400" && tk.depth === "3" && tk.flow === "settled" && tk.ring === "clay", "style preset carries face, weight and frame: " + JSON.stringify(tk));
+// Verify More popover Flow segmented control never overflows its container!
+const moreClean = await p.evaluate(() => {
+  const seg = document.querySelector("#moreTicker .opt-flow");
+  const btns = [...seg.querySelectorAll("button")];
+  const sr = seg.getBoundingClientRect();
+  return btns.every((b) => b.getBoundingClientRect().right <= sr.right + 1);
+});
+ok(moreClean, "More popover Flow segmented control fits cleanly inside its border");
 await p.click('[data-pref="style"] [data-v="brut"]');
 ok((await p.$eval("#ticker", (t) => t.dataset.ring)) === "ink", "each style carries its own frame");
 await p.click('[data-pref="style"] [data-v="ink"]');
@@ -193,7 +212,8 @@ await a2.click('#flowSeg [data-v="settled"]');
 const fd = await a2.$eval("#feed", (f) => ({ ff: getComputedStyle(f).fontFamily, fw: getComputedStyle(f).fontWeight, flow: document.documentElement.dataset.flow, interim: getComputedStyle(document.querySelector("#interim")).display }));
 ok(fd.ff.includes("Atkinson") && fd.fw === "700" && fd.flow === "settled" && fd.interim === "none", "reader prefs applied: " + JSON.stringify(fd));
 ok((await a2.evaluate(() => localStorage.getItem("stl-face"))) === "atkinson", "reader prefs persisted");
-await a2.keyboard.press("Escape"); await a2.click("#panel summary");
+await a2.keyboard.press("Escape");
+ok(!(await a2.$eval("#panel", (d) => d.open)), "Escape closes reader Aa settings panel");
 const m2 = await ctx.newPage(); track(m2, "mic-title");
 await m2.goto(`${base}/mic/${room2}#${tok2}`);
 await m2.waitForFunction(() => document.querySelector("#talk").textContent === "COMP1010 Week 3");
@@ -206,7 +226,9 @@ await p.waitForFunction(() => document.querySelectorAll("#ticker .prev").length 
 ok(true, "ticker shows 3 lines at depth 3");
 ok((await p.$eval("#ticker .interim", (e) => getComputedStyle(e).display)) === "none", "settled flow hides interim on ticker");
 await a2.setViewportSize({ width: 430, height: 880 });
+await new Promise((r) => setTimeout(r, 450));
 await a2.screenshot({ path: `${SHOTS}/audience-prefs.png` });
+await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
 await p.screenshot({ path: `${SHOTS}/presenter-prefs.png` });
 await p.click("#vibePill");
 ok((await p.evaluate(() => document.documentElement.dataset.vibe)) === "stage", "vibe pill cycles page atmosphere");
@@ -226,9 +248,13 @@ await push2({ text: "Long jumbo line one that wraps inside the fixed monitor box
 await push2({ text: "Long jumbo line two that also wraps inside the fixed monitor box.", final: true });
 const geomAfter = await p.evaluate(() => ({ h: document.querySelector("#ticker").getBoundingClientRect().height, barTop: document.querySelector(".typed-bar").getBoundingClientRect().top }));
 ok(geomBefore.h === 220 && geomAfter.h === 220 && Math.abs(geomBefore.barTop - geomAfter.barTop) < 0.5, "fixed-height #ticker causes zero vertical layout shift");
-// QR tab switches to Phone mic and resets to Room on End
-await p.click("#qrTabMic");
-ok((await p.getAttribute("#qrGraphic", "data-mode")) === "mic", "QR tab switches to mic mode");
+// Duplicate inline QR tabs removed (safer Mic modal only); pinned Take-Home links reach reader!
+ok((await p.$("#qrTabMic")) === null, "inline Phone mic tab removed to prevent accidental write-key screenshare");
+await p.evaluate(() => { document.querySelector("#moreTicker").open = true; });
+await p.fill("#roomLinks", "https://madebypablo.app/slides");
+await a2.waitForFunction(() => [...document.querySelectorAll("#linksList a")].some((a) => a.href.includes("madebypablo.app/slides")));
+ok(true, "presenter-pinned Take-Home link arrives live in reader links tray");
+await p.evaluate(() => { document.querySelector("#moreTicker").open = false; });
 ok((await p.evaluate(() => applyRoomWords("welcome to stage type and soft stack", ["StageType", "SoftStack"]))) === "welcome to StageType and SoftStack", "client-side Room Words primer fixes proper nouns and CamelCase compounds");
 await push2({ text: "Panel question.", final: true, speaker: "Host" });
 await a2.waitForFunction(() => document.querySelector("#feed .speaker-tag")?.textContent === "Host");
@@ -237,7 +263,6 @@ ok(true, "speaker transition renders .speaker-tag badge on reader");
 const [pProse, aProse] = await Promise.all([p.evaluate(() => prose(transcript, transcriptTimes, transcriptSpeakers, true)), a2.evaluate(() => prose(true))]);
 ok(pProse === aProse && pProse.includes("**Host:** Panel question."), "presenter and audience prose() match on speaker transitions");
 await p.click("#stopBtn");
-ok((await p.getAttribute("#qrGraphic", "data-mode")) === "room", "QR tab resets to room mode on End");
 await a2.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await a2.textContent("#state")) === "Talk ended", "ends with 'Talk ended'");
 ok((await a2.$$eval(".confetti", (n) => n.length)) === 0, "no confetti anywhere");
@@ -317,12 +342,13 @@ await p.waitForSelector("#stopBtn:not([hidden])");
 ok((await p.textContent("#micSource")) === "Laptop mic" && await p.evaluate(() => window.__rec().started === true), "laptop mic live before the phone joins");
 ok(!(await p.$eval("#floatBtn", (b) => b.disabled)) || !(await p.evaluate(() => "documentPictureInPicture" in window)), "float button enabled while live where PiP exists");
 const roomH = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#micBtn"); const tokH = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
-const phone = (body) => fetch(`${base}/api/room/${roomH}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokH}` }, body: JSON.stringify({ source: "phone", ...body }) });
+const tokH = (await p.evaluate(() => micUrl())).split("#")[1];
 // the real mic page announces itself on Go live
 const mh = await ctx.newPage(); track(mh, "mic-handoff");
 await mh.addInitScript(() => { window.SpeechRecognition = class { start() {} stop() { this.onend?.(); } }; });
 await mh.goto(`${base}/mic/${roomH}#${tokH}`);
+const mhPhoneId = await mh.evaluate(() => phoneId);
+const phone = (body) => fetch(`${base}/api/room/${roomH}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokH}` }, body: JSON.stringify({ source: "phone", phone: mhPhoneId, ...body }) });
 ok(await mh.isVisible("#guide") && (await mh.$$eval("#guide li", (l) => l.length)) === 3, "mic page shows the three-step guide before going live");
 await mh.click("#go");
 await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Phone mic live");
@@ -370,7 +396,7 @@ await p.fill("#title", "Persist 101");
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
 const roomP = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#micBtn"); const tokP = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
+const tokP = (await p.evaluate(() => micUrl())).split("#")[1];
 const pushP = (text) => fetch(`${base}/api/room/${roomP}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${tokP}` }, body: JSON.stringify({ text, final: true, source: "phone" }) });
 const ap = await ctx.newPage(); track(ap, "audience-persist");
 await ap.goto(`${base}/live/${roomP}`);
@@ -411,19 +437,21 @@ await ap2.goto(`${base}/live/${roomP}`);
 await ap2.waitForFunction(() => document.querySelector("#state").textContent === "Saved on this phone");
 ok((await ap2.$$eval("#feed p:not(#interim)", (n) => n.length)) === 61 && !(await ap2.$eval("#endCard", (c) => c.hidden)), "reopening the link after the room is gone shows the saved talk with the export card");
 ok((await ap2.textContent("#talkTitle")) === "Persist 101" && (await ap2.title()).startsWith("Persist 101"), "restored reader keeps the title");
-await ap2.setViewportSize({ width: 430, height: 880 });
+await ap2.setViewportSize({ width: 430, height: 800 });
+await ap2.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 await ap2.screenshot({ path: `${SHOTS}/audience-saved.png` });
 const jp = await ctx.newPage(); track(jp, "join-saved");
 await jp.goto(`${base}/join`);
 ok(await jp.isVisible("#saved") && (await jp.textContent("#savedList")).includes("Persist 101"), "join page lists the saved talk");
-await jp.setViewportSize({ width: 430, height: 880 });
+await jp.setViewportSize({ width: 430, height: 800 });
+await jp.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 await jp.screenshot({ path: `${SHOTS}/join-saved.png` });
 await p.screenshot({ path: `${SHOTS}/presenter-transcript.png` });
 // reader restore + still-live room: no duplicates after a reload mid-talk
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
 const roomR = (await p.textContent("#urlDisplay")).split("/").pop();
-await p.click("#micBtn"); const tokR = (await p.textContent("#urlDisplay")).split("#")[1]; await p.keyboard.press("Escape");
+const tokR = (await p.evaluate(() => micUrl())).split("#")[1];
 const ar = await ctx.newPage(); track(ar, "audience-reload");
 await ar.goto(`${base}/live/${roomR}`);
 await ar.waitForFunction(() => document.querySelector("#state").textContent === "Live");
@@ -477,17 +505,18 @@ await ar.waitForFunction(() => document.querySelectorAll("#feed figure.catch").l
 ok(true, "pulling a picture back removes it from the phones");
 await p.click("#stopBtn");
 await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
-// pointer drag-to-reorder on kept quotes + reload persistence
-const qBoxes = await ar.$$("#keptQuotes blockquote");
-if (qBoxes.length === 2) {
-  const b0 = await qBoxes[0].boundingBox();
-  const b1 = await qBoxes[1].boundingBox();
-  await ar.mouse.move(b1.x + 20, b1.y + b1.height / 2);
+// pointer drag-to-reorder on kept quote handle + keyboard Move Up/Down + reload persistence
+const qHandles = await ar.$$("#keptQuotes .quote-handle");
+if (qHandles.length === 2) {
+  const b0 = await qHandles[0].boundingBox();
+  const b1 = await qHandles[1].boundingBox();
+  await ar.mouse.move(b1.x + b1.width / 2, b1.y + b1.height / 2);
   await ar.mouse.down();
-  await ar.mouse.move(b0.x + 20, b0.y + b0.height / 2, { steps: 5 });
+  await ar.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2, { steps: 5 });
   await ar.mouse.up();
 }
 ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "pointer drag reorders kept quotes on reader end card");
+ok(await ar.isVisible("#copyKeptBtn") && await ar.isVisible("#quoteCardBtn"), "kept-quote actions (Copy kept + Quote card) appear once lines are starred");
 await ar.reload();
 await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "reordered kept quotes survive reader reload");

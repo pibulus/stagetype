@@ -5,8 +5,8 @@
   "exports": "./server.ts",
   "tasks": {
     "dev": "deno run -A --watch server.ts",
-    "start": "deno run --allow-net --allow-read --allow-env --allow-sys=networkInterfaces server.ts",
-    "listen-local": "deno run --allow-net --allow-env scripts/listen-local.ts",
+    "start": "deno run --allow-net --allow-read=. --allow-env=PORT,HOST,TRUST_PROXY,FLY_APP_NAME,STAGETYPE_SECRET,DEEPGRAM_API_KEY,DEEPGRAM_MODEL,DEEPGRAM_URL,STAGETYPE_DEEPGRAM_PASS,STAGETYPE_VERSION,MAX_ASSET_RAM_MB --allow-sys=networkInterfaces server.ts",
+    "listen-local": "deno run --allow-net --allow-env --allow-run scripts/listen-local.ts",
     "test": "deno test -A --sanitize-ops --sanitize-resources server_test.ts",
     "e2e": "deno run -A e2e/browser_test.js",
     "check": "deno check server.ts server_test.ts signed_noise.ts e2e/mock_deepgram.ts scripts/listen-local.ts",
