@@ -828,13 +828,15 @@ $("#quoteCardBtn").onclick = async () => {
   g.fillStyle = "#ff6ac2";
   g.beginPath(); g.roundRect(rx + 64, ry + 64, 240, 52, 26); g.fill(); g.stroke();
   g.fillStyle = "#1e1714"; g.font = "900 22px 'Helvetica Neue', Helvetica, Arial, sans-serif";
-  g.fillText("KEPT QUOTE", rx + 110, ry + 98);
+  g.textAlign = "center";
+  g.fillText("KEPT QUOTE", rx + 64 + 120, ry + 98);
+  g.textAlign = "left";
   // Talk title
   if (talkTitle) {
     g.fillStyle = "#5a4b42"; g.font = "800 28px 'Helvetica Neue', Helvetica, Arial, sans-serif";
     g.fillText(talkTitle.toUpperCase().slice(0, 56), rx + 64, ry + 184, rw - 128);
   }
-  // Pink left quote bar + wrapped quote (handles CJK, Thai, and long unbroken URLs)
+  // Pink left quote bar + optically balanced wrapped quote (handles CJK, Thai, and long unbroken URLs)
   const fontSize = quote.length > 160 ? 46 : quote.length > 90 ? 56 : 68;
   g.font = `800 ${fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
   const maxW = rw - 172;
@@ -860,10 +862,13 @@ $("#quoteCardBtn").onclick = async () => {
     while (tail.length > 1 && g.measureText(`${tail}…”`).width > maxW) tail = tail.slice(0, -1);
     clipped[9] = `${tail}…”`;
   }
-  const lineH = Math.round(fontSize * 1.28);
-  const startY = ry + 310;
+  const lineH = Math.round(fontSize * 1.3);
+  const blockH = clipped.length * lineH;
+  const topBound = talkTitle ? ry + 230 : ry + 175;
+  const botBound = ry + rh - 185;
+  const startY = Math.max(topBound + fontSize, Math.round((topBound + botBound - blockH) / 2 + fontSize * 0.82));
   g.fillStyle = "#ff6ac2";
-  g.fillRect(rx + 64, startY - fontSize + 10, 12, clipped.length * lineH + 8);
+  g.beginPath(); g.roundRect(rx + 64, startY - fontSize + 8, 12, blockH + 4, 6); g.fill();
   g.fillStyle = "#1e1714";
   clipped.forEach((ln, idx) => g.fillText(ln, rx + 104, startY + idx * lineH, maxW));
   // Footer stamp
@@ -874,13 +879,15 @@ $("#quoteCardBtn").onclick = async () => {
   const stW = g.measureText("StageType").width;
   g.fillStyle = "#ff6ac2"; g.beginPath(); g.arc(rx + 64 + stW + 10, ry + rh - 82, 8, 0, Math.PI * 2); g.fill();
   g.fillStyle = "#5a4b42"; g.font = "700 24px 'Helvetica Neue', Helvetica, Arial, sans-serif";
-  g.fillText("Live captions on every phone", rx + rw - 388, ry + rh - 80);
+  g.textAlign = "right";
+  g.fillText("Live captions on every phone", rx + rw - 64, ry + rh - 80);
+  g.textAlign = "left";
 
   const blob = await new Promise((r) => c.toBlob(r, "image/png"));
   if (!blob) return;
   const filename = `${stem()}-quote.png`;
   const file = new File([blob], filename, { type: "image/png" });
-  if (navigator.canShare?.({ files: [file] })) {
+  if (matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
     try { await navigator.share({ files: [file], title: talkTitle || "StageType quote" }); return; }
     catch (err) { if (err?.name === "AbortError") return; }
   }

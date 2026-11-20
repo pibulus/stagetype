@@ -537,6 +537,8 @@ if (qHandles.length === 2) {
 }
 ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "pointer drag reorders kept quotes on reader end card");
 ok(await ar.isVisible("#copyKeptBtn") && await ar.isVisible("#quoteCardBtn"), "kept-quote actions (Copy kept + Quote card) appear once lines are starred");
+const [qdl] = await Promise.all([ar.waitForEvent("download"), ar.click("#quoteCardBtn")]);
+ok(qdl.suggestedFilename().endsWith("-quote.png"), "Quote card downloads a crisp PNG on desktop: " + qdl.suggestedFilename());
 await ar.reload();
 await ar.waitForFunction(() => !document.querySelector("#endCard").hidden);
 ok((await ar.$$eval("#keptQuotes blockquote", (qs) => qs.map((q) => q.textContent).join("|"))) === "Gamma.|Beta.", "reordered kept quotes survive reader reload");
