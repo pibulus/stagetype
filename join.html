@@ -8,10 +8,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fff6e6">
 <title>Join a talk · StageType</title>
-<meta name="description" content="Enter a four-letter StageType code to read live presentation captions on your phone in your own font, size, and theme.">
+<meta name="description" content="Enter a four-letter StageType code to read live captions right in the browser, tuned to any phone's own font, size, and theme.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Join a talk · StageType">
-<meta property="og:description" content="Type the four-letter room code to read live captions on any phone. No app, no account.">
+<meta property="og:description" content="Enter the four-letter room code to read live captions right in the browser and carry the notes home.">
 <meta property="og:image" content="/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="/og-image.png">
@@ -108,28 +108,28 @@
   <section class="join-card" aria-labelledby="joinHeading">
     <div>
       <h1 id="joinHeading">Join a talk</h1>
-      <p style="margin-top:8px">Type the four-letter code on the screen.</p>
+      <p style="margin-top:8px">Enter the four-letter code on screen to read along live.</p>
     </div>
     <form id="form" autocomplete="off">
       <input id="code" name="code" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false"
              maxlength="4" pattern="[A-Za-z]{4}" placeholder="ABCD" aria-label="Four-letter join code" aria-describedby="joinAutoHint" autofocus>
-      <p id="joinAutoHint" class="hint-note">Opens automatically once 4 letters are entered.</p>
+      <p id="joinAutoHint" class="hint-note">Jumps straight into the room on the fourth letter.</p>
       <p id="err" role="alert"></p>
       <button type="submit">Read along</button>
     </form>
   </section>
   <section id="saved" hidden>
     <h2>Saved on this phone</h2>
-    <p class="shelf-line">Talks read along on this device. Any one reopens offline.</p>
+    <p class="shelf-line">Every talk saved on this phone. Tap any one to reopen, even offline.</p>
     <ul id="savedList"></ul>
     <button id="exportAll" type="button">Export all (.md)</button>
   </section>
   <footer>
-    <span>Point a phone camera at the stage QR</span>
+    <span>Camera scan works on the stage QR too</span>
     <span aria-hidden="true">·</span>
-    <a href="/demo">Try the demo</a>
+    <a href="/demo">Live demo</a>
     <span aria-hidden="true">·</span>
-    <a href="/">Open console</a>
+    <a href="/">Stage Console</a>
   </footer>
 </main>
 <script>
@@ -155,7 +155,7 @@ async function go(fromSubmit = false) {
   try {
     const r = await fetch("/api/join/" + c);
     if (r.ok) { location.href = "/live/" + (await r.json()).id; return; }
-    err.textContent = r.status === 404 ? NOPE : r.status === 429 ? "Room is busy joining — try again in a few seconds." : "Couldn't reach the relay. Try again in a moment.";
+    err.textContent = r.status === 404 ? NOPE : r.status === 429 ? "Lots of phones joining at once. Try again in a few seconds." : "Couldn't reach the relay. Try again in a moment.";
   } catch { err.textContent = "Couldn't reach the relay. Try again in a moment."; }
   code.classList.remove("shake"); void code.offsetWidth; code.classList.add("shake");
   if (navigator.vibrate) navigator.vibrate([40, 60, 40]);

@@ -8,10 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#fff6e6">
     <title>StageType · Presenter Console</title>
-    <meta name="description" content="Live presentation captions ticker, wireless phone lapel mic, OBS browser source, and instant audience QR reader. Zero accounts, open source.">
+    <meta name="description" content="Open-source stage console for live captions over Keynote, VS Code, and OBS, wireless phone lapel mic, and instant QR captions on every phone.">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="StageType · Speak. Every phone in the room reads along.">
-    <meta property="og:description" content="Wordly is the one you book a demo for. StageType is the one you just open.">
+    <meta property="og:title" content="StageType · Speak, and every phone in the room reads along.">
+    <meta property="og:description" content="Open a tab, start speaking, and give the back row a front-row seat. Floating captions, phone lapel mic, and take-home notes.">
     <meta property="og:image" content="/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="/og-image.png">
@@ -800,7 +800,7 @@
       <header>
         <div>
           <h1>StageType</h1>
-          <p class="sub">Speak. Every phone in the room reads along.</p>
+          <p class="sub">Speak, and every phone in the room reads along.</p>
         </div>
         <div class="status-pills">
           <span class="pill-badge" id="liveBadge" role="status"><span class="pulse-dot" id="liveDot" aria-hidden="true"></span><span id="liveText">Ready</span><span class="pill-sep" aria-hidden="true">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
@@ -919,11 +919,11 @@
               <img alt="" id="clipThumb">
               <span>Share clipboard image</span>
             </button>
-            <span id="pasteHint">Copy a screenshot, then ⌘V on this page.</span>
+            <span id="pasteHint">Paste a screenshot (⌘V) to share it with the room.</span>
           </div>
 
           <div class="transcript-bar">
-            <h2 class="eyebrow">Transcript <span id="transcriptStat">Nothing said yet.</span></h2>
+            <h2 class="eyebrow">Transcript <span id="transcriptStat">Ready for the first line.</span></h2>
             <div class="transcript-actions" id="transcriptActions" hidden>
               <details class="menu" id="exportMenu">
                 <summary aria-label="Export the transcript">Export</summary>
@@ -950,13 +950,13 @@
             <div id="qrEmpty" role="button" tabindex="0" aria-label="Start captions and show the room code">
               <div class="qr-slot" aria-hidden="true"><span>READY</span></div>
               <p>Start captions and the live QR lands right here.</p>
-              <span class="qr-sub-hint">Phones scan to read along or pair as lapel mic.</span>
+              <span class="qr-sub-hint">Phones scan to read along, or pair as a wireless lapel mic.</span>
             </div>
             <div id="qrGraphic" role="img" aria-label="Audience QR code"></div>
             <p class="qr-talk" id="qrTalk" hidden></p>
             <p class="join-host" id="joinHost" hidden></p>
             <div class="join-line" id="joinLine" hidden><b id="joinCode"></b></div>
-            <p class="qr-hint" id="qrHint" hidden>Point a phone camera at the code.</p>
+            <p class="qr-hint" id="qrHint" hidden>Point a phone camera at the code to read along.</p>
             <span class="sr-only" id="urlDisplay" hidden>Standby</span>
             <div class="room-actions" id="qrActions" hidden>
               <button type="button" id="copyUrlBtn" disabled><span class="btn-label">Copy link</span></button>
@@ -969,7 +969,7 @@
 
       <footer class="deck-footer">
         <span><kbd>Space</kbd> Start / pause mic</span>
-        <span><kbd>⌥ F</kbd> Float</span>
+        <span><kbd>⌥ F</kbd> Float ticker</span>
         <span><kbd>⌥ Q</kbd> Fullscreen QR</span>
         <span><kbd>Esc</kbd> Close</span>
         <a href="/demo">Live demo</a>
@@ -982,14 +982,14 @@
         <div style="display:flex;justify-content:space-between;width:100%;align-items:center;gap:12px">
           <div style="text-align:left">
             <p id="fsTalk" style="margin:0 0 4px;font-weight:700;font-size:13px;color:var(--quiet)" hidden></p>
-            <h2 id="fsTitle" style="margin:0;font-size:1.55rem;letter-spacing:-0.03em">Read along on a phone</h2>
+            <h2 id="fsTitle" style="margin:0;font-size:1.55rem;letter-spacing:-0.03em">Read along on any phone</h2>
           </div>
           <button type="button" id="closeFsBtn">Close</button>
         </div>
         <div id="fsQr" role="img" aria-label="Fullscreen QR code"></div>
         <p class="fs-host" id="fsHost" hidden></p>
         <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
-        <p id="fsNote">Project on screen before the talk kicks off.</p>
+        <p id="fsNote">Project this before the talk starts so the whole room can scan in.</p>
       </div>
     </div>
 
@@ -1003,7 +1003,7 @@
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
     const PASTE_KEY = isMac ? "⌘V" : "Ctrl+V";
-    $("#pasteHint").textContent = `Copy a screenshot, then ${PASTE_KEY} on this page.`;
+    $("#pasteHint").textContent = `Paste a screenshot (${PASTE_KEY}) to share it with the room.`;
 
     fillLanguages($("#lang"), store.get("st-lang") || "en-AU");
     $("#lang").addEventListener("change", () => store.set("st-lang", $("#lang").value));
@@ -1110,7 +1110,7 @@
       const n = words(transcript);
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
-        : "Nothing said yet.";
+        : "Ready for the first line.";
       $("#transcriptActions").hidden = transcript.length === 0;
       for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
     }
@@ -1504,7 +1504,7 @@
       const n = $("#assetTray").querySelectorAll(".tray-thumb").length;
       $("#pasteHint").textContent = n
         ? `${n} shared · tap a picture to pull it back`
-        : `Copy a screenshot, then ${PASTE_KEY} on this page.`;
+        : `Paste a screenshot (${PASTE_KEY}) to share it with the room.`;
     }
     async function pullBack(assetId) {
       if (!room) return;
@@ -1732,10 +1732,10 @@
       $("#fsCode").hidden = isMic || !room.code;
       $("#fsCodeText").textContent = isMic ? "" : room.code || "";
       $("#fsCodeText").setAttribute("aria-label", isMic ? "" : `Room code ${(room.code || "").split("").join(" ")}`);
-      $("#fsTitle").textContent = isMic ? "Pair the lapel mic" : "Read along on a phone";
+      $("#fsTitle").textContent = isMic ? "Pair a wireless lapel mic" : "Read along on any phone";
       $("#fsNote").textContent = isMic
-        ? "Keys ride in this code. Scan it on your phone, then close before projecting."
-        : "Project on screen before the talk kicks off.";
+        ? "Keys ride in this private code. Scan it on the speaker's phone, then close before projecting."
+        : "Project this before the talk starts so the whole room can scan in.";
     }
 
     // SSE Stream Connection
@@ -1823,7 +1823,7 @@
       sseSource.onerror = () => {
         if (room && !pageUnloading) {
           relayOffline = true;
-          notice("Relay connection interrupted — reconnecting. Audience phones will catch up once back online.");
+          notice("Relay paused for a beat, reconnecting now. Audience phones catch right back up once online.");
         }
       };
     }
@@ -1859,7 +1859,7 @@
         return r.ok;
       } catch {
         relayOffline = true;
-        notice("Relay unreachable — captions stay local until the connection returns.");
+        notice("Relay unreachable. Captions keep flowing locally until the connection returns.");
         return false;
       }
     }

@@ -8,14 +8,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fff6e6">
 <title>StageType · Live captions on every phone in the room</title>
-<meta name="description" content="Wordly is the one you book a demo for. StageType is the one you just open. Free browser live captions, phone lapel mic, OBS ticker, and instant audience QR reader.">
+<meta name="description" content="Speak at the front, and every phone in the room reads along. Live browser captions over slides and OBS, a phone lapel mic, and instant take-home notes.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="StageType · Speak. Every phone in the room reads along.">
-<meta property="og:description" content="Wordly is the one you book a demo for. StageType is the one you just open. Live captions over Keynote, OBS, and every phone in the back row.">
+<meta property="og:title" content="StageType · Speak, and every phone in the room reads along.">
+<meta property="og:description" content="Live captions over Keynote, VS Code, OBS, and every phone in the back row. Open a link, scan the code, and carry the talk home.">
 <meta property="og:image" content="/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="StageType · Live captions on every phone in the room">
-<meta name="twitter:description" content="Wordly is the one you book a demo for. StageType is the one you just open.">
+<meta name="twitter:title" content="StageType · Speak, and every phone in the room reads along.">
+<meta name="twitter:description" content="Live captions over Keynote, VS Code, OBS, and every phone in the back row. Open in the browser, read along live, and carry the notes home.">
 <meta name="twitter:image" content="/og-image.png">
 <script type="application/ld+json">
 {
@@ -24,7 +24,7 @@
   "name": "StageType",
   "applicationCategory": "MultimediaApplication",
   "operatingSystem": "Web",
-  "description": "Live presentation captions ticker, wireless phone lapel mic, OBS browser source, and instant audience QR reader with zero accounts.",
+  "description": "Browser-native live captions over slides and OBS, wireless phone lapel mic, instant QR audience reader, and offline take-home notes.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
@@ -150,7 +150,7 @@
   #ticker .interim { color: var(--pink); }
   #ticker .interim:empty { display: none; }
   #ticker .interim:not(:empty)::after { content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -.1em; background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite; }
-  #ticker.empty::before { content: "Whatever gets typed lands here, and on every phone"; opacity: .66; font-weight: 500; }
+  #ticker.empty::before { content: "Every word lands right here, and on every phone in the room."; opacity: .66; font-weight: 500; }
   @keyframes land { 0% { opacity: .2; text-shadow: 0 0 0 var(--mint); } 40% { opacity: 1; text-shadow: 0 0 14px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
   @keyframes caret { to { opacity: 0; } }
 
@@ -194,12 +194,12 @@
 <main>
   <section>
     <h1>The room reads <em>along</em>.</h1>
-    <p class="lede">Wordly is the one you book a demo for. StageType is the one you just open.</p>
-    <p class="sublede">Live captions over Keynote, VS Code, OBS, and every phone in the back row. Zero accounts, zero app install, zero cloud recordings.</p>
+    <p class="lede">Open a tab and speak. The back row gets a front-row seat.</p>
+    <p class="sublede">Live captions pinned over Keynote, VS Code, and OBS. A phone becomes a wireless lapel mic, and every listener walks out with the notes.</p>
     <ol class="steps" id="steps">
-      <li class="now"><span>1</span>A phone camera reads the code.</li>
-      <li><span>2</span>A line typed here lands on that phone.</li>
-      <li><span>3</span>The phone shows it in its own font, size and theme.</li>
+      <li class="now"><span>1</span>A phone camera scans the code.</li>
+      <li><span>2</span>Words typed here land straight on that screen.</li>
+      <li><span>3</span>The phone reads in its own font, size, and theme.</li>
     </ol>
     <div class="mobile-note">
       <p class="fine" style="font-size:1rem;color:var(--ink)">A laptop holds the code. This phone reads along.</p>
@@ -230,7 +230,7 @@
   <article class="surface">
     <span class="n">01</span>
     <h2>Under the slides</h2>
-    <p>A floating caption bar over Keynote, PowerPoint, VS Code, or a terminal — survives app switching.</p>
+    <p>A floating caption bar pinned over Keynote, PowerPoint, VS Code, or a terminal. Stays put through every window switch.</p>
     <span class="k">⌥ F</span>
   </article>
   <article class="surface">
@@ -327,7 +327,7 @@ async function mint() {
   }
   if (!res || !res.ok || !data?.id || !data?.sig) {
     $("#statusText").textContent = res?.status === 429
-      ? "Demo is busy right now — try again in a minute, or open the Stage Console."
+      ? "Demo room is busy right now. Try again in a minute, or open the Stage Console."
       : "Couldn't reach the relay for a demo code. Refresh or open the Stage Console.";
     $("#link").hidden = true;
     return;
@@ -412,7 +412,7 @@ $("#sample").onclick = async () => {
   const lines = [
     "Speaking at the front of the room.",
     "Everyone here reads along on their own phone.",
-    "Big text, their theme, their size, zero install.",
+    "Big text, their own theme, right in the browser.",
     "When the talk wraps, every phone keeps the notes.",
   ];
   for (const line of lines) {

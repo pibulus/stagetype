@@ -2,9 +2,9 @@
 
 > **"TalkType is for the desk. StageType is for the room."**
 
-Live presentation captions ticker, zero-hardware wireless lapel mic, and instant audience QR reader. Built for guest speakers, workshop tutors, meetup hosts and university lecturers who want accessible, high-legibility live captions without an enterprise contract or a sales call.
+Live browser captions over slides and OBS, a wireless phone lapel mic, and an instant QR reader for every seat in the room. Built for guest speakers, workshop tutors, meetup hosts, churches, and lecturers who want warm, high-legibility captions and take-home notes straight from one open tab.
 
-Part of the **TalkType** family.
+**Live:** [stage.talktype.app](https://stage.talktype.app) · [Live demo](https://stage.talktype.app/demo) · Part of the **TalkType** family.
 
 ---
 
@@ -27,30 +27,30 @@ Part of the **TalkType** family.
 
 ## ✨ Why StageType?
 
-### 1. The App-Switcher's Safety Net
-Native captioning in Google Slides and PowerPoint dies the second you `⌘ + Tab` out of full-screen slideshow mode to demonstrate code in VS Code, run commands in a terminal, or walk through a web app. 
+### 1. Live Captions Over Every Window
+Switch freely between Keynote, PowerPoint, VS Code, a terminal, and live browser tabs while captions stay pinned right on screen.
 
-StageType's **Floating Ticker** uses the native **Document Picture-in-Picture API** to keep a crisp, high-contrast Swiss typography bar pinned on top of whatever window or screen you are sharing.
+StageType's **Floating Ticker** uses the native **Document Picture-in-Picture API** to keep a crisp, high-contrast Swiss typography bar anchored over whichever window is on display.
 
-### 2. The Zero-Hardware Lapel Mic (Wii U Appendage Pattern)
-Presenters are normally tethered to their MacBook's built-in microphone at the lectern or stuck troubleshooting Bluetooth AirPods. 
+### 2. Pocket Wireless Lapel Mic (Appendage Pattern)
+Step away from the lectern and walk the stage freely using the phone already in a pocket.
 
-Pictures ride along too: copy a screenshot anywhere, come back to the console, and a one-tap chip offers to share it (or press ⌘V / Ctrl+V directly) — compressed on this machine before it is sent, and pull-back-able at any time.
+Pictures ride along too: copy a screenshot anywhere, return to the console, and tap the one-click chip (or press ⌘V / Ctrl+V directly) to send it straight to every phone, compressed on-device and easy to pull back at any time.
 
-StageType implements the **Appendage Architecture**: scan the **Phone lapel mic** QR code, slide your smartphone into your shirt pocket, and walk the stage freely. Your phone captures your voice, keeps the screen awake via the Screen Wake Lock API, and streams transcript tokens straight to the room relay.
+StageType implements the **Appendage Architecture**: scan the **Mic** pairing QR code, slip the phone into a shirt pocket, and walk the stage freely. The phone captures voice, holds the screen awake via the Screen Wake Lock API, offers a one-tap **Pocket lock**, and streams transcript tokens straight to the room relay.
 
-The handoff is automatic. When the phone goes live the console pauses the laptop mic, so one voice never lands in the transcript twice, and shows **Phone mic live**. Pause the phone and the laptop stays paused until you say otherwise (Space or Resume mic). If the phone drops out (battery, lock screen, wifi) the relay notices within 45 seconds and the laptop mic comes back on by itself, with a note saying so. Closing the mic tab hands back immediately.
+The handoff is automatic. When the phone goes live the console pauses the laptop mic, so one voice never lands in the transcript twice, and shows **Phone mic live**. Pause the phone and the laptop stays paused until you say otherwise (Space or Resume). If the phone drops out (battery, lock screen, wifi) the relay notices within 45 seconds and the laptop mic comes back on by itself, with a note saying so. Closing the mic tab hands back immediately.
 
 ### 3. It's a chat room, and anything can talk into it
 Under the hood a talk is a room: something sends lines in, everything else reads them out. The laptop mic is one source. The phone lapel mic is another. The **typing box** on the console is the third: a captioner, a colleague fixing a name, or a presenter who doesn't speak can type a line and it lands on every phone, words showing as they're typed and the line settling on Enter. Reading side, the audience phones are one display, the stage ticker another, and the **standalone ticker page** (`/ticker/:id`) is the bar on its own for any second screen or an OBS browser source.
 
-### 4. Join by code, Jackbox-style
-Every talk gets a four-letter code (no I, O or Q, nothing rude). It's on the console, large on the projector card, and anyone can type it at `/join`. That's the back row, the overflow room on Zoom, and the screen-reader user who can't scan a projector.
+### 4. Join by four-letter code
+Every talk gets a four-letter code (no I, O or Q, nothing rude). It's on the console, large on the projector card, and anyone can type it at `/join`. That's the back row, the overflow room on Zoom, and the screen-reader user who prefers typing a short code.
 
 ### 5. The Pocket Jumbotron & Post-Talk Export
 In large lecture halls or crowded meetups, attendees in the back or individuals with neurodivergent/hearing differences can point their camera at the screen to read along live in their palm:
 * **Client-Side Comfort Controls:** Attendees choose their own font size, loose dyslexic spacing, and theme (**Cream**, **Espresso**, **High-Contrast Black/Gold**, or **Night**).
-* **Smooth Backlog Replay:** Late joiners instantly receive previous sentences without jarring layout shifts.
+* **Smooth Backlog Replay:** Late joiners catch up immediately on earlier lines with calm, steady scrolling.
 * **Instant Take-Home Notes:** When the talk wraps, attendees copy, share, generate a 1-tap Quote Card PNG, download a prose `.md` file (with kept quotes and pinned links), or print a clean PDF. Saved talks reopen offline via Service Worker.
 
 ## 🚀 Quick Start
@@ -92,7 +92,8 @@ deno task dev
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Running on the open web, Fly and Docker, environment variables, launch checklist, LAN rehearsals |
 | [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) | Contrast numbers, reader comfort controls, the curated typefaces |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | Shared vocabulary |
-| [ROADMAP.md](ROADMAP.md) | Position, business model, numbers, guardrails, build order |
+| [docs/ECOSYSTEM.md](docs/ECOSYSTEM.md) | Exploratory fleet vision (StageType + ProMapper + Slide-o-Matic + ZipList) |
+| [ROADMAP.md](ROADMAP.md) | Position, model, guardrails, and build order |
 | [CLAUDE.md](CLAUDE.md) | Working rules for AI assistants on this repo, and a dense reference |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
 

@@ -1,9 +1,11 @@
 # 🌐 The SoftStack Live Knowledge Loop (StageType · ProMapper · Slide-o-Matic · ZipList)
 
-> *"A recursive, circular, organic sampler intelligence generation system."*  
+> **Status: Exploratory Fleet Vision** — StageType's shipped core today is a focused, type-led Soft Neo Toybrut live caption relay + wireless lapel mic + offline Take-Home Pack (with Quote Cards, pinned links, and prose exports). This note sketches how future fleet handoffs between StageType, ProMapper, Slide-o-Matic, and ZipList can connect.
+>
+> *"A recursive, circular, organic sampler intelligence generation system."*
 > — Pablo Alvarado, September 2026
 
-This document records the architectural synthesis of the SoftStack fleet as realized during the creation of **StageType**. It captures the closed-loop pipeline where speech, collective room presence, concept mapping, slide deck generation, and sovereign audience artifacts link together seamlessly.
+This document records the long-horizon architectural vision across the SoftStack fleet: how live room speech, concept mapping, slide decks, and portable take-home notes can link together cleanly.
 
 ---
 
@@ -52,8 +54,8 @@ This document records the architectural synthesis of the SoftStack fleet as real
 - **Floating PiP Ticker (`⌥+F`)**: Document Picture-in-Picture keeps captions visible over terminals, slides, or code without breaking on `⌘+Tab`.
 - **Jackbox-style 4-letter join codes**: `/join` gets anyone in the room reading on their own device with custom fonts (Atkinson Hyperlegible), dark themes, and dyslexic spacing.
 
-### 2. Ambient Collective Presence (No Text, No Numbers)
-- **Zero social noise**: No chat box, no troll moderation, no distracting `♥ 42` counters.
+### 2. Ambient Collective Presence (Calm by Design)
+- **Calm room focus:** the reader stays focused on the speaker's words rather than chat boxes or noisy counters.
 - **The Resonance Bloom**: When audience members tap or hold a sentence on their phone, the sentence softly radiates with an organic bioluminescent aura.
 - **The Silent Thermal Map**: Under the hood, the room tracks which chunks had collective focus without displaying scoreboards to the crowd.
 - **Ambient Room CSS**: Variables like `--crowd-energy` (0.0 to 1.0) subtly tune the background dot-grid warmth, lighting intensity, and mascot awareness.
@@ -83,15 +85,10 @@ This document records the architectural synthesis of the SoftStack fleet as real
 
 ## 🎨 Distinct Character & Identity
 
-StageType is not TalkType. It does not wear TalkType's dessert peach gradient or its bedsheet ghost.
+StageType wears Soft Neo Toybrut typography led by high-legibility type and warm paper surfaces (see `CLAUDE.md` for live design tokens):
 
-- **Vibe**: The Stage, the Beam, the Electric Night.
-- **Palette ("Stage Lights")**:
-  - Ground: Warm Ink `#1e1714` and Paper `#fffef7`.
-  - Accents: Electric Mint `#00f5a0`, Cyber Cyan `#00d9f5`, Stage Violet `#7b61ff`, Hot Magenta `#d946ef`.
-- **Character**: The Spotlight Luminaire / Retro Broadcast Capsule ("Lumen" / "Beam").
-  - Adheres to the `softstack-mascot` 1024x1024 contract (`#mascot-body-path`, `#mascot-background`, `#mascot-eye-left-path`, `#mascot-eye-right-path`).
-  - Modular eye-tracking, blink personality, and volume reactivity (`--vu`).
+- **Vibe:** Tactile hardware console on warm tabletop cream (`#fff6e6`) with crisp sepia ink (`#1e1714`) and intentional accents (pink `#ff6ac2`, teal `#2dd4bf`, amber `#ffc74d`, violet `#a78bfa`).
+- **Type-led:** Clean `ST.` wordmark and monogram (`ghost.svg`); the earlier Lumen mascot concept is retired.
 
 ---
 
@@ -131,7 +128,7 @@ We have all been conditioned to expect auto-captions to butcher every sentence (
 
 When the free cloud allocation finishes, the copy stays warm, playful, and grounded:
 - **Pill State**: `[ Freakish accuracy · 42m ]` ➔ `[ Local mic · Always on ]`
-- **Notice State**: *"Uh-oh, the ghost needs a breather. Local mic carries on from here—never cuts out. Unlock the whole caboodle to keep streaming perfect live text."*
+- **Notice State**: *"Local mic carries on smoothly from here. Add a pass to keep streaming high-accuracy relay text."*
 - **The Philosophy**: No countdown anxiety. No locked screens in front of an auditorium. The speaker is always protected.
 
 

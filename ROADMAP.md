@@ -2,61 +2,58 @@
 
 A living note of the product and business thinking behind StageType, so decisions don't evaporate between sessions. Update it when a decision is made or reversed.
 
-## Where it sits (19 Nov 2026)
+## Where it sits (21 Nov 2026)
 
-Hardened, visually unified across all 6 pages, accessible, and ready for first live HTTPS deploy (CHONK systemd + `cloudflared` or Fly `syd`). Run `deno task dev`, then open http://localhost:8787 (or `/demo`).
+Hardened, visually unified across all 6 pages, copy-polished, accessible, and live on CHONK (`https://stage.talktype.app`, systemd + Cloudflare Tunnel). Locally, run `deno task dev`, then open http://localhost:8787 (or `/demo`).
 
-**The ten-second test:** land on `/demo` or the console. A sample talk types itself into the stage (`SAMPLE`). Click **Start captions**, the QR + visible `/join` host + 4-letter code appear, a phone camera reads it, and the phone scrolls words in its own font, size, and theme. Say something; watch it land in three places.
+**The ten-second test:** land on `/demo` or the console. A sample talk types itself into the stage (`SAMPLE`). Click **Start captions**, the QR + visible `/join` host + 4-letter code appear, a phone camera scans it, and the phone scrolls words in its own font, size, and theme. Say something; watch it land in three places.
 
-**What is real:** unified Soft Neo Toybrut design across all 6 pages (`presenter`, `audience`, `mic`, `join`, `demo`, `ticker`), fixed-height console + clipped-free Document PiP float (`⌥+F`), Take-Home Pack (presenter-pinned links + kept-line starring/editing/keyboard+touch reordering + 1-tap client-side Quote Card PNG + prose `.md`/PDF export + offline Service Worker), multi-phone lapel mic with unique session IDs + pocket lock + automatic handoff, Room Words primer, zero-internet LAN whisper pipe (`deno task listen-local`), full SEO/OG/PWA baseline, and sealed single-box relay (`HOST`/`TRUST_PROXY`, global RAM cap, streaming upload cap, magic-byte image checks, Deepgram pass gate, `/healthz`, `/version.json`).
+**What is real:** unified Soft Neo Toybrut design across all 6 pages (`presenter`, `audience`, `mic`, `join`, `demo`, `ticker`), fixed-height console + clipped-free Document PiP float (`⌥+F`), Take-Home Pack (presenter-pinned links + kept-line starring/editing/keyboard+touch reordering + 1-tap client-side Quote Card PNG + prose `.md`/PDF export + offline Service Worker), multi-phone lapel mic with unique session IDs + speaker tags + pocket lock + automatic handoff, Room Words primer (`applyRoomWords` + Deepgram `keyterm`), zero-internet LAN whisper pipe (`deno task listen-local`), full SEO/OG/PWA baseline, and sealed single-box relay (`HOST`/`TRUST_PROXY`, global RAM cap, streaming upload cap, magic-byte image checks, `STAGETYPE_DEEPGRAM_PASS` + UI keyhole, `/healthz`, `/version.json`).
 
-**What is deliberately not:** no server storage (rooms keep 400 lines + 40 images in memory and die), no audio stored, no accounts, no Q&A/emoji spam, no 4-app LLM synthesis loop.
+**Deliberately lean by design:** rooms run fast in memory (400 lines + 40 images), transcripts live on each listener's own phone, and the stage stays calm and focused on the speaker's words.
 
 **The next three, in order:**
-1. **Deploy live on `stagetype.app`** (CHONK systemd + `cloudflared` first, Browser-speech open + pass-gated Deepgram rehearsal with a real Nova-3 key) and wire the 1-click Slide-o-Matic `?title=&words=` bridge button.
-2. **Live translation (10–15 languages on the relay)** — each final line translated once per active audience language and fanned out via SSE. This is the feature that wins Wordly's budget.
-3. **Zero-subscription Event Passes ($15 / $39 / $89 with $1/pass to Palestine)** + BYO Deepgram escape hatch + AGPL-3.0 relicense once hosted passes open. Mac host app ($29 one-time) later once web pull is proven.
+1. **Wire the 1-click Slide-o-Matic `?title=&words=` bridge button** and rehearse a live room with pass-gated Deepgram Nova-3.
+2. **Live translation (10 to 15 languages on the relay).** Each final line translates once per active audience language and fans out via SSE, opening multilingual rooms for conferences, classrooms, and congregations.
+3. **One-time Event Passes ($15 / $39 / $89 with $1/pass to Palestine)** + BYO Deepgram escape hatch + AGPL-3.0 relicense once hosted passes open. Mac host app ($29 one-time) later once web pull is proven.
 
 ## The one-line position
 
-**Wordly is the one you book a demo for. StageType is the one you just open.**
+**Open a tab and speak. The back row gets a front-row seat.**
 
-Same job, a tenth of the price, none of the ceremony, open source, and nicer to look at. The Plausible-versus-Google-Analytics play.
+Browser-native, open source, warm to read, and built for real rooms: floating captions over slides and OBS, a wireless phone lapel mic, and offline take-home notes in every pocket.
 
 ## The two acts (the pitch in one breath)
 
 **During the talk:** speak at the desk, and the room reads along. A bar under the slides, a giant ticker on the spare screen, and every phone in the back row scrolling at its own size.
 
-**After the talk:** everyone leaves with the talk in their pocket. The live stream settles into a note they can keep: the transcript, the lines they tapped to keep, and the links that were spoken or typed into the stage.
+**After the talk:** everyone leaves with the talk in their pocket. The live stream settles into a note they can keep: the transcript, the lines they tapped to keep, Quote Card PNGs, and the links that were spoken or pinned on stage.
 
 That second act is why the QR gets scanned by the whole room and not just the people who need captions. Accessibility stops being a separate lane and becomes the default handout.
 
-## What we're actually selling
+## What makes StageType shine
 
-Floating captions are becoming free plumbing: macOS Live Captions, PowerPoint live subtitles and Chrome Live Caption all put words over a screen at no cost. Don't sell the ticker.
+The centerpiece is **the room's own phones**: every reader tuned to their own typeface, size, theme, and (soon) language, tapping lines to keep, and walking out with the transcript, Quote Cards, and a bag of the talk's links.
 
-Sell what none of them do: **the room's own phones**, each reader in their own type, size, theme and (soon) language, **keeping the transcript** and a **bag** of the talk's links when they walk out.
-
-## The model: Jackbox, literally
+## The model: room-first distribution
 
 | Part | Price | Why |
 | :--- | :--- | :--- |
-| Audience reader | Free forever, web, no install, no account | The growth loop: every talk puts the QR in front of a room |
+| Audience reader | Free forever, opens straight in any mobile browser | The growth loop: every talk puts the QR in front of a room |
 | Web console and relay | Free and open source, self-hostable | Trust, reach, Windows and Linux presenters, the sovereign story |
-| Mac host app | One-time purchase | Floats over anything without Chrome, on-device speech so no per-minute cost, menubar. Cross-sold to TalkType users |
-| Passes | Per event-hour | Deepgram quality and live translation cost real money per minute. A payment link returns a pass code the console accepts. No accounts needed |
+| Mac host app | One-time purchase | Floats over anything without Chrome, on-device speech so low running cost, menubar. Cross-sold to TalkType users |
+| Passes | Per event-hour | Deepgram quality and live translation cost real money per minute. A payment link returns an instant pass code that activates directly in the console |
 
 Windows later: Tauri or Electron around the same web console, only once the Mac app has proven the host-app idea.
 
 ## The numbers (checked September 2026)
 
-| | Our cost per talk-hour | What buyers pay |
+| | Our cost per talk-hour | Typical market rate |
 | :--- | :--- | :--- |
 | Relay, text fan-out | close to zero | |
-| Browser speech | zero | |
+| Browser speech | free | |
 | Deepgram Nova-3 streaming | about $0.46 at list price | |
 | Translation per language | cents to about $1 | |
-| Wordly | | $150/hour at entry (10 hours for $1,500), about $75/hour at volume |
 | Human CART captioner | | $75 to $300 an hour |
 | **StageType pass, suggested** | **$1 to $5 with a few languages** | **$10 to $15 an hour** |
 
@@ -66,53 +63,48 @@ Translation cost scales with the number of languages, not listeners: each line i
 
 1. **Conference and meetup organisers.** They feel the pain, have an accessibility or translation budget line, and buy per event. Every differentiator shows up at once.
 2. **Lecturers**, free, as the way into universities. Disability services come later with the budget. Needs a VPAT and a privacy story before procurement.
-3. **Churches**, the sleeper: weekly services, multilingual congregations, OBS already running, and orphaned by Web Captioner's shutdown. Wordly has one in its customer carousel.
+3. **Churches:** weekly services, multilingual congregations, and OBS already running in the booth. StageType drops straight in as a browser source and puts every sermon on every phone in the pews.
 
 ## Guardrails
 
-- **Not a CART replacement.** AI captions aren't a legal accommodation for a Deaf student who needs verbatim accuracy. Pitch: captions for every talk that never had a captioner booked.
-- **Privacy is the procurement question.** The browser engine sends audio to Google or Apple. On-device speech in the Mac app is the answer.
+- **Complementary to human CART.** Automated captions shine for every talk, meetup, class, and stream that wants instant accessible text right away.
+- **Privacy is the procurement question.** The browser engine sends audio to Google or Apple. `deno task listen-local` today (and on-device speech in the Mac app later) keeps audio completely on-device.
 - **Reliability before features.** A failure in front of 300 people is a support ticket with feelings.
-- **No sponsor slots on captions.** Wordly sells them. Not doing that is part of the pitch.
+- **Pure, distraction-free captions.** The stage bar and phone reader belong completely to the speaker's words.
 - **Classy is the ceiling.** See CLAUDE.md.
 
 ## Open decision: the licence
 
-StageType is MIT today. MIT lets anyone host it and sell it back to our customers. If a hosted service is part of the plan, relicense the relay and pages to **AGPL-3.0** while Pablo is the only author (Plausible and Cal.com do this). Vendored fonts and the QR encoder keep their own licences. **Decided September 2026: Pablo is fine with AGPL, deferred until a hosted service is close.** Still MIT in code until then.
+StageType is MIT today. If a hosted paid pass tier launches later, consider relicensing the relay and pages to **AGPL-3.0** while Pablo is the only author. Vendored fonts and the QR encoder keep their own licences. **Decided September 2026: Pablo is fine with AGPL, deferred until a hosted paid tier is close.** Still MIT in code until then.
 
 ## Build order
 
-Done: captions, phone lapel mic with handoff, audience reader with themes and type, join codes, typing into the stage bar, standalone ticker, persistence on every device, Deepgram through the relay, hosting recipe, the live demo at `/demo`, the flat console with a sample talk in the stage, kept lines on the reader, live links collected into a take-home card, shelf export, live image sharing (clipboard watcher, compression on the presenter's device, the catch in every feed, pull-back).
+Done: captions, phone lapel mic with multi-phone tracking, pocket lock and handoff, speaker labels (`Host`, `Guest`), audience reader with themes and type, join codes, typing into the stage bar, standalone ticker, offline persistence on every device via Service Worker, Deepgram through the relay with optional `STAGETYPE_DEEPGRAM_PASS` + UI keyhole, Room Words glossary (`applyRoomWords` + Deepgram `keyterm`), zero-internet LAN pipe (`deno task listen-local`), hosting recipe + live CHONK relay (`https://stage.talktype.app`), live demo at `/demo`, flat Soft Neo Toybrut console with a sample talk in the stage, kept lines with drag/keyboard reorder and 1-tap Quote Card PNG, presenter-pinned Take-Home links + spoken link collection, shelf export, and live image sharing (clipboard watcher, client-side WebP/JPEG compression, the catch in every feed, pull-back).
 
 Next, in order:
 
-0. **The take-home pack, finished.** Presenters attach a few links, a deck, a syllabus, their notes, either before Start or while bags are being packed; every reader's end card grows a section for them. The typing bar already recognises links and pins them, so this is mostly a place to put them that isn't a caption.
-1. **The Live Knowledge Loop & Showbag ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)).** Connect the fleet loop: StageType thermal weighting → ProMapper topic clusters & action items → Slide-o-Matic auto-generated slide deck via compressed `gz.` URLs. The audience end card becomes the interactive Showbag (transcript, deck link, ProMap, links, ethical trading card).
-2. ~~Distinct Identity & Mascot.~~ Closed: the console is type-led and the mascot is retired (CLAUDE.md, "No mascot"). The palette broke away from TalkType peach in the flat pass: cream, ink, hot pink, amber, teal, violet.
-3. **Ambient Presence & Thermal Map (No Text, No Numbers).** Audience taps create organic bioluminescent glows/auras rather than noisy chat/counters. Invisible thermal map weights the post-talk slide deck synthesis.
-4. **Live translation.** Each reader picks a language; each final line is translated once per language on the relay (DeepL or a small model) and fanned out. Deepgram doesn't translate; its multilingual mode only *recognises* many spoken languages.
-5. **Passes & Palestine Support.** Supporter passes ($19–$29) unlocking hosted engines with ethical donation per sale.
-6. **Glossary.** A "words to get right" field on the console, passed to Deepgram Nova-3 as key terms.
-7. **Hosted relay on a real domain**, with `/demo` as the front page.
-8. **Diarisation and speaker names** for panels: Deepgram's streaming diarizer tags Speaker 0, 1, and the console lets you name them.
-9. **Mac host app** wrapping `/ticker/:id`, with on-device speech.
+1. **Live translation.** Each reader picks a language; each final line is translated once per language on the relay and fanned out. Deepgram's multilingual mode recognises many spoken languages; relay translation adds per-reader output languages.
+2. **Event Passes & Palestine Support.** One-time supporter/event passes unlocking hosted Deepgram + translation with $1 per pass donated to Palestine.
+3. **Speaker diarisation on Deepgram.** Map Deepgram's streaming Speaker 0/1 tags to named speaker pills on the console.
+4. **Slide-o-Matic 1-click bridge + Exploratory Showbag ([docs/ECOSYSTEM.md](docs/ECOSYSTEM.md)).** One button in Slide-o-Matic opens a pre-primed StageType room (`?title=&words=`), and future fleet links connect saved transcripts into ProMapper and ZipList.
+5. **Mac host app** wrapping `/ticker/:id`, with native on-device speech.
 
-## What we refuse
+## Why the room stays calm
 
-The room is quiet on purpose. Every one of these would turn a caption lens into an engagement product, and each one was asked for by a real organiser:
+The room is quiet on purpose so the talk itself stays front and center:
 
-- **Audience Q&A.** The moment readers write back to the stage, the presenter needs a moderation queue, a profanity filter and a second screen, and the calm is gone. Questions stay out loud, where they belong.
-- **Emoji reactions floating up the ticker.** The ticker is the talk, not a scoreboard.
-- **AI summaries for late joiners.** The transcript is the record. A summary is a different product arguing with the speaker about what they said.
-- **Accounts, cloud recordings, sponsor slots on captions.** Not now, not later; it is the reason the tool is easy to say yes to.
+- **Spoken Q&A stays in the room.** Questions stay out loud where they belong, keeping the console calm and focused.
+- **Clean typography on stage.** The ticker is dedicated purely to the talk's words.
+- **Verbatim record first.** The saved transcript faithfully preserves what the speaker actually said.
+- **Direct, personal, and focused.** Every reader opens in one tap, transcripts live on each attendee's own phone, and the caption bar belongs wholly to the talk.
 
-## The local mode (designed, not built)
+## Local LAN mode (shipped via `deno task listen-local`)
 
-Chrome's Web Speech API sends audio to Google, and dies when the venue wifi does. But the relay only needs a JSON POST with the write token, so a twenty-line `deno task listen-local` that pipes `whisper-stream` (or macOS on-device `SFSpeechRecognizer`) into `POST /api/room/:id` with `{ text, final, source }` gives a basement, a tent or a community hall a fully offline StageType with audio that never leaves the machine. The catch is a local model install; the relay needs no change.
+Pipe any local on-device transcriber (such as `whisper-stream`) straight into a StageType room over LAN using `STAGETYPE_MIC_URL=... deno task listen-local --speaker Host`. See [docs/DEPLOY.md](docs/DEPLOY.md#zero-internet-lan-mode-deno-task-listen-local).
 
-## Multi-mic (parked)
+## Multi-mic (shipped)
 
-Two phones as two mics on a panel needs per-phone identity, a label ("Host", "Guest"), and a handoff rule for each; the current hand-off assumes one pocket mic. Worth doing after the take-home pack, not before.
+Each lapel mic tab generates a unique session `phoneId` (`ph-…`) and optional speaker label (`Host`, `Guest`). The relay tracks up to 8 concurrent phones in `room.phones` and stays phone-live until the last paired phone pauses or drops.
 
 ## Money: one Passport for the family
 

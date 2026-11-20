@@ -101,7 +101,7 @@
   #echo .last.land { animation: land .48s ease-out; }
   @keyframes land { 0% { opacity: .2; text-shadow: 0 0 0 var(--mint); } 40% { opacity: 1; text-shadow: 0 0 14px var(--mint); } 100% { text-shadow: 0 0 0 transparent; } }
   @keyframes caret { to { opacity: 0; } }
-  body.started #echo.empty::before { content: "Words land on the big screen in real time"; color: var(--muted); font-weight: 500; }
+  body.started #echo.empty::before { content: "Spoken words land on stage and every phone."; color: var(--muted); font-weight: 500; }
 
   .mic-button-wrap { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; }
   .pulse-aura {
@@ -184,9 +184,9 @@
   </div>
   <div class="echo-container">
     <ol id="guide">
-      <li><b>Tap Go live</b> and allow the microphone.</li>
-      <li><b>Pocket it,</b> screen facing out, and tap Pocket lock if sliding it into fabric.</li>
-      <li><b>Leave the screen on.</b> StageType keeps it awake. The laptop mic pauses while this one is live.</li>
+      <li><b>Tap Go live</b> and allow the mic. The laptop mic steps aside automatically.</li>
+      <li><b>Slip it in a shirt pocket</b> screen out, and tap Pocket lock to guard against stray touches.</li>
+      <li><b>Leave the screen unlocked.</b> StageType holds it awake while every word streams to the room.</li>
     </ol>
     <div id="echo" class="empty"><span id="echoSettled"></span> <span id="echoInterim" class="interim"></span></div>
   </div>
@@ -198,7 +198,7 @@
     <div id="pulseAura" class="pulse-aura" aria-hidden="true"></div>
     <button id="go" type="button">
       <span id="goLabel">Go live</span>
-      <span class="btn-subtext" id="goSub">Tap to broadcast</span>
+      <span class="btn-subtext" id="goSub">Tap to stream to the room</span>
     </button>
   </div>
   <div class="foot-actions">
@@ -206,7 +206,7 @@
     <button id="end" type="button">End talk</button>
   </div>
   <a id="openTranscript" href="#" hidden>Open saved transcript</a>
-  <p class="screen-notice">Screen stay-awake enabled while live.</p>
+  <p class="screen-notice">Screen stays awake automatically while live.</p>
 </footer>
 
 <script>
@@ -348,7 +348,7 @@ async function push(body) {
     } else if (!r.ok) {
       netErr = true;
       $("#err").textContent = r.status === 429
-        ? "Sending captions too fast — pausing a beat."
+        ? "Captions coming in fast. Pausing a beat to catch up."
         : `Relay returned HTTP ${r.status}; retrying on next sentence.`;
     } else {
       if (netErr) { $("#err").textContent = ""; netErr = false; }
@@ -510,7 +510,7 @@ function setPocketLock(on) {
   $("#go").classList.toggle("locked", pocketLocked);
   if (live) {
     $("#goLabel").textContent = pocketLocked ? "Pocket locked" : "Pause";
-    $("#goSub").textContent = pocketLocked ? "Tap Unlock controls below to pause" : "Broadcasting to room";
+    $("#goSub").textContent = pocketLocked ? "Tap Unlock controls below to pause" : "Streaming to every phone";
   }
 }
 $("#pocketBtn").onclick = () => setPocketLock(!pocketLocked);
@@ -524,7 +524,7 @@ async function go() {
   document.body.classList.add("live", "started");
   if (navigator.vibrate) navigator.vibrate([40]);
   $("#goLabel").textContent = "Pause";
-  $("#goSub").textContent = "Broadcasting to room";
+  $("#goSub").textContent = "Streaming to every phone";
   $("#go").classList.add("live");
   $("#pulseAura").classList.add("active");
   $("#stateText").textContent = "Live on stage";
@@ -562,7 +562,7 @@ function stop(announce = true) {
 
   if (navigator.vibrate) navigator.vibrate([25, 40]);
   $("#goLabel").textContent = "Go live";
-  $("#goSub").textContent = "Tap to broadcast";
+  $("#goSub").textContent = "Tap to stream to the room";
   $("#go").classList.remove("live", "locked");
   $("#pulseAura").classList.remove("active");
   $("#stateText").textContent = "Paused";
@@ -627,7 +627,7 @@ $("#end").onclick = async () => {
     $("#openTranscript").hidden = false;
   }
   $("#err").textContent = closedOnRelay
-    ? `${words} words captioned. The transcript is on every phone in the room.`
+    ? `${words} word${words === 1 ? "" : "s"} captioned. The transcript is on every phone in the room.`
     : "Couldn't reach the relay to close the room. End the talk from the laptop console or tap End talk again.";
 };
 

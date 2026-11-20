@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbf1e4">
 <meta name="robots" content="noindex, nofollow">
-<title>StageType Live Reader</title>
+<title>StageType · Live Captions</title>
 <script src="/shared.js"></script>
 <style>
   :root {
@@ -381,8 +381,8 @@
 <main id="feed" dir="auto">
   <div id="waiting">
     <div class="wait-dot" aria-hidden="true"></div>
-    <p class="wait-main">Waiting for the first spoken words</p>
-    <p class="wait-tip">Tap any line during the talk to keep it for later.</p>
+    <p class="wait-main">Listening for the first words</p>
+    <p class="wait-tip">Tap any line to keep it for later. Open Aa to tune font, size, and theme.</p>
   </div>
   <p id="interim"></p>
 </main>
@@ -411,19 +411,19 @@
     <button type="button" class="copy-btn">Copy transcript</button>
     <button id="cardPrintBtn" type="button">Print / PDF</button>
   </div>
-  <p class="run-next">Running a talk next week? <a href="/demo" target="_blank" rel="noopener noreferrer">Open StageType in one tap →</a></p>
+  <p class="run-next">Giving a talk soon? <a href="/demo" target="_blank" rel="noopener noreferrer">Open StageType for the next room →</a></p>
 </section>
 
 <section id="closedCard" class="takehome-card" aria-labelledby="closedTitle" hidden>
   <h2 id="closedTitle">This room has wrapped</h2>
-  <p class="sub">StageType keeps nothing on the server once a talk ends — notes live only on the devices that were in the room.</p>
+  <p class="sub">Live rooms belong to the moment. Notes stay right on the phones that were there.</p>
   <div class="actions">
     <a class="btn-link-cta" href="/join">Join another talk</a>
     <a class="btn-link-cta" style="background:var(--surface)" href="/demo">Try StageType</a>
   </div>
 </section>
 
-<footer>Captions by <a href="/demo" target="_blank" rel="noopener noreferrer">StageType</a> ♥ Part of the <a href="https://talktype.app" target="_blank" rel="noopener noreferrer">TalkType</a> family</footer>
+<footer>Live captions by <a href="/demo" target="_blank" rel="noopener noreferrer">StageType</a> ♥ Part of the <a href="https://talktype.app" target="_blank" rel="noopener noreferrer">TalkType</a> family</footer>
 
 <script>
 const $ = (s, r = document) => r.querySelector(s);
@@ -545,7 +545,7 @@ function writeTalk(ended = talkEnded) {
   if (where) {
     where.textContent = ok
       ? "Saved on this phone. Reopens from this link, even offline."
-      : "Device storage is full — save .md or copy before closing this tab.";
+      : "Device storage is full. Save .md or copy the transcript before closing this tab.";
   }
 }
 function saveTalk(ended = false) {
@@ -561,7 +561,7 @@ function applyRoom(info) {
     talkTitle = info.title;
     $("#talkTitle").textContent = talkTitle;
     $("#talkTitle").hidden = !talkTitle;
-    document.title = talkTitle ? `${talkTitle} · StageType` : "StageType Live Reader";
+    document.title = talkTitle ? `${talkTitle} · StageType` : "StageType · Live Captions";
   }
   if (info.lang) {
     talkLang = info.lang;

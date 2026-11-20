@@ -1,7 +1,7 @@
 {
   "name": "StageType",
   "short_name": "StageType",
-  "description": "Live presentation captions ticker, wireless phone lapel mic, and instant audience QR reader.",
+  "description": "Live browser captions on every phone in the room, floating over slides and OBS, with a wireless phone lapel mic and offline take-home notes.",
   "start_url": "/join",
   "display": "standalone",
   "background_color": "#fff6e6",
