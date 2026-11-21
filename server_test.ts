@@ -105,7 +105,12 @@ Deno.test("join codes: four safe letters, resolvable, redirecting, released on e
   assertEquals(gone.status, 302);
   assertEquals(gone.headers.get("location"), `/join?nope=${r.code}`);
   assertEquals((await handler(new Request(`${base}/join`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/live`))).status, 200);
+  const liveRedir = await handler(new Request(`${base}/live`));
+  assertEquals(liveRedir.status, 301);
+  assertEquals(liveRedir.headers.get("location"), "/join");
+  const liveSlashRedir = await handler(new Request(`${base}/live/`));
+  assertEquals(liveSlashRedir.status, 301);
+  assertEquals(liveSlashRedir.headers.get("location"), "/join");
 });
 
 Deno.test("phone handoff: source tags, live/paused announcements, lost detection", async () => {
@@ -726,14 +731,53 @@ Deno.test("security & ops: headers, healthz, version, HEAD 404, cross-site guard
   assert(ticker.headers.get("content-security-policy")?.includes("frame-ancestors *"));
   assertEquals((await handler(new Request(`${base}/vendor/fonts/nope.woff2`, { method: "HEAD" }))).status, 404);
   assertEquals((await handler(new Request(`${base}/healthz`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/version.json`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/robots.txt`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/sitemap.xml`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/healthz`))).headers.get("x-robots-tag"), "noindex, nofollow");
+  const verRes = await handler(new Request(`${base}/version.json`));
+  assertEquals(verRes.status, 200);
+  assertEquals(verRes.headers.get("x-robots-tag"), "noindex, nofollow");
+  const robotsTxt = await (await handler(new Request(`${base}/robots.txt`))).text();
+  assert(robotsTxt.includes("Disallow: /j/") && robotsTxt.includes("Disallow: /live$") && robotsTxt.includes("Disallow: /healthz"));
+  const sitemapXml = await (await handler(new Request(`${base}/sitemap.xml`))).text();
+  assert(sitemapXml.includes("<lastmod>") && sitemapXml.includes("/demo") && sitemapXml.includes("/join"));
   assertEquals((await handler(new Request(`${base}/shared.js`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/manifest.webmanifest`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/sw.js`))).status, 200);
-  assertEquals((await handler(new Request(`${base}/apple-touch-icon.png`))).status, 200);
+  const manifestHead = await handler(new Request(`${base}/manifest.webmanifest`, { method: "HEAD" }));
+  assertEquals(manifestHead.status, 200);
+  assert(Number(manifestHead.headers.get("content-length")) > 0, "HEAD /manifest.webmanifest must carry Content-Length");
+  const swRes = await handler(new Request(`${base}/sw.js`));
+  assertEquals(swRes.status, 200);
+  assertEquals(swRes.headers.get("cache-control"), "no-cache, no-store, must-revalidate");
+  assertEquals(swRes.headers.get("cdn-cache-control"), "no-store");
+  const appleIcon = await handler(new Request(`${base}/apple-touch-icon.png`));
+  assertEquals(appleIcon.status, 200);
+  assert(!appleIcon.headers.get("cache-control")?.includes("immutable"));
+  assertEquals((await handler(new Request(`${base}/icon-192.png`))).status, 200);
+  assertEquals((await handler(new Request(`${base}/icon-512.png`))).status, 200);
   assertEquals((await handler(new Request(`${base}/og-image.png`))).status, 200);
+  // Referrer-Policy split + X-Robots-Tag on capability routes and error states
+  assertEquals(home.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
+  assertEquals(home.headers.get("x-robots-tag"), null);
+  const livePage = await handler(new Request(`${base}/live/abc123`));
+  assertEquals(livePage.headers.get("referrer-policy"), "no-referrer");
+  assertEquals(livePage.headers.get("x-robots-tag"), "noindex, nofollow");
+  const joinNope = await handler(new Request(`${base}/join?nope=ZZZZ`));
+  assertEquals(joinNope.headers.get("x-robots-tag"), "noindex, nofollow");
+  const joinClean = await handler(new Request(`${base}/join`));
+  assertEquals(joinClean.headers.get("x-robots-tag"), null);
+  assertEquals(joinClean.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
+  // Plain HTTP -> HTTPS 301 behind TRUST_PROXY (while localhost and /healthz stay reachable)
+  Deno.env.set("TRUST_PROXY", "cloudflare");
+  try {
+    const httpRedir = await handler(new Request("http://stage.talktype.app/demo?x=1", { headers: { "x-forwarded-proto": "http" } }));
+    assertEquals(httpRedir.status, 301);
+    assertEquals(httpRedir.headers.get("location"), "https://stage.talktype.app/demo?x=1");
+    assertEquals((await handler(new Request("http://stage.talktype.app/healthz"))).status, 200);
+    assertEquals((await handler(new Request("http://127.0.0.1:9027/version.json"))).status, 200);
+    const httpsRobots =
+      await (await handler(new Request("http://stage.talktype.app/robots.txt", { headers: { "x-forwarded-proto": "https" } }))).text();
+    assert(httpsRobots.includes("Sitemap: https://stage.talktype.app/sitemap.xml"));
+  } finally {
+    Deno.env.delete("TRUST_PROXY");
+  }
   assertEquals((await post("/api/room", {}, undefined, { "sec-fetch-site": "cross-site" })).status, 403);
   assertEquals(sniffImageType(FAKE_WEBP), "image/webp");
   assertEquals(sniffImageType(FAKE_PNG), "image/png");

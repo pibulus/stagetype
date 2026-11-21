@@ -2,7 +2,7 @@
 FROM denoland/deno:2.9.7
 WORKDIR /app
 COPY deno.json deno.lock server.ts signed_noise.ts ./
-COPY *.html ghost.svg shared.js deepgram.js sw.js manifest.webmanifest apple-touch-icon.png og-image.png ./
+COPY *.html ghost.svg shared.js deepgram.js sw.js manifest.webmanifest apple-touch-icon.png icon-192.png icon-512.png og-image.png ./
 COPY vendor ./vendor
 RUN deno cache server.ts
 ENV PORT=8787

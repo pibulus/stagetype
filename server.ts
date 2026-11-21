@@ -151,6 +151,19 @@ const JOIN_WINDOW_MS = 60_000;
 const JOIN_LIMIT = 300;
 const VERSION = env("STAGETYPE_VERSION", "dev");
 
+function fileLastMod(name: string): string {
+  try {
+    const m = Deno.statSync(new URL(name, import.meta.url)).mtime;
+    if (m) return m.toISOString().slice(0, 10);
+  } catch { /* fallback if stat unavailable */ }
+  return "";
+}
+const SITEMAP_PAGES = [
+  { path: "/", file: "presenter.html" },
+  { path: "/demo", file: "demo.html" },
+  { path: "/join", file: "join.html" },
+].map((p) => ({ path: p.path, lastmod: fileLastMod(p.file) }));
+
 export const rooms: Map<string, Room> = new Map();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
 type RateBucket = { count: number; resetAt: number };
@@ -542,40 +555,79 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
   const path = url.pathname;
   const get = req.method === "GET" || req.method === "HEAD";
   const head = req.method === "HEAD";
-  const isHttps = req.headers.get("x-forwarded-proto") === "https" || url.protocol === "https:";
+  const xfProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase() ?? "";
+  const isHttps = xfProto === "https" || url.protocol === "https:";
+  const behindProxy = env("TRUST_PROXY") !== "" || env("FLY_APP_NAME") !== "";
+  const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(url.host);
 
-  // Operational health & version stamps (for CHONK / Fly / fleet-check --deployed)
+  // Operational health check stays reachable over plain HTTP for local/proxy probes
   if (get && path === "/healthz") {
-    return json({ ok: true, rooms: rooms.size, listeners: totalListeners, assetsMb: Number((globalAssetBytes / 1_000_000).toFixed(2)) });
-  }
-  if (get && path === "/version.json") {
-    return json({ commit: VERSION });
-  }
-  if (get && path === "/robots.txt") {
-    const origin = `${isHttps ? "https" : url.protocol.replace(":", "")}://${url.host}`;
-    return new Response(
-      `User-agent: *\nAllow: /\nAllow: /demo\nAllow: /join\nDisallow: /live/\nDisallow: /mic/\nDisallow: /ticker/\nDisallow: /api/\nSitemap: ${origin}/sitemap.xml\n`,
-      { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } },
+    return json(
+      { ok: true, rooms: rooms.size, listeners: totalListeners, assetsMb: Number((globalAssetBytes / 1_000_000).toFixed(2)) },
+      200,
+      { "x-robots-tag": "noindex, nofollow" },
     );
   }
+  // Enforce canonical HTTPS when running behind a reverse proxy on a public hostname
+  if (behindProxy && !isHttps && !isLocalHost) {
+    return new Response(null, {
+      status: get ? 301 : 308,
+      headers: {
+        location: `https://${url.host}${path}${url.search}`,
+        "cache-control": "public, max-age=3600",
+      },
+    });
+  }
+  if (get && path === "/version.json") {
+    return json({ commit: VERSION }, 200, { "x-robots-tag": "noindex, nofollow" });
+  }
+  const canonicalProto = isHttps || (behindProxy && !isLocalHost) ? "https" : url.protocol.replace(":", "");
+  if (get && path === "/robots.txt") {
+    const origin = `${canonicalProto}://${url.host}`;
+    const body =
+      `User-agent: *\nAllow: /\nAllow: /demo\nAllow: /join\nDisallow: /live/\nDisallow: /live$\nDisallow: /j/\nDisallow: /mic/\nDisallow: /ticker/\nDisallow: /api/\nDisallow: /healthz\nDisallow: /version.json\nSitemap: ${origin}/sitemap.xml\n`;
+    return new Response(head ? null : body, {
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "content-length": String(enc.encode(body).byteLength),
+        "cache-control": "public, max-age=3600",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  }
   if (get && path === "/sitemap.xml") {
-    const origin = `${isHttps ? "https" : url.protocol.replace(":", "")}://${url.host}`;
+    const origin = `${canonicalProto}://${url.host}`;
     const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      ["/", "/demo", "/join"].map((p) => `  <url><loc>${origin}${p}</loc></url>`).join("\n") +
+      SITEMAP_PAGES.map((p) => `  <url><loc>${origin}${p.path}</loc>${p.lastmod ? `<lastmod>${p.lastmod}</lastmod>` : ""}</url>`).join(
+        "\n",
+      ) +
       `\n</urlset>\n`;
-    return new Response(body, { headers: { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" } });
+    return new Response(head ? null : body, {
+      headers: {
+        "content-type": "application/xml; charset=utf-8",
+        "content-length": String(enc.encode(body).byteLength),
+        "cache-control": "public, max-age=3600",
+        "x-content-type-options": "nosniff",
+      },
+    });
   }
 
   // Pages + vendored assets, so the console works on a venue LAN with no internet.
-  if (get && path === "/") return file("presenter.html", head, "text/html; charset=utf-8", false, { isHttps, allowMic: true });
-  if (get && /^\/live\/[a-z0-9]+$/.test(path)) return file("audience.html", head, "text/html; charset=utf-8", false, { isHttps });
+  if (get && path === "/") {
+    return file("presenter.html", head, "text/html; charset=utf-8", false, { isHttps, allowMic: true, publicPage: true });
+  }
+  if (get && /^\/live\/[a-z0-9]+$/.test(path)) {
+    return file("audience.html", head, "text/html; charset=utf-8", false, { isHttps, noindex: true });
+  }
   // Phone as the mic: the write token rides in the URL #fragment, which browsers never send to the server
-  if (get && /^\/mic\/[a-z0-9]+$/.test(path)) return file("mic.html", head, "text/html; charset=utf-8", false, { isHttps, allowMic: true });
+  if (get && /^\/mic\/[a-z0-9]+$/.test(path)) {
+    return file("mic.html", head, "text/html; charset=utf-8", false, { isHttps, allowMic: true, noindex: true });
+  }
   // The bar on its own: any second screen, or an OBS browser source for a livestream
   if (get && /^\/ticker\/[a-z0-9]+$/.test(path)) {
-    return file("ticker.html", head, "text/html; charset=utf-8", false, { isHttps, embeddable: true });
+    return file("ticker.html", head, "text/html; charset=utf-8", false, { isHttps, embeddable: true, noindex: true });
   }
-  if (get && path === "/demo") return file("demo.html", head, "text/html; charset=utf-8", false, { isHttps });
+  if (get && path === "/demo") return file("demo.html", head, "text/html; charset=utf-8", false, { isHttps, publicPage: true });
 
   // Mint a demo id. Stateless: nothing exists until a phone opens the signed link.
   if (get && path === "/api/demo/mint") {
@@ -594,8 +646,22 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
   }
 
   // Type-the-code entry for people who can't scan the projector
-  if (get && (path === "/join" || path === "/live" || path === "/live/")) {
-    return file("join.html", head, "text/html; charset=utf-8", false, { isHttps });
+  if (get && (path === "/live" || path === "/live/")) {
+    return new Response(null, {
+      status: 301,
+      headers: {
+        location: "/join",
+        "cache-control": "public, max-age=3600",
+        "x-robots-tag": "noindex, nofollow",
+      },
+    });
+  }
+  if (get && path === "/join") {
+    return file("join.html", head, "text/html; charset=utf-8", false, {
+      isHttps,
+      publicPage: true,
+      noindex: url.searchParams.has("nope"),
+    });
   }
   if (get && /^\/j\/[A-Za-z]{4}$/.test(path)) {
     const key = clientKey(req, info);
@@ -609,6 +675,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
       headers: {
         location: roomId ? `/live/${roomId}` : `/join?nope=${code}`,
         "cache-control": "no-store",
+        "x-robots-tag": "noindex, nofollow",
       },
     });
   }
@@ -627,12 +694,29 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return file(path.slice(1), head, type, true);
   }
   if (get && (path === "/ghost.svg" || path === "/favicon.ico")) {
-    return file("ghost.svg", head, "image/svg+xml", false, { sandboxSvg: true });
+    return file("ghost.svg", head, "image/svg+xml", false, { sandboxSvg: true, cacheControl: "public, max-age=86400" });
   }
-  if (get && path === "/apple-touch-icon.png") return file("apple-touch-icon.png", head, "image/png", true);
-  if (get && path === "/og-image.png") return file("og-image.png", head, "image/png", false);
-  if (get && path === "/manifest.webmanifest") return file("manifest.webmanifest", head, "application/manifest+json; charset=utf-8", false);
-  if (get && path === "/sw.js") return file("sw.js", head, "text/javascript; charset=utf-8", false);
+  if (get && path === "/apple-touch-icon.png") {
+    return file("apple-touch-icon.png", head, "image/png", false, { cacheControl: "public, max-age=86400" });
+  }
+  if (get && path === "/icon-192.png") {
+    return file("icon-192.png", head, "image/png", false, { cacheControl: "public, max-age=86400" });
+  }
+  if (get && path === "/icon-512.png") {
+    return file("icon-512.png", head, "image/png", false, { cacheControl: "public, max-age=86400" });
+  }
+  if (get && path === "/og-image.png") {
+    return file("og-image.png", head, "image/png", false, { cacheControl: "public, max-age=86400" });
+  }
+  if (get && path === "/manifest.webmanifest") {
+    return file("manifest.webmanifest", head, "application/manifest+json; charset=utf-8", false, { cacheControl: "public, max-age=86400" });
+  }
+  if (get && path === "/sw.js") {
+    return file("sw.js", head, "text/javascript; charset=utf-8", false, {
+      cacheControl: "no-cache, no-store, must-revalidate",
+      cdnCacheControl: "no-store",
+    });
+  }
   if (get && path === "/shared.js") return file("shared.js", head, "text/javascript; charset=utf-8", false);
   if (get && path === "/deepgram.js") return file("deepgram.js", head, "text/javascript; charset=utf-8", false);
 
@@ -769,6 +853,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return new Response(head ? null : (asset.full as unknown as BodyInit), {
       headers: {
         "content-type": asset.type,
+        "content-length": String(asset.full.byteLength),
         "cache-control": "private, max-age=60",
         "x-content-type-options": "nosniff",
       },
@@ -1138,22 +1223,39 @@ async function readBody(req: Request): Promise<string | null> {
   return dec.decode(out);
 }
 
-type FileOpts = { isHttps?: boolean; allowMic?: boolean; embeddable?: boolean; sandboxSvg?: boolean };
+type FileOpts = {
+  isHttps?: boolean;
+  allowMic?: boolean;
+  embeddable?: boolean;
+  sandboxSvg?: boolean;
+  publicPage?: boolean;
+  noindex?: boolean;
+  cacheControl?: string;
+  cdnCacheControl?: string;
+};
 async function file(name: string, isHead = false, type = "text/html; charset=utf-8", immutable = false, opts: FileOpts = {}) {
   const target = new URL(name, import.meta.url);
   let body: Uint8Array<ArrayBuffer> | null = null;
+  let size = 0;
   try {
-    if (isHead) await Deno.stat(target);
-    else body = await Deno.readFile(target);
+    if (isHead) {
+      size = (await Deno.stat(target)).size;
+    } else {
+      body = await Deno.readFile(target);
+      size = body.byteLength;
+    }
   } catch {
     return new Response("not here", { status: 404 });
   }
   const headers: Record<string, string> = {
     "content-type": type,
+    "content-length": String(size),
     "x-content-type-options": "nosniff",
-    "referrer-policy": "no-referrer",
-    "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+    "referrer-policy": opts.publicPage ? "strict-origin-when-cross-origin" : "no-referrer",
+    "cache-control": opts.cacheControl ?? (immutable ? "public, max-age=31536000, immutable" : "no-cache"),
   };
+  if (opts.cdnCacheControl) headers["cdn-cache-control"] = opts.cdnCacheControl;
+  if (opts.noindex) headers["x-robots-tag"] = "noindex, nofollow";
   if (opts.sandboxSvg) {
     headers["content-security-policy"] = "default-src 'none'; sandbox";
   } else if (type.startsWith("text/html")) {

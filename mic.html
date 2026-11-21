@@ -3,9 +3,14 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1714">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StageType Mic">
 <meta name="robots" content="noindex, nofollow">
 <title>StageType · Lapel Mic</title>
 <script src="/shared.js"></script>
@@ -33,15 +38,15 @@
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
     border-bottom: 1.5px solid rgba(251,241,228,0.18); padding-bottom: 12px;
   }
-  h1 { margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: 1.15rem; }
-  .brand-title { font-weight: 900; letter-spacing: -0.03em; }
+  h1 { margin: 0; display: flex; align-items: baseline; gap: 5px; font-size: 1.12rem; min-width: 0; }
+  .brand-title { font-weight: 900; letter-spacing: -0.03em; white-space: nowrap; }
   .brand-title::after { content: "."; color: var(--pink); }
-  .brand-sub { font-weight: 500; color: var(--muted); font-size: 0.9rem; }
+  .brand-sub { font-weight: 500; color: var(--muted); font-size: 0.84rem; white-space: nowrap; }
 
   select {
     font: 600 16px var(--swiss); color: var(--ink); background: var(--surface);
     border: 1.5px solid var(--line); box-shadow: 2px 2px 0 rgba(251,241,228,0.35); border-radius: 999px;
-    height: 44px; padding: 0 14px; cursor: pointer; max-width: 50vw; text-overflow: ellipsis;
+    height: 44px; padding: 0 12px; cursor: pointer; max-width: 44vw; text-overflow: ellipsis; flex-shrink: 1;
   }
   select option { color: #1e1714; background: #fffdf5; }
   #talk { font-size: 13.5px; font-weight: 800; color: var(--butter); margin: 0 0 8px; }
@@ -62,7 +67,7 @@
   .engine-label { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-width: 60px; }
   .seg { display: flex; flex: 1; border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; gap: 3px; background: var(--surface); }
   .seg button {
-    flex: 1; height: 38px; border: none; border-radius: 999px; background: transparent; color: var(--ink);
+    flex: 1; height: 44px; border: none; border-radius: 999px; background: transparent; color: var(--ink);
     font: 800 13.5px var(--swiss); cursor: pointer; -webkit-tap-highlight-color: transparent;
     transition: transform .2s var(--spring), background .15s;
   }
@@ -138,6 +143,7 @@
   #end:active, #pocketBtn:active { transform: scale(0.97); }
   #end.armed { background: var(--butter); color: #1e1714; }
   #pocketBtn[aria-pressed="true"] { background: var(--butter); color: #1e1714; }
+  #pocketBtn.armed { background: var(--pink); color: #1e1714; }
   #openTranscript { background: var(--mint); color: #1e1714; margin-top: 12px; width: 100%; }
 
   button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible {
@@ -167,7 +173,7 @@
     <span id="state" role="status"><span class="dot" aria-hidden="true"></span><span id="stateText">Paired · Ready</span></span>
     <span id="room">0 in room</span>
   </div>
-  <div class="engine-row">
+  <div class="engine-row" id="engineRow" hidden>
     <span class="engine-label" id="engineLbl">Engine</span>
     <div class="seg" id="engineSeg" role="group" aria-labelledby="engineLbl">
       <button type="button" data-v="browser" aria-pressed="true">Browser</button>
@@ -180,7 +186,7 @@
   </div>
   <div class="engine-row">
     <label class="engine-label" for="speaker">Voice</label>
-    <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (optional, e.g. Host)" autocomplete="off" spellcheck="false">
+    <input id="speaker" type="text" maxlength="24" placeholder="Speaker label (e.g. Host)" autocomplete="off" spellcheck="false">
   </div>
   <div class="echo-container">
     <ol id="guide">
@@ -319,6 +325,7 @@ paintEngine();
 fetch("/api/engines").then((r) => r.json()).then((e) => {
   dgAvailable = Boolean(e.deepgram);
   passRequired = Boolean(e.passRequired);
+  $("#engineRow").hidden = !dgAvailable;
   const b = document.querySelector('#engineSeg [data-v="deepgram"]');
   b.disabled = !dgAvailable;
   b.title = dgAvailable ? "" : "The relay has no Deepgram key";
@@ -503,17 +510,40 @@ async function startDeepgram() {
   }
 }
 
+let unlockArmed = null;
 function setPocketLock(on) {
+  clearTimeout(unlockArmed);
+  unlockArmed = null;
   pocketLocked = Boolean(on && live);
+  $("#pocketBtn").classList.remove("armed");
   $("#pocketBtn").setAttribute("aria-pressed", String(pocketLocked));
   $("#pocketBtn").textContent = pocketLocked ? "Unlock controls" : "Pocket lock";
   $("#go").classList.toggle("locked", pocketLocked);
   if (live) {
     $("#goLabel").textContent = pocketLocked ? "Pocket locked" : "Pause";
-    $("#goSub").textContent = pocketLocked ? "Tap Unlock controls below to pause" : "Streaming to every phone";
+    $("#goSub").textContent = pocketLocked ? "Tap Unlock controls twice below to pause" : "Streaming to every phone";
   }
 }
-$("#pocketBtn").onclick = () => setPocketLock(!pocketLocked);
+$("#pocketBtn").onclick = () => {
+  if (!pocketLocked) {
+    if (navigator.vibrate) navigator.vibrate([30]);
+    setPocketLock(true);
+    return;
+  }
+  if (!unlockArmed) {
+    $("#pocketBtn").textContent = "Tap again to unlock";
+    $("#pocketBtn").classList.add("armed");
+    if (navigator.vibrate) navigator.vibrate([35]);
+    unlockArmed = setTimeout(() => {
+      unlockArmed = null;
+      $("#pocketBtn").classList.remove("armed");
+      $("#pocketBtn").textContent = "Unlock controls";
+    }, 4000);
+    return;
+  }
+  if (navigator.vibrate) navigator.vibrate([20, 40]);
+  setPocketLock(false);
+};
 
 let heartbeat = null;
 async function go() {
@@ -654,6 +684,7 @@ document.addEventListener("visibilitychange", async () => {
     try { wake = await navigator.wakeLock?.request("screen"); } catch {}
   }
 });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

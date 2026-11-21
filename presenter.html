@@ -3,18 +3,72 @@
   <head>
     <meta charset="utf-8">
     <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="canonical" href="https://stage.talktype.app/">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#fff6e6">
-    <title>StageType · Presenter Console</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="StageType">
+    <meta name="robots" content="index, follow">
+    <title>StageType · Live Captions Console for Slides, OBS &amp; Phones</title>
     <meta name="description" content="Open-source stage console for live captions over Keynote, VS Code, and OBS, wireless phone lapel mic, and instant QR captions on every phone.">
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="StageType">
+    <meta property="og:url" content="https://stage.talktype.app/">
     <meta property="og:title" content="StageType · Speak, and every phone in the room reads along.">
-    <meta property="og:description" content="Open a tab, start speaking, and give the back row a front-row seat. Floating captions, phone lapel mic, and take-home notes.">
-    <meta property="og:image" content="/og-image.png">
+    <meta property="og:description" content="Open a tab, start speaking, and give the back row a front-row seat. Floating captions over slides and OBS, a wireless phone lapel mic, and take-home notes.">
+    <meta property="og:image" content="https://stage.talktype.app/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="StageType — The room reads along. Live captions over slides, OBS, and every phone in the back row.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="/og-image.png">
+    <meta name="twitter:title" content="StageType · Speak, and every phone in the room reads along.">
+    <meta name="twitter:description" content="Open a tab, start speaking, and give the back row a front-row seat. Floating captions over slides and OBS, a wireless phone lapel mic, and take-home notes.">
+    <meta name="twitter:image" content="https://stage.talktype.app/og-image.png">
+    <meta name="twitter:image:alt" content="StageType — The room reads along. Live captions over slides, OBS, and every phone in the back row.">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://stage.talktype.app/#website",
+          "url": "https://stage.talktype.app/",
+          "name": "StageType",
+          "description": "Live captions console for slides, OBS, and every phone in the room.",
+          "publisher": { "@type": "Person", "name": "Pablo Alvarado", "url": "https://madebypablo.app" }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://stage.talktype.app/#app",
+          "name": "StageType",
+          "url": "https://stage.talktype.app/",
+          "image": "https://stage.talktype.app/og-image.png",
+          "screenshot": "https://stage.talktype.app/og-image.png",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "Web",
+          "isAccessibleForFree": true,
+          "license": "https://opensource.org/licenses/MIT",
+          "sameAs": ["https://github.com/pibulus/stagetype"],
+          "description": "Open-source stage console for live captions over Keynote, PowerPoint, VS Code, and OBS, wireless phone lapel mic, and instant QR captions on every phone.",
+          "featureList": [
+            "Floating caption bar pinned over Keynote, PowerPoint, VS Code, and terminals",
+            "Standalone OBS and second-screen caption ticker URL",
+            "Wireless phone lapel mic with pocket lock and automatic handoff",
+            "QR and 4-letter room code audience reader with Atkinson Hyperlegible, themes, and RTL support",
+            "Offline-first take-home Markdown notes, pinned links, and 1-tap Quote Card PNGs"
+          ],
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "author": { "@type": "Person", "name": "Pablo Alvarado", "url": "https://madebypablo.app" },
+          "isPartOf": { "@type": "WebSite", "name": "TalkType", "url": "https://talktype.app" }
+        }
+      ]
+    }
+    </script>
     <script src="/vendor/qrcode.js"></script>
     <script src="/shared.js"></script>
     <script src="/deepgram.js"></script>
@@ -749,7 +803,7 @@
 
     /* ---------- footer ---------- */
     .deck-footer {
-      display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;
+      display: flex; justify-content: center; align-items: center; gap: 8px 14px; flex-wrap: wrap;
       font-size: 11.5px; color: var(--quiet); font-weight: 600; padding: 2px;
     }
     .deck-footer a { color: var(--ink); font-weight: 700; text-underline-offset: 2px; }
@@ -757,7 +811,14 @@
       background: var(--surface); border: 1px solid var(--line); box-shadow: 1px 1px 0 var(--line);
       border-radius: 5px; padding: 2px 6px; font-family: var(--mono); font-size: 10.5px; color: var(--ink);
     }
-    @media (hover: none) { .deck-footer { display: none; } }
+    @media (hover: none) { .deck-footer .kbd-hint { display: none; } }
+    @media (pointer: coarse) {
+      .seg-btn { min-height: 36px; padding: 6px 10px; }
+      .segmented-control.swatches .seg-btn { width: 34px; height: 34px; }
+      .ring { width: 34px; height: 34px; }
+      .face-wrap .stage-select-btn, .more summary, .menu > summary { min-height: 40px; padding: 8px 12px; }
+      .deck-footer a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; font-size: 13px; }
+    }
 
     /* ---------- fullscreen QR ---------- */
     #fsModal {
@@ -892,6 +953,7 @@
                 <div class="menu-body">
                   <button type="button" id="floatBtn" disabled>Float over slides</button>
                   <button type="button" id="screenBtn" disabled>Second screen</button>
+                  <button type="button" id="copyObsBtn" disabled><span class="btn-label">Copy OBS URL</span></button>
                 </div>
               </details>
               <details class="more" id="moreTicker">
@@ -968,11 +1030,13 @@
       </div>
 
       <footer class="deck-footer">
-        <span><kbd>Space</kbd> Start / pause mic</span>
-        <span><kbd>⌥ F</kbd> Float ticker</span>
-        <span><kbd>⌥ Q</kbd> Fullscreen QR</span>
-        <span><kbd>Esc</kbd> Close</span>
+        <span class="kbd-hint"><kbd>Space</kbd> Start / pause mic</span>
+        <span class="kbd-hint"><kbd>⌥ F</kbd> Float ticker</span>
+        <span class="kbd-hint"><kbd>⌥ Q</kbd> Fullscreen QR</span>
+        <span class="kbd-hint"><kbd>Esc</kbd> Close</span>
         <a href="/demo">Live demo</a>
+        <a href="/join">Join by code</a>
+        <a href="https://talktype.app" target="_blank" rel="noopener">TalkType</a>
       </footer>
     </main>
 
@@ -1003,7 +1067,9 @@
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
     const PASTE_KEY = isMac ? "⌘V" : "Ctrl+V";
-    $("#pasteHint").textContent = `Paste a screenshot (${PASTE_KEY}) to share it with the room.`;
+    $("#pasteHint").textContent = matchMedia("(pointer: coarse)").matches
+      ? "Tap Image to share a photo with the room."
+      : `Paste a screenshot (${PASTE_KEY}) to share it with the room.`;
 
     fillLanguages($("#lang"), store.get("st-lang") || "en-AU");
     $("#lang").addEventListener("change", () => store.set("st-lang", $("#lang").value));
@@ -1034,10 +1100,10 @@
 
     // Page Atmosphere / Vibe Pill (4 curated palettes)
     const VIBES = {
-      peach: { name: "Peach Sunset", accent: "#ff6ac2" },
-      stage: { name: "Stage Lights", accent: "#2dd4bf" },
-      paper: { name: "Warm Paper", accent: "#ff8a5c" },
-      night: { name: "Night Ink", accent: "#ffc74d" },
+      peach: { name: "Peach Sunset", accent: "#ff6ac2", themeColor: "#fff6e6" },
+      stage: { name: "Stage Lights", accent: "#2dd4bf", themeColor: "#f3fbf8" },
+      paper: { name: "Warm Paper", accent: "#ff8a5c", themeColor: "#f7ecdc" },
+      night: { name: "Night Ink", accent: "#ffc74d", themeColor: "#1e1714" },
     };
     const VIBE_KEYS = Object.keys(VIBES);
     let currentVibe = store.get("st-vibe") || "peach";
@@ -1046,6 +1112,8 @@
       const v = VIBES[currentVibe];
       document.documentElement.dataset.vibe = currentVibe;
       document.documentElement.style.setProperty("--vibe-accent", v.accent);
+      const tc = $('meta[name="theme-color"]');
+      if (tc) tc.content = v.themeColor;
       store.set("st-vibe", currentVibe);
       $("#vibeLabel").textContent = v.name;
     }
@@ -1641,6 +1709,18 @@
       $("#displayMenu").open = false;
       if (room) window.open(tickerUrl(), "_blank", "noopener");
     };
+    $("#copyObsBtn").onclick = async () => {
+      if (!room) return;
+      const lbl = $("#copyObsBtn").querySelector(".btn-label");
+      const orig = lbl.textContent;
+      try {
+        await navigator.clipboard.writeText(tickerUrl());
+        lbl.textContent = "Copied!";
+      } catch {
+        lbl.textContent = "Blocked";
+      }
+      setTimeout(() => { lbl.textContent = orig; $("#displayMenu").open = false; }, 1100);
+    };
     $$("[data-pref]").forEach((group) => {
       const key = group.dataset.pref;
       if (group.tagName === "SELECT") {
@@ -1673,7 +1753,7 @@
       $("#qrTalk").hidden = !t;
       $("#fsTalk").textContent = t;
       $("#fsTalk").hidden = !t;
-      document.title = t ? `${t} · StageType` : "StageType · Presenter Console";
+      document.title = t ? `${t} · StageType` : "StageType · Live Captions Console for Slides, OBS & Phones";
       const dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
       for (const el of tickerEls) el.dir = dir;
     }
@@ -2191,6 +2271,7 @@
       $("#title").disabled = true;
       $("#typed").disabled = false;
       $("#screenBtn").disabled = false;
+      $("#copyObsBtn").disabled = false;
       updateTranscriptStat();
       renderPastTalks();
       listenToRoomStream(room.id);
@@ -2295,6 +2376,7 @@
       $("#typed").disabled = true;
       $("#typed").value = "";
       $("#screenBtn").disabled = true;
+      $("#copyObsBtn").disabled = true;
       $("#urlDisplay").textContent = "Standby";
       $("#qrGraphic").innerHTML = "";
       $("#joinLine").hidden = true;

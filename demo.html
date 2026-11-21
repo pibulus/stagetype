@@ -3,29 +3,78 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="canonical" href="https://stage.talktype.app/demo">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fff6e6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="StageType">
+<meta name="robots" content="index, follow">
 <title>StageType · Live captions on every phone in the room</title>
 <meta name="description" content="Speak at the front, and every phone in the room reads along. Live browser captions over slides and OBS, a phone lapel mic, and instant take-home notes.">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="StageType">
+<meta property="og:url" content="https://stage.talktype.app/demo">
 <meta property="og:title" content="StageType · Speak, and every phone in the room reads along.">
 <meta property="og:description" content="Live captions over Keynote, VS Code, OBS, and every phone in the back row. Open a link, scan the code, and carry the talk home.">
-<meta property="og:image" content="/og-image.png">
+<meta property="og:image" content="https://stage.talktype.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="StageType — The room reads along. Live captions over slides, OBS, and every phone in the back row.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StageType · Speak, and every phone in the room reads along.">
 <meta name="twitter:description" content="Live captions over Keynote, VS Code, OBS, and every phone in the back row. Open in the browser, read along live, and carry the notes home.">
-<meta name="twitter:image" content="/og-image.png">
+<meta name="twitter:image" content="https://stage.talktype.app/og-image.png">
+<meta name="twitter:image:alt" content="StageType — The room reads along. Live captions over slides, OBS, and every phone in the back row.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "StageType",
-  "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Web",
-  "description": "Browser-native live captions over slides and OBS, wireless phone lapel mic, instant QR audience reader, and offline take-home notes.",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://stage.talktype.app/demo#webpage",
+      "url": "https://stage.talktype.app/demo",
+      "name": "StageType · Live captions on every phone in the room",
+      "description": "Try StageType live with a two-device QR demo or mobile sample. Live browser captions over slides and OBS, a wireless phone lapel mic, and instant take-home notes.",
+      "isPartOf": { "@id": "https://stage.talktype.app/#website" },
+      "mainEntity": { "@id": "https://stage.talktype.app/#app" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "StageType", "item": "https://stage.talktype.app/" },
+        { "@type": "ListItem", "position": 2, "name": "Live Demo", "item": "https://stage.talktype.app/demo" }
+      ]
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://stage.talktype.app/#app",
+      "name": "StageType",
+      "url": "https://stage.talktype.app/",
+      "image": "https://stage.talktype.app/og-image.png",
+      "screenshot": "https://stage.talktype.app/og-image.png",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Web",
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "sameAs": ["https://github.com/pibulus/stagetype"],
+      "description": "Browser-native live captions over slides and OBS, wireless phone lapel mic, instant QR audience reader, and offline take-home notes.",
+      "featureList": [
+        "Floating caption bar pinned over Keynote, PowerPoint, VS Code, and terminals",
+        "Standalone OBS and second-screen caption ticker URL",
+        "Wireless phone lapel mic with pocket lock and automatic handoff",
+        "QR and 4-letter room code audience reader with Atkinson Hyperlegible, themes, and RTL support",
+        "Offline-first take-home Markdown notes, pinned links, and 1-tap Quote Card PNGs"
+      ],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "Pablo Alvarado", "url": "https://madebypablo.app" },
+      "isPartOf": { "@type": "WebSite", "name": "TalkType", "url": "https://talktype.app" }
+    }
+  ]
 }
 </script>
 <script src="/vendor/qrcode.js"></script>
@@ -173,11 +222,25 @@
     white-space: nowrap; border: 0; padding: 0; margin: -1px;
   }
 
-  /* On a phone already: no second screen to scan — keep value cards visible! */
+  /* On a phone already: no second screen to scan — keep value cards visible and flow the ticker cleanly below! */
   .mobile-note { display: none; }
+  @media (max-width: 600px) {
+    .topbar { padding: 12px 16px 0; flex-wrap: nowrap; }
+    .wordmark { font-size: 1.4rem; }
+    .nav-join { display: none; }
+    .nav-console { padding: 8px 14px; font-size: .86rem; background: var(--surface); }
+    main { padding: 14px 16px 10px; }
+    .surfaces { padding: 0 16px; }
+  }
   @media (pointer: coarse) and (max-width: 820px) {
     .card, ol.steps, .desktop-fine { display: none; }
-    .mobile-note { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+    .mobile-note { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+    #ticker {
+      position: static; transform: none; width: auto;
+      margin: 4px 16px 16px; max-height: none; min-height: 82px;
+      font-size: 19px; padding: 14px 18px;
+    }
+    .surfaces { margin: 0 auto 36px; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 </style>
@@ -186,8 +249,8 @@
 <header class="topbar">
   <a class="wordmark" href="/">StageType</a>
   <nav class="nav-actions" aria-label="Primary actions">
-    <a class="btn-link" href="/join">Join by code</a>
-    <a class="btn-link btn-primary" href="/">Open Stage Console</a>
+    <a class="btn-link nav-join" href="/join">Join by code</a>
+    <a class="btn-link btn-primary nav-console" href="/">Open Stage Console</a>
   </nav>
 </header>
 
@@ -204,27 +267,31 @@
     <div class="mobile-note">
       <p class="fine" style="font-size:1rem;color:var(--ink)">A laptop holds the code. This phone reads along.</p>
       <div class="hero-cta">
-        <button id="sample" class="btn-mint" type="button">Play a sample</button>
-        <a class="btn-link btn-primary" href="/join">Join a talk</a>
+        <button id="sample" class="btn-primary" type="button">Play a sample</button>
+        <a class="btn-link" href="/join">Join a talk</a>
       </div>
     </div>
     <div class="hero-cta desktop-fine">
       <a class="btn-link btn-primary" href="/">Start a live talk</a>
       <a class="btn-link" href="/join">Join with 4-letter code</a>
     </div>
-    <p class="fine"><span class="desktop-fine">Private demo code. Ten minutes, then gone. </span><a href="https://github.com/pibulus/stagetype" target="_blank" rel="noopener noreferrer">Open source</a> · Free browser captions for talks, classrooms, churches &amp; OBS.</p>
+    <p class="fine"><span class="desktop-fine">Private demo code. Ten minutes, then gone. </span><a href="https://github.com/pibulus/stagetype" target="_blank" rel="noopener noreferrer">Open source</a> · Free browser captions for talks, classrooms, churches &amp; OBS · Part of the <a href="https://talktype.app" target="_blank" rel="noopener">TalkType</a> family.</p>
   </section>
 
   <section class="card" aria-label="Live two-device demo">
     <canvas id="noise" aria-hidden="true"></canvas>
     <div class="qr" id="qr" role="img" aria-label="QR code for a private demo room"></div>
     <p id="status" role="status"><i></i><span id="statusText">Waiting for a phone</span></p>
-    <a id="link" href="#" target="_blank" rel="noopener noreferrer">Open demo reader</a>
+    <a id="link" href="#" target="_blank" rel="noopener noreferrer nofollow">Open demo reader</a>
     <div class="type">
       <input id="typed" type="text" autocomplete="off" placeholder="Type a caption and press Enter" aria-label="Type a caption">
     </div>
   </section>
 </main>
+
+<div id="ticker" class="empty">
+  <div><span id="settled"></span> <span id="interim" class="interim"></span></div>
+</div>
 
 <section class="surfaces" aria-label="Three places the words land">
   <article class="surface">
@@ -247,9 +314,6 @@
   </article>
 </section>
 
-<div id="ticker" class="empty">
-  <div><span id="settled"></span> <span id="interim" class="interim"></span></div>
-</div>
 <div id="liveAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
 <script>

@@ -3,18 +3,33 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" href="/ghost.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="canonical" href="https://stage.talktype.app/join">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fff6e6">
-<title>Join a talk · StageType</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="StageType">
+<meta name="robots" content="index, follow">
+<title>Join a Live Talk by Room Code · StageType</title>
 <meta name="description" content="Enter a four-letter StageType code to read live captions right in the browser, tuned to any phone's own font, size, and theme.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Join a talk · StageType">
+<meta property="og:site_name" content="StageType">
+<meta property="og:url" content="https://stage.talktype.app/join">
+<meta property="og:title" content="Join a Live Talk by Room Code · StageType">
 <meta property="og:description" content="Enter the four-letter room code to read live captions right in the browser and carry the notes home.">
-<meta property="og:image" content="/og-image.png">
+<meta property="og:image" content="https://stage.talktype.app/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="StageType — The room reads along. Live captions on every phone.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="/og-image.png">
+<meta name="twitter:title" content="Join a Live Talk by Room Code · StageType">
+<meta name="twitter:description" content="Enter the four-letter room code to read live captions right in the browser and carry the notes home.">
+<meta name="twitter:image" content="https://stage.talktype.app/og-image.png">
+<meta name="twitter:image:alt" content="StageType — The room reads along. Live captions on every phone.">
 <script src="/shared.js"></script>
 <style>
   :root {
@@ -97,8 +112,8 @@
     margin-top: 12px; width: auto; min-height: 44px; padding: 0 18px;
     font-size: 13.5px; font-weight: 700; background: var(--surface); color: var(--ink);
   }
-  footer { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 10px; }
-  footer a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
+  footer { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
+  footer a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 </style>
 </head>
@@ -111,7 +126,7 @@
       <p style="margin-top:8px">Enter the four-letter code on screen to read along live.</p>
     </div>
     <form id="form" autocomplete="off">
-      <input id="code" name="code" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false"
+      <input id="code" name="code" inputmode="text" enterkeyhint="go" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false"
              maxlength="4" pattern="[A-Za-z]{4}" placeholder="ABCD" aria-label="Four-letter join code" aria-describedby="joinAutoHint" autofocus>
       <p id="joinAutoHint" class="hint-note">Jumps straight into the room on the fourth letter.</p>
       <p id="err" role="alert"></p>
