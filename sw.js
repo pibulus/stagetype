@@ -1,6 +1,6 @@
 // StageType lightweight offline shell cache.
 // Lets "Saved on this phone. Reopens from this link, even offline." keep working on flights and trains.
-const CACHE = "stagetype-shell-v3";
+const CACHE = "stagetype-shell-v4";
 const CORE_PRECACHE = [
   "/join",
   "/shared.js",

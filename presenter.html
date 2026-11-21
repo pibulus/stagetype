@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="canonical" href="https://stage.talktype.app/">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#fff6e6">
+    <meta name="theme-color" content="#ffe6d4">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="StageType">
@@ -75,265 +75,461 @@
     <link rel="stylesheet" href="/vendor/fonts.css">
     <style>
     :root {
-      /* StageType palette: warm Neo-Toybrut tabletop, Flexoki cream/ink, tactile frames. */
-      --ground: #fff6e6;
-      --surface: #fffdf5;
-      --sand: #fdf1e0;
-      --ink: #1e1714;
-      --quiet: #5a4b42;
-      --hair: rgba(58, 46, 40, 0.16);
-      --hair-soft: rgba(58, 46, 40, 0.09);
+      /* Faceplate 1 (Default): Peach Sunset — warm studio hardware, espresso-plum ink, coral switch */
+      --outer-mat: #ecc4ae;
+      --chassis-bg: #ffe6d4;
+      --header-bg: #fff1e6;
+      --deck-bg: #fffaf5;
+      --rail-bg: #f8dac5;
+      --well-bg: #fffefb;
+      --pass-bg: #fffdf9;
+      --ink: #2a161a;
+      --quiet: #6d4f54;
+      --seam: rgba(42, 22, 26, 0.17);
+      --seam-strong: rgba(42, 22, 26, 0.30);
+      --specular: rgba(255, 255, 255, 0.68);
+      --key-bg: #fffdf9;
+      --key-hover: #fff4ea;
+      --key-border: #2a161a;
+      --key-shadow: #2a161a;
+      --cta-bg: #ff6b4a;
+      --cta-hover: #ff5833;
+      --cta-ink: #231114;
+      --vibe-accent: #ff6b4a;
       --pink: #ff6ac2;
       --amber: #ffc74d;
-      --teal: #2dd4bf;
+      --teal: #18b899;
       --violet: #a78bfa;
-      --line: #1e1714;
-      --vibe-accent: #ff6ac2;
-      --swiss: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
-      --mono: ui-monospace, Menlo, Consolas, monospace;
-      --spring: cubic-bezier(.2, .9, .3, 1.35);
+      --swiss: "Inter", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+      --spring: cubic-bezier(0.2, 0.85, 0.35, 1);
     }
     :root[data-vibe="stage"] {
-      --ground: #f3fbf8;
-      --surface: #fffef7;
-      --sand: #e6f6f0;
-      --vibe-accent: #2dd4bf;
+      /* Faceplate 2: Stage Mint — celadon studio aluminum, deep pine ink, mint switch */
+      --outer-mat: #b8ddd1;
+      --chassis-bg: #daf2e9;
+      --header-bg: #ebf9f4;
+      --deck-bg: #f8fffc;
+      --rail-bg: #caeadd;
+      --well-bg: #ffffff;
+      --pass-bg: #fcfffe;
+      --ink: #132620;
+      --quiet: #46645b;
+      --seam: rgba(19, 38, 32, 0.17);
+      --seam-strong: rgba(19, 38, 32, 0.30);
+      --specular: rgba(255, 255, 255, 0.72);
+      --key-bg: #fcfffe;
+      --key-hover: #eefaf5;
+      --key-border: #132620;
+      --key-shadow: #132620;
+      --cta-bg: #2dd4bf;
+      --cta-hover: #18bfa9;
+      --cta-ink: #0f211c;
+      --vibe-accent: #14b8a6;
     }
     :root[data-vibe="paper"] {
-      --ground: #f7ecdc;
-      --surface: #fbf1e4;
-      --sand: #efe0ca;
-      --vibe-accent: #ff8a5c;
+      /* Faceplate 3: Warm Paper — Dieter Rams putty-sand casing, walnut ink, international orange switch */
+      --outer-mat: #d8c7b0;
+      --chassis-bg: #eee1ce;
+      --header-bg: #f6ede0;
+      --deck-bg: #fcf8f2;
+      --rail-bg: #e3d3bc;
+      --well-bg: #fffdf9;
+      --pass-bg: #fffdfa;
+      --ink: #231c16;
+      --quiet: #635447;
+      --seam: rgba(35, 28, 22, 0.18);
+      --seam-strong: rgba(35, 28, 22, 0.32);
+      --specular: rgba(255, 255, 255, 0.62);
+      --key-bg: #fffdfa;
+      --key-hover: #f5ebdd;
+      --key-border: #231c16;
+      --key-shadow: #231c16;
+      --cta-bg: #ff7a3d;
+      --cta-hover: #f26827;
+      --cta-ink: #21160f;
+      --vibe-accent: #ff7a3d;
     }
     :root[data-vibe="night"] {
-      --ground: #1e1714;
-      --surface: #28201c;
-      --sand: #231b17;
-      --ink: #fbf1e4;
-      --quiet: #c0aea0;
-      --hair: rgba(251, 241, 228, 0.22);
-      --hair-soft: rgba(251, 241, 228, 0.12);
-      --line: #fbf1e4;
+      /* Faceplate 4: Night Ink — dark backstage lectern anodized charcoal, zero face glare */
+      --outer-mat: #0e0b0a;
+      --chassis-bg: #1a1513;
+      --header-bg: #231d1a;
+      --deck-bg: #1f1917;
+      --rail-bg: #161210;
+      --well-bg: #130f0e;
+      --pass-bg: #fffdf8;
+      --ink: #f6ece0;
+      --quiet: #a9998b;
+      --seam: rgba(246, 236, 224, 0.13);
+      --seam-strong: rgba(246, 236, 224, 0.25);
+      --specular: rgba(255, 255, 255, 0.06);
+      --key-bg: #2b2320;
+      --key-hover: #352b27;
+      --key-border: #5c4d45;
+      --key-shadow: #090706;
+      --cta-bg: #ffc74d;
+      --cta-hover: #ffbb29;
+      --cta-ink: #1e1714;
       --vibe-accent: #ffc74d;
     }
+
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
+    html, body { margin: 0; padding: 0; }
     body {
-      margin: 0;
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      width: 100vw;
+      height: var(--vvh, 100dvh);
+      overflow: hidden;
+      padding: clamp(6px, 0.9vmin, 12px);
       color: var(--ink);
-      background: var(--ground);
-      background-image: radial-gradient(color-mix(in srgb, var(--ink) 8%, transparent) 1.1px, transparent 1.3px);
-      background-size: 22px 22px;
+      background-color: var(--outer-mat);
+      background-image: radial-gradient(color-mix(in srgb, var(--ink) 8%, transparent) 1px, transparent 1.2px);
+      background-size: 18px 18px;
       font-family: var(--swiss);
       -webkit-font-smoothing: antialiased;
-      transition: background-color .25s ease, color .25s ease;
-    }
-    ::selection { background: var(--pink); color: #1e1714; }
-    main {
-      width: 100%;
-      max-width: 1060px;
-      margin: auto;
-      padding: calc(env(safe-area-inset-top) + 22px) 22px calc(env(safe-area-inset-bottom) + 24px);
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      transition: background-color 0.22s ease, color 0.22s ease;
+    }
+    ::selection { background: var(--vibe-accent); color: #fffdf9; }
+
+    /* ---------- Tier 0: Viewport-Native Hardware Chassis ---------- */
+    .chassis {
+      width: 100%;
+      max-width: 1680px;
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--chassis-bg);
+      border: 1px solid var(--seam-strong);
+      border-radius: 16px;
+      box-shadow: inset 0 1px 0 var(--specular), 0 10px 30px rgba(24, 15, 12, 0.10);
+      position: relative;
+      transition: background-color 0.22s ease, border-color 0.22s ease;
     }
 
-    /* ---------- header ---------- */
-    header {
+    /* ---------- Zone A: Compact Top Transport Bar (~52px) ---------- */
+    .transport {
+      flex: 0 0 auto;
+      min-height: 52px;
+      padding: 6px 12px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--seam);
+      border-radius: 15px 15px 0 0;
+      box-shadow: inset 0 1px 0 var(--specular);
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 0 2px 4px;
+      gap: 10px;
+    }
+    .transport-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 auto;
     }
     h1 {
       margin: 0;
-      font-size: 42px;
+      font-size: 21px;
       font-weight: 900;
-      letter-spacing: -0.05em;
-      line-height: 0.9;
+      letter-spacing: -0.045em;
+      line-height: 1;
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
     h1::after {
       content: ".";
-      color: var(--vibe-accent, var(--pink));
-      transition: color .25s ease;
+      color: var(--vibe-accent);
     }
-    .sub {
-      margin: 8px 0 0;
-      color: var(--quiet);
-      font-size: 15px;
-      font-weight: 500;
+    .transport-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--seam);
+      flex: 0 0 auto;
     }
-    .status-pills {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .pill-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font: 700 12.5px var(--swiss);
-      color: var(--ink);
-      padding: 7px 14px;
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 999px;
-    }
-    .vibe-pill {
-      font: 800 11.5px var(--mono);
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      border-radius: 999px;
-      padding: 7px 13px;
-      cursor: pointer;
-      box-shadow: 2px 2px 0 var(--line);
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      transition: transform .18s var(--spring), box-shadow .18s var(--spring);
-    }
-    .vibe-pill:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--line); }
-    .vibe-pill:active { transform: translate(1px, 1px) scale(.97); box-shadow: 1px 1px 0 var(--line); }
-    .vibe-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--vibe-accent, var(--pink));
-      border: 1.5px solid var(--line);
-      box-shadow: 0 0 6px var(--vibe-accent, var(--pink));
-      transition: background .25s ease, box-shadow .25s ease;
-    }
-    .pill-sep, #micPill { color: var(--quiet); }
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: color-mix(in srgb, var(--ink) 40%, transparent);
-    }
-    .pulse-dot.active { background: var(--teal); animation: breatheDot 2.4s ease-in-out infinite; }
-    @keyframes breatheDot { 50% { opacity: .5; } }
-    body[data-live="1"] #liveBadge { background: color-mix(in srgb, var(--teal) 24%, var(--surface)); }
-    body[data-live="1"] #liveBadge .pill-sep,
-    body[data-live="1"] #liveBadge #micPill { color: var(--ink); }
-    #countBadge { color: var(--ink); }
-    #countBadge.bump { animation: bump .45s var(--spring); }
-    @keyframes bump { 30% { transform: scale(1.07); } 100% { transform: none; } }
-
-    /* ---------- the talk bar ---------- */
-    .bar {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      flex-wrap: wrap;
-      background: var(--surface);
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--line);
-      border-radius: 20px;
-      padding: 16px;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      min-width: 0;
-    }
-    .field > .field-label,
-    .field-head {
+    .title-slot {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 10.5px;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--quiet);
+      min-width: 0;
+      flex: 1 1 120px;
+      max-width: 260px;
     }
-    .field-head label { cursor: pointer; }
-    .words-chip {
-      font: 700 10.5px var(--mono);
-      letter-spacing: .04em;
-      text-transform: none;
-      color: #1e1714;
-      background: var(--teal);
-      border: 1.5px solid #1e1714;
-      box-shadow: none;
-      border-radius: 999px;
-      padding: 3px 9px;
-      min-height: 24px;
-      cursor: pointer;
-    }
-    .words-chip:hover { background: var(--amber); transform: translate(-1px, -1px); box-shadow: 1.5px 1.5px 0 #1e1714; }
-    .field-title { flex: 4 1 240px; }
-    .field-lang { flex: 0 1 182px; }
-    .field-engine { flex: 0 1 164px; }
-    .field-pass { flex: 0 1 168px; }
-    .bar .control-row { flex: 0 0 auto; }
-    input, select {
-      font: 600 16px var(--swiss);
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 12px;
-      padding: 9px 13px;
+    #title {
       width: 100%;
-      transition: transform .15s var(--spring), box-shadow .15s var(--spring), background .18s;
-    }
-    input::placeholder { color: var(--quiet); font-weight: 400; }
-    input:focus, select:focus {
-      outline: 3px solid var(--ink);
-      outline-offset: 2px;
-      background: var(--ground);
-    }
-    input:disabled {
+      min-width: 0;
+      text-overflow: ellipsis;
+      font: 600 13.5px var(--swiss);
       color: var(--ink);
+      background: color-mix(in srgb, var(--well-bg) 55%, transparent);
+      border: 1px solid var(--seam);
+      border-radius: 7px;
+      padding: 6px 9px;
+      height: 32px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    #title::placeholder { color: var(--quiet); font-weight: 500; opacity: 0.85; }
+    #title:hover:not(:disabled) {
+      background: var(--well-bg);
+      border-color: var(--seam-strong);
+    }
+    #title:focus {
+      outline: 2px solid var(--vibe-accent);
+      outline-offset: 1px;
+      background: var(--well-bg);
+      border-color: var(--key-border);
+    }
+    #title:disabled {
       background: transparent;
       border-color: transparent;
       box-shadow: none;
       padding-left: 2px;
-      font-weight: 800;
+      font-weight: 700;
+      color: var(--ink);
+      opacity: 1;
+      cursor: default;
     }
-    input:disabled::placeholder { color: transparent; }
+    #title:disabled::placeholder { color: var(--quiet); opacity: 0.55; font-weight: 500; }
 
-    /* ---------- whimsical custom pull-down (.stage-select) ---------- */
+    .words-chip {
+      font: 700 11px var(--mono);
+      color: var(--ink);
+      background: color-mix(in srgb, var(--teal) 22%, var(--key-bg));
+      border: 1px solid var(--key-border);
+      box-shadow: 0 1px 0 var(--key-shadow);
+      border-radius: 6px;
+      padding: 0 8px;
+      height: 26px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .transport-right {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+    .setup-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    body[data-live="1"] .setup-group { display: none; }
+    .field { display: flex; align-items: center; min-width: 0; }
+    .field-lang { width: 158px; }
+    .field-engine { width: 108px; }
+    .field-pass { width: 124px; }
+    #speechPass {
+      width: 100%;
+      height: 32px;
+      padding: 5px 9px;
+      font: 600 12.5px var(--swiss);
+      color: var(--ink);
+      background: var(--well-bg);
+      border: 1.5px solid var(--seam-strong);
+      border-radius: 8px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ---------- 4 Locked Physical Primitives (DESIGN.md) ----------
+       1. .ui-zone   -> Chassis & structural zones (1px warm seam, top specular highlight, ZERO drop shadow)
+       2. .ui-well   -> Recessed screens & text inputs (inset depth, zero neon double-borders)
+       3. .ui-keycap -> Every interactive button/select/menu (crisp 8px, 1.5px ink border, 0 2px 0 lip + press travel)
+       4. .ui-pill   -> Strictly passive telemetry badges (999px capsule, zero shadow, non-interactive)
+    ----------------------------------------------------------------- */
+    .ui-zone {
+      background: var(--deck-bg);
+      border: 1px solid var(--seam);
+      border-radius: 14px;
+      box-shadow: inset 0 1px 0 var(--specular);
+    }
+    .ui-well {
+      background: var(--well-bg);
+      border: 1.5px solid var(--seam-strong);
+      border-radius: 10px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    .ui-pill, .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 11px;
+      border-radius: 999px;
+      font: 600 12px var(--swiss);
+      color: var(--ink);
+      background: color-mix(in srgb, var(--well-bg) 70%, transparent);
+      border: 1px solid var(--seam);
+      box-shadow: none !important;
+      white-space: nowrap;
+      user-select: none;
+      pointer-events: none;
+    }
+    .pill-sep, #micPill { color: var(--quiet); }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--ink) 35%, transparent);
+      flex: 0 0 auto;
+    }
+    .pulse-dot.active {
+      background: var(--teal);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 24%, transparent);
+      animation: breatheDot 2.2s ease-in-out infinite;
+    }
+    body[data-live="1"] #liveBadge {
+      background: color-mix(in srgb, var(--teal) 16%, var(--well-bg));
+      border-color: color-mix(in srgb, var(--teal) 45%, var(--seam));
+    }
+    body[data-live="1"] #liveBadge .pill-sep,
+    body[data-live="1"] #liveBadge #micPill { color: var(--ink); }
+    body[data-paused="1"] #liveBadge {
+      background: color-mix(in srgb, var(--amber) 24%, var(--well-bg));
+      border-color: color-mix(in srgb, var(--amber) 55%, var(--seam));
+    }
+    body[data-paused="1"] .pulse-dot.active { background: #d97706; box-shadow: none; animation: none; }
+    @keyframes breatheDot { 50% { opacity: 0.45; } }
+
+    /* ---------- Tier 2: Tactile Keycap Buttons (Crisp 8px, Springy 0 2px 0 Lip) ---------- */
+    button, .keycap-summary {
+      font: 700 13px/1 var(--swiss);
+      color: var(--ink);
+      background: var(--key-bg);
+      border: 1.5px solid var(--key-border);
+      border-radius: 8px;
+      box-shadow: 0 2px 0 var(--key-shadow);
+      height: 34px;
+      padding: 0 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      transform: translateY(0);
+      transition: transform 80ms var(--spring), box-shadow 80ms var(--spring), background 0.14s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    @media (hover: hover) {
+      button:not(:disabled):hover, .keycap-summary:hover {
+        background: var(--key-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 0 var(--key-shadow);
+      }
+    }
+    button:not(:disabled):active, .keycap-summary:active {
+      transform: translateY(2px);
+      box-shadow: 0 0 0 var(--key-shadow);
+    }
+    button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible, [tabindex="0"]:focus-visible {
+      outline: 2.5px solid var(--vibe-accent);
+      outline-offset: 2px;
+    }
+    button:disabled {
+      opacity: 0.44;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .control-row { display: inline-flex; align-items: center; gap: 6px; }
+    #startBtn {
+      background: var(--cta-bg);
+      color: var(--cta-ink);
+      font-weight: 800;
+      padding: 0 15px;
+      height: 34px;
+    }
+    @media (hover: hover) {
+      #startBtn:not(:disabled):hover { background: var(--cta-hover); }
+    }
+    #pauseBtn {
+      background: var(--amber);
+      color: #1e1714;
+      border-color: #1e1714;
+      box-shadow: 0 2px 0 #1e1714;
+      font-weight: 800;
+      padding: 0 14px;
+    }
+    #pauseBtn[data-paused="1"] {
+      background: #2dd4bf;
+      color: #10241e;
+    }
+    #stopBtn {
+      background: var(--key-bg);
+      color: var(--ink);
+      font-weight: 700;
+      padding: 0 13px;
+    }
+
+    /* Faceplate switcher swatch keycap */
+    .vibe-pill {
+      font: 700 11px/1 var(--mono);
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 8px;
+      letter-spacing: 0.03em;
+    }
+    .vibe-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--vibe-accent);
+      border: 1.5px solid var(--key-border);
+      flex: 0 0 auto;
+    }
+
+    /* Split-screen top-bar QR trigger (shown automatically when workspace < 920px!) */
+    #compactRoomBtn {
+      display: none;
+      font: 700 12px/1 var(--mono);
+      padding: 0 10px;
+      height: 34px;
+      background: var(--pass-bg);
+      color: #1e1714;
+      border-color: var(--key-border);
+    }
+    #compactRoomBtn b { letter-spacing: 0.1em; font-weight: 800; }
+    #compactRoomBtn .compact-sub {
+      font: 600 11px/1 var(--swiss);
+      color: #5a4b42;
+      padding-left: 4px;
+      border-left: 1px solid rgba(30, 23, 20, 0.18);
+    }
+
+    /* Mobile Stage | QR mode switcher (only < 640px) */
+    .mobile-tabs { display: none; }
+
+    /* ---------- Tactile Custom Select (.stage-select) ---------- */
     .stage-select { position: relative; display: inline-flex; width: 100%; }
     .stage-select > select {
       position: absolute; inset: 0; opacity: 0; pointer-events: none; width: 100%; height: 100%;
     }
     .stage-select-btn {
       width: 100%;
+      height: 32px;
+      padding: 0 9px;
       justify-content: space-between;
-      font: 600 14px var(--swiss);
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
-      text-align: left;
-      overflow: hidden;
+      font: 600 12.5px/1 var(--swiss);
+      border-radius: 8px;
     }
     .stage-select-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .stage-select-chev {
       flex: 0 0 auto;
-      width: 12px;
-      height: 12px;
+      width: 11px;
+      height: 11px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: transform .24s var(--spring);
+      opacity: 0.75;
+      transition: transform 0.18s var(--spring);
     }
     .stage-select.open .stage-select-chev { transform: rotate(180deg); }
     .stage-select-menu {
@@ -341,712 +537,1252 @@
       top: calc(100% + 6px);
       left: 0;
       min-width: 100%;
-      max-height: 260px;
+      max-height: 250px;
       overflow-y: auto;
-      z-index: 45;
-      background: var(--surface);
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--line);
-      border-radius: 14px;
-      padding: 5px;
+      z-index: 60;
+      background: var(--deck-bg);
+      border: 1.5px solid var(--key-border);
+      box-shadow: 0 8px 24px rgba(20, 14, 12, 0.18);
+      border-radius: 10px;
+      padding: 4px;
       display: none;
       flex-direction: column;
       gap: 2px;
-      transform-origin: top center;
     }
-    .stage-select.open .stage-select-menu { display: flex; animation: selectPop .22s var(--spring); }
-    @keyframes selectPop { from { opacity: 0; transform: translateY(-6px) scale(.95); } to { opacity: 1; transform: none; } }
+    /* Bottom toolbar select opens UPWARD so it never clips inside 100dvh */
+    .face-wrap .stage-select-menu {
+      top: auto;
+      bottom: calc(100% + 6px);
+      min-width: 164px;
+    }
+    .stage-select.open .stage-select-menu { display: flex; animation: popIn 0.14s var(--spring); }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
     .stage-select-opt {
       width: 100%;
+      height: 31px;
       justify-content: flex-start;
-      font: 600 13px var(--swiss);
+      font: 600 12.5px var(--swiss);
       color: var(--ink);
       background: transparent;
       border: 0;
       box-shadow: none !important;
-      border-radius: 9px;
-      padding: 8px 10px;
+      border-radius: 6px;
+      padding: 0 9px;
       text-align: left;
+      transform: none !important;
     }
-    .stage-select-opt:not(:disabled):hover { background: var(--sand); }
-    .stage-select-opt.active { background: color-mix(in srgb, var(--pink) 24%, var(--surface)); font-weight: 800; }
-    .bar .hint, .bar .notice { flex: 1 1 100%; }
-    body[data-live="1"] .field-lang,
-    body[data-live="1"] .field-engine,
-    body[data-live="1"] #engineHint { display: none; }
-    .hint { margin: 8px 2px 0; font-size: 12.5px; color: var(--quiet); }
-
-    /* ---------- buttons ---------- */
-    button {
-      font: 700 14px var(--swiss);
-      color: var(--ink);
-      background: var(--surface);
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 999px;
-      padding: 10px 18px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background .15s, border-color .15s, transform .18s var(--spring), box-shadow .18s var(--spring);
-      -webkit-tap-highlight-color: transparent;
-      white-space: nowrap;
-    }
-    button:not(:disabled):hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--line); }
-    button:not(:disabled):active { transform: translate(1.5px, 1.5px) scale(.98); box-shadow: 0.5px 0.5px 0 var(--line); }
-    button:focus-visible, summary:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible {
-      outline: 3px solid var(--ink);
-      outline-offset: 2px;
-    }
-    button:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }
-    #startBtn {
-      background: linear-gradient(135deg, #ff6ac2, #ff9a76);
-      color: #1e1714;
-      border: 2px solid var(--line);
-      box-shadow: 3px 3px 0 var(--line);
-      font-weight: 800;
-      font-size: 15px;
-      padding: 11px 22px;
-    }
-    #startBtn:hover { background: linear-gradient(135deg, #ff55b8, #ff8a5c); box-shadow: 4px 4px 0 var(--line); }
-    #pauseBtn {
-      background: var(--amber);
-      color: #1e1714;
-      border: 2px solid var(--line);
+    .stage-select-opt:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+    .stage-select-opt.active {
+      background: color-mix(in srgb, var(--vibe-accent) 22%, var(--deck-bg));
       font-weight: 800;
     }
-    #pauseBtn[data-paused="1"] { background: var(--teal); }
-    #stopBtn { background: var(--surface); color: var(--ink); }
-    #stopBtn:hover { background: var(--sand); }
-    .control-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .notice {
-      margin: 8px 2px 0;
-      font-size: 12.5px;
-      font-weight: 700;
-      line-height: 1.45;
-      color: #1e1714;
-      background: var(--amber);
-      border: 1.5px solid #1e1714;
-      box-shadow: 2px 2px 0 #1e1714;
-      border-radius: 12px;
-      padding: 9px 12px;
-    }
 
-    /* ---------- the two rooms ---------- */
+    /* ---------- Elastic Middle Workspace (@container-driven!) ---------- */
+    .workspace {
+      flex: 1 1 auto;
+      min-height: 0;
+      container-type: size;
+      container-name: work;
+      padding: clamp(8px, 1.1vmin, 14px);
+      display: flex;
+    }
     .console {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 316px;
-      gap: 18px;
+      grid-template-columns: minmax(0, 1fr) clamp(282px, 24cqw, 328px);
+      gap: clamp(10px, 1.2vmin, 14px);
       align-items: stretch;
     }
-    @media (max-width: 900px) { .console { grid-template-columns: minmax(0, 1fr); } }
-    .card {
-      background: var(--surface);
-      border: 2px solid var(--line);
-      box-shadow: 4px 4px 0 var(--line);
-      border-radius: 22px;
-      padding: 18px;
+
+    /* ---------- Tier 0 Panels: Stage Deck & Audience Pass Rail ---------- */
+    .panel {
+      background: var(--deck-bg);
+      border: 1px solid var(--seam);
+      border-radius: 13px;
+      box-shadow: inset 0 1px 0 var(--specular);
+      padding: clamp(10px, 1.2vmin, 14px);
       min-width: 0;
+      min-height: 0;
       display: flex;
       flex-direction: column;
     }
     .eyebrow {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 10.5px;
-      font-weight: 800;
-      letter-spacing: .12em;
+      font: 800 10px/1 var(--mono);
+      letter-spacing: 0.11em;
       text-transform: uppercase;
       color: var(--quiet);
       margin: 0;
     }
-    .ghost-chip {
-      font: 700 9.5px var(--mono);
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: #1e1714;
-      background: var(--amber);
-      border: 1px solid #1e1714;
-      border-radius: 999px;
-      padding: 2px 8px;
-    }
-    .stage-top .badge {
-      margin-left: auto;
-      font: 700 10.5px var(--mono);
-      letter-spacing: .05em;
-      color: var(--ink);
-      background: var(--sand);
-      border: 1.5px solid var(--line);
-      border-radius: 999px;
-      padding: 3px 10px;
+
+    /* ---------- Zone B: Stage Deck ---------- */
+    .stage {
+      gap: clamp(8px, 1vmin, 11px);
     }
 
-    /* ---------- stage ---------- */
-    .stage { gap: 12px; }
-    .stage-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    /* Tier 1 Recessed Bezel: Stage Monitor stretches dynamically to fill window height & width */
+    .monitor-well {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 140px;
+      container-type: size;
+      container-name: monitor;
+      border-radius: 11px;
+      border: 1.5px solid rgba(20, 14, 12, 0.42);
+      box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.28), 0 1px 0 var(--specular);
+      overflow: hidden;
+      display: flex;
+    }
     #ticker {
-      --ring: var(--pink);
+      --ring: var(--teal);
       box-sizing: border-box;
       width: 100%;
-      height: 220px;
-      min-height: 220px;
-      max-height: 220px;
-      flex: 0 0 220px;
-      padding: 18px 22px;
-      background: #1e1714;
+      height: 100%;
+      min-height: 0;
+      flex: 1 1 auto;
+      padding: clamp(14px, 2.5vmin, 26px) clamp(16px, 2.8vmin, 30px);
+      background: #191412;
       color: #fffdf5;
-      border: 3px solid var(--ring);
-      box-shadow: 3px 3px 0 var(--line);
-      border-radius: 16px;
-      font: var(--ticker-weight, 700) var(--ticker-size, 38px)/1.22 var(--ticker-face, var(--face-atkinson));
+      border-top: 3px solid var(--ring);
+      font-family: var(--ticker-face, var(--face-atkinson));
+      font-weight: var(--ticker-weight, 700);
+      font-size: clamp(1.35rem, 4.6cqmin, 2.85rem);
+      line-height: 1.22;
       letter-spacing: -0.02em;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
       overflow: hidden;
-      transition: border-color .2s ease, font-size .15s ease, background .2s ease;
+      transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
     }
-    @media (max-width: 640px) {
-      #ticker { height: 185px; min-height: 185px; max-height: 185px; flex: 0 0 185px; }
-    }
+    #ticker[data-size="28px"] { font-size: clamp(1.15rem, 3.3cqmin, 2.1rem); }
+    #ticker[data-size="38px"] { font-size: clamp(1.35rem, 4.6cqmin, 2.85rem); }
+    #ticker[data-size="50px"] { font-size: clamp(1.6rem, 6.0cqmin, 3.65rem); }
+
     #ticker > div { width: 100%; }
-    #ticker .prev { opacity: 0.62; font-weight: max(300, calc(var(--ticker-weight, 700) - 300)); }
+    #ticker .prev { opacity: 0.58; font-weight: max(300, calc(var(--ticker-weight, 700) - 300)); }
     #ticker[data-style="paper"] .prev,
     #ticker[data-style="brut"] .prev,
-    #ticker[data-style="hemingway"] .prev { opacity: 0.78; }
+    #ticker[data-style="hemingway"] .prev { opacity: 0.72; }
     #ticker .fresh-lead { color: #fffdf5; font-weight: 700; }
     #ticker .speaker-tag {
-      display: inline-block; font-size: .52em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-      padding: .08em .45em; margin-right: .3em; border-radius: 999px; vertical-align: .14em;
-      background: color-mix(in srgb, var(--pink) 34%, transparent); color: inherit;
+      display: inline-block; font-size: 0.5em; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0.08em 0.45em; margin-right: 0.3em; border-radius: 999px; vertical-align: 0.14em;
+      background: color-mix(in srgb, var(--ring) 34%, transparent); color: inherit;
     }
-    #ticker .ghost-fresh { background: rgba(255, 106, 194, 0.34); color: #fffdf5; border-radius: 5px; padding: 0 3px; transition: background .45s ease; }
-    #ticker[data-style="paper"] .ghost-fresh,
-    #ticker[data-style="brut"] .ghost-fresh,
-    #ticker[data-style="hemingway"] .ghost-fresh { color: #1e1714; background: rgba(255, 106, 194, 0.32); }
-    #ticker .interim { color: var(--pink); }
+    #ticker .ghost-fresh {
+      background: color-mix(in srgb, var(--ring) 32%, transparent);
+      color: inherit;
+      border-radius: 5px;
+      padding: 0 4px;
+      transition: background 0.4s ease;
+    }
+    #ticker .interim { color: #ff85cf; }
     #ticker .interim::after {
-      content: ""; display: inline-block; width: .12em; height: .9em; margin-left: .12em; vertical-align: -0.1em;
-      background: var(--pink); border-radius: 2px; animation: caret 1s steps(2) infinite;
+      content: ""; display: inline-block; width: 0.11em; height: 0.88em; margin-left: 0.12em; vertical-align: -0.08em;
+      background: currentColor; border-radius: 2px; animation: caret 1s steps(2) infinite;
     }
     @keyframes caret { to { opacity: 0; } }
     #ticker .ticker-text {
-      width: 100%; max-height: 100%; overflow: hidden;
-      display: flex; flex-direction: column; justify-content: flex-end;
+      width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
       -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
       mask-image: linear-gradient(180deg, transparent 0%, #000 18px, #000 100%);
     }
     #ticker .ticker-text:empty { min-height: 1.2em; }
 
-    /* Dedicated tactile typing bar directly below the Stage box */
-    .typed-bar { position: relative; display: flex; align-items: center; width: 100%; }
-    .typed-bar #typed {
-      width: 100%;
-      padding: 9px 40px 9px 14px;
-      border: 1.5px solid var(--line);
-      box-shadow: 2px 2px 0 var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      color: var(--ink);
-      font: 600 16px var(--swiss);
-    }
-    .typed-bar #typed:disabled {
-      opacity: .72;
-      background: var(--sand);
-      border: 1.5px dashed color-mix(in srgb, var(--line) 45%, transparent);
-      box-shadow: none;
-      padding-left: 14px;
-      cursor: not-allowed;
-    }
-    .typed-bar #typed:disabled::placeholder { color: var(--quiet); }
-    .typed-kbd {
-      position: absolute; right: 10px; pointer-events: none;
-      font: 700 11px var(--mono); padding: 2px 6px; border-radius: 6px;
-      border: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
-      background: var(--sand); color: var(--quiet);
-    }
-
     /* Stage ring & surface styles */
     #ticker[data-ring="ink"] { --ring: #1e1714; }
-    #ticker[data-ring="paper"] { --ring: #3a2e28; }
+    #ticker[data-ring="paper"] { --ring: #8c6d53; }
     #ticker[data-ring="clay"] { --ring: #b07a4e; }
     #ticker[data-ring="pink"] { --ring: var(--pink); }
-    #ticker[data-ring="mint"] { --ring: var(--teal); }
+    #ticker[data-ring="mint"] { --ring: #2dd4bf; }
     #ticker[data-ring="lilac"] { --ring: var(--violet); }
     #ticker[data-ring="butter"] { --ring: var(--amber); }
     #ticker[data-flow="settled"] .interim { display: none; }
-    #ticker[data-style="paper"] { background: #fbf1e4; color: #1e1714; }
+    #ticker[data-style="paper"] { background: #fbf3e6; color: #1e1714; }
     #ticker[data-style="paper"] .fresh-lead { color: #1e1714; }
-    #ticker[data-style="paper"] .interim { color: #1e1714; background: color-mix(in srgb, var(--pink) 32%, transparent); border-radius: .15em; padding: 0 .12em; }
-    #ticker[data-style="paper"] .interim::after { background: #1e1714; }
-    #ticker[data-style="brut"] { background: var(--amber); color: #1e1714; }
+    #ticker[data-style="paper"] .interim { color: #1e1714; background: rgba(255, 107, 74, 0.22); border-radius: 0.14em; padding: 0 0.12em; }
+    #ticker[data-style="brut"] { background: #f6c445; color: #1e1714; }
     #ticker[data-style="brut"] .fresh-lead { color: #1e1714; }
-    #ticker[data-style="brut"] .interim { color: #1e1714; background: rgba(30, 23, 20, 0.14); border-radius: .15em; padding: 0 .12em; }
-    #ticker[data-style="brut"] .interim::after { background: #1e1714; }
-    #ticker[data-style="hemingway"] { background: #f7ecdc; color: #2c221e; }
-    #ticker[data-style="hemingway"] .fresh-lead { color: #2c221e; }
-    #ticker[data-style="hemingway"] .interim { color: #724c27; background: rgba(114, 76, 39, 0.11); border-radius: .15em; padding: 0 .12em; }
-    #ticker[data-style="hemingway"] .interim::after { background: #724c27; }
+    #ticker[data-style="brut"] .interim { color: #1e1714; background: rgba(30, 23, 20, 0.14); border-radius: 0.14em; padding: 0 0.12em; }
+    #ticker[data-style="hemingway"] { background: #f5ead8; color: #2b211c; }
+    #ticker[data-style="hemingway"] .fresh-lead { color: #2b211c; }
+    #ticker[data-style="hemingway"] .interim { color: #724c27; background: rgba(114, 76, 39, 0.12); border-radius: 0.14em; padding: 0 0.12em; }
 
-    /* ---------- stage controls (strictly single-row on desktop!) ---------- */
-    .stage-bar { display: flex; flex-direction: column; gap: 10px; }
-    .stage-controls { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-    .segmented-control {
-      display: inline-flex; align-items: center; gap: 1px; padding: 3px;
-      border-radius: 999px; background: var(--sand);
-      border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+    /* Monitor overlays (siblings of #ticker so #ticker.textContent stays pure!) */
+    .ghost-chip {
+      position: absolute;
+      top: 11px;
+      left: 12px;
+      pointer-events: none;
+      font: 700 9.5px/1 var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 253, 245, 0.85);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(4px);
+      border-radius: 999px;
+      padding: 4px 9px;
     }
-    .seg-btn {
-      border: 1px solid transparent; box-shadow: none !important; background: transparent;
-      border-radius: 999px; padding: 5px 8px; font: 700 12px var(--swiss); color: var(--quiet);
+    .monitor-well[data-light="1"] .ghost-chip {
+      color: #2a161a;
+      background: rgba(30, 23, 20, 0.08);
+      border-color: rgba(30, 23, 20, 0.18);
     }
-    .seg-btn:hover { background: transparent; border-color: transparent; color: var(--ink); transform: none !important; }
-    .seg-btn.active { background: var(--surface); border-color: var(--line); color: var(--ink); font-weight: 800; }
-    .seg-btn:active { transform: scale(.95) !important; }
-    .segmented-control.swatches { gap: 3px; padding: 3px 4px; }
-    .segmented-control.swatches .seg-btn {
-      width: 26px; height: 24px; padding: 0; border-radius: 8px;
-      font: 800 11px var(--swiss); display: inline-flex; align-items: center; justify-content: center;
-    }
-    .segmented-control.swatches .seg-btn[data-v="ink"] { background: #1e1714; color: #fffdf5; border-color: rgba(251, 241, 228, 0.28); }
-    .segmented-control.swatches .seg-btn[data-v="paper"] { background: #fbf1e4; color: #1e1714; border-color: rgba(30, 23, 20, 0.25); }
-    .segmented-control.swatches .seg-btn[data-v="brut"] { background: var(--amber); color: #1e1714; }
-    .segmented-control.swatches .seg-btn[data-v="hemingway"] { background: #f7ecdc; color: #724c27; font-family: var(--face-fraunces), Georgia, serif; font-size: 13px; }
-    .segmented-control.swatches .seg-btn.active { outline: 2px solid var(--ink); outline-offset: 1px; }
-    .face-wrap { width: 102px; }
-    .face-wrap .stage-select-btn { padding: 6px 9px; font-size: 12px; border-radius: 999px; }
 
-    .ring-row {
-      display: inline-flex; gap: 1px; align-items: center; padding: 2px 4px;
-      border-radius: 999px; background: var(--sand);
-      border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
+    /* Live Dead-Air Meter + Prompt inside silent Stage Monitor */
+    .monitor-empty {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+      text-align: center;
+      color: rgba(255, 253, 245, 0.72);
     }
-    .ring {
-      width: 24px; height: 24px; padding: 3px; border-radius: 50%;
-      background: transparent; border: 0; box-shadow: none !important;
-      display: inline-grid; place-items: center;
+    .monitor-well[data-light="1"] .monitor-empty { color: rgba(30, 23, 20, 0.68); }
+    .vu-meter {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 22px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
-    .ring::before {
-      content: ""; width: 15px; height: 15px; border-radius: 50%;
-      background: var(--c); border: 1.5px solid #1e1714; display: block;
+    .monitor-well[data-light="1"] .vu-meter {
+      background: rgba(30, 23, 20, 0.07);
+      border-color: rgba(30, 23, 20, 0.15);
     }
-    .ring[aria-checked="true"]::before { outline: 2px solid var(--ink); outline-offset: 1.5px; transform: scale(1.08); }
+    .vu-meter i {
+      display: block;
+      width: 3.5px;
+      height: var(--h, 5px);
+      min-height: 4px;
+      max-height: 14px;
+      border-radius: 2px;
+      background: #2dd4bf;
+      transition: height 90ms ease;
+    }
+    .monitor-well[data-light="1"] .vu-meter i { background: #138a72; }
+    body:not([data-paused="1"]) .vu-meter[data-sim="1"] i:nth-child(1) { animation: vuPulse 1.1s ease-in-out infinite 0.0s; }
+    body:not([data-paused="1"]) .vu-meter[data-sim="1"] i:nth-child(2) { animation: vuPulse 0.9s ease-in-out infinite 0.18s; }
+    body:not([data-paused="1"]) .vu-meter[data-sim="1"] i:nth-child(3) { animation: vuPulse 1.05s ease-in-out infinite 0.08s; }
+    body:not([data-paused="1"]) .vu-meter[data-sim="1"] i:nth-child(4) { animation: vuPulse 0.85s ease-in-out infinite 0.26s; }
+    body:not([data-paused="1"]) .vu-meter[data-sim="1"] i:nth-child(5) { animation: vuPulse 1.15s ease-in-out infinite 0.14s; }
+    body[data-paused="1"] .vu-meter i { height: 4px !important; background: var(--amber); animation: none !important; }
+    @keyframes vuPulse { 0%, 100% { height: 4px; opacity: 0.55; } 50% { height: 13px; opacity: 1; } }
+    #monitorPrompt {
+      margin: 0;
+      font: 600 14px/1.35 var(--swiss);
+      letter-spacing: -0.01em;
+    }
 
-    .more { position: relative; margin-left: auto; }
-    .more summary {
-      cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; color: var(--ink);
-      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
-      padding: 5px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;
+    /* ---------- Tier 1 Recessed Unified Input Well (.typed-bar) ---------- */
+    .stage-bar { display: flex; flex-direction: column; gap: clamp(7px, 0.9vmin, 10px); flex: 0 0 auto; }
+    .typed-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      padding: 4px 6px 4px 12px;
+      background: var(--well-bg);
+      border: 1.5px solid var(--seam-strong);
+      border-radius: 10px;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+      transition: border-color 0.15s, background 0.15s;
     }
-    .more summary:hover { background: var(--sand); }
-    .more summary::-webkit-details-marker { display: none; }
-    .more summary::after { content: "▾"; font-size: 10px; }
-    .more[open] summary::after { content: "▴"; }
-    .opt-grid {
-      position: absolute; right: 0; top: calc(100% + 8px); z-index: 45;
-      width: min(420px, 88vw);
-      background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
-      border-radius: 16px; padding: 13px 14px;
-      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px 10px; align-items: center;
+    .typed-bar:focus-within {
+      border-color: var(--key-border);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04), 0 0 0 2px color-mix(in srgb, var(--vibe-accent) 32%, transparent);
     }
-    .opt-label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--quiet); }
-    .opt-input { grid-column: 2 / 4; width: 100%; padding: 8px 11px; font-size: 14px; border-radius: 10px; }
-    .opt-flow { justify-self: start; }
-    .mini-btn {
-      font: 700 11.5px var(--mono); padding: 6px 10px; border-radius: 8px;
-      color: var(--ink); background: var(--surface); border: 1.5px solid var(--line);
+    .typed-bar #typed {
+      flex: 1 1 auto;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: 5px 0;
+      font: 500 14.5px var(--swiss);
+      color: var(--ink);
+      outline: none;
     }
-    .mini-btn:hover { background: var(--sand); }
-    #floatBtn { background: color-mix(in srgb, var(--violet) 28%, var(--surface)); }
-    #floatBtn:hover { background: color-mix(in srgb, var(--violet) 40%, var(--surface)); }
-
-    /* Images shared into the room — Share Image button lives right beside its paste hint & thumbnails */
+    .typed-bar #typed::placeholder { color: var(--quiet); opacity: 0.8; }
+    .typed-bar #typed:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
     .asset-tray {
-      display: flex; align-items: center; gap: 8px; padding-top: 10px;
-      border-top: 1px solid var(--hair-soft); flex-wrap: wrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex: 0 0 auto;
     }
     #shareImageBtn {
-      font-size: 12px; padding: 6px 12px; background: var(--surface);
+      height: 28px;
+      padding: 0 9px;
+      font-size: 11.5px;
+      border-radius: 6px;
+      box-shadow: 0 1.5px 0 var(--key-shadow);
     }
     .asset-tray .tray-thumb {
-      width: 36px; height: 36px; padding: 0; border-radius: 8px;
-      border: 1.5px solid var(--line); overflow: hidden; background: none; box-shadow: none;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 6px;
+      border: 1.5px solid var(--key-border);
+      box-shadow: none;
+      overflow: hidden;
+      background: none;
     }
-    .asset-tray img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .asset-tray #pasteHint { font-size: 12px; color: var(--quiet); font-weight: 500; }
+    .asset-tray .tray-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .clip-chip {
-      display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px;
-      border: 1.5px solid var(--line); background: color-mix(in srgb, var(--pink) 18%, var(--surface));
-      border-radius: 999px; font: 700 12px var(--swiss); color: var(--ink);
+      height: 28px;
+      padding: 0 9px 0 4px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      background: color-mix(in srgb, var(--vibe-accent) 20%, var(--key-bg));
+      box-shadow: 0 1.5px 0 var(--key-shadow);
     }
-    .clip-chip img { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; border: 1px solid var(--line); }
-    .stage.drop { outline: 2px dashed var(--pink); outline-offset: -6px; }
+    .clip-chip img { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; }
+    .typed-kbd {
+      font: 700 11px/1 var(--mono);
+      padding: 5px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--seam);
+      background: color-mix(in srgb, var(--ink) 6%, transparent);
+      color: var(--quiet);
+      box-shadow: none;
+      pointer-events: none;
+    }
+    .stage.drop .monitor-well { outline: 2.5px dashed var(--vibe-accent); outline-offset: -5px; }
 
-    /* ---------- small menus ---------- */
-    .menu { position: relative; }
-    .menu > summary {
-      list-style: none; cursor: pointer; font: 700 12px var(--swiss); color: var(--ink);
-      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
-      padding: 5px 9px; border-radius: 999px; white-space: nowrap;
-      display: inline-flex; align-items: center; gap: 4px;
+    /* ---------- Single-Row Instrument Toolbar (.stage-controls) ---------- */
+    .stage-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+      min-height: 34px;
     }
-    .menu > summary::-webkit-details-marker { display: none; }
-    .menu > summary:hover { background: var(--sand); }
-    .menu > summary::after { content: "▾"; font-size: 10px; opacity: .8; }
-    .menu[open] > summary::after { content: "▴"; }
+    .segmented-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 34px;
+      padding: 3px;
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--ink) 7%, var(--deck-bg));
+      border: 1px solid var(--seam-strong);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+      flex: 0 0 auto;
+    }
+    .seg-btn {
+      height: 26px;
+      padding: 0 9px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      box-shadow: none !important;
+      font: 700 12px/1 var(--swiss);
+      color: var(--quiet);
+      transform: none !important;
+    }
+    @media (hover: hover) {
+      .seg-btn:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+    }
+    .seg-btn.active {
+      background: var(--key-bg);
+      border-color: var(--key-border);
+      color: var(--ink);
+      font-weight: 800;
+      box-shadow: 0 1px 0 var(--key-shadow) !important;
+    }
+    .segmented-control.swatches .seg-btn {
+      gap: 5px;
+      padding: 0 8px;
+    }
+    .swatch-chip {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      border: 1px solid rgba(30, 23, 20, 0.45);
+      flex: 0 0 auto;
+    }
+    .swatch-chip.ink { background: #191412; border-color: #2dd4bf; }
+    .swatch-chip.paper { background: #fbf3e6; }
+    .swatch-chip.brut { background: #f6c445; }
+    .swatch-chip.hemingway { background: #e8d5b8; }
+
+    .face-wrap { width: 138px; flex: 0 0 auto; }
+    .face-wrap .stage-select-btn { height: 34px; font-size: 12px; padding: 0 10px; }
+
+    /* Popover menus in .stage-controls (open UPWARD so 100dvh never clips!) */
+    .menu, .more { position: relative; flex: 0 0 auto; }
+    #moreTicker { margin-right: auto; }
+    .menu > summary, .more > summary {
+      list-style: none;
+      height: 34px;
+      padding: 0 11px;
+      font: 700 12px/1 var(--swiss);
+      color: var(--ink);
+      background: var(--key-bg);
+      border: 1.5px solid var(--key-border);
+      border-radius: 8px;
+      box-shadow: 0 2px 0 var(--key-shadow);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+      transition: transform 80ms var(--spring), box-shadow 80ms var(--spring), background 0.14s;
+    }
+    .menu > summary::-webkit-details-marker, .more > summary::-webkit-details-marker { display: none; }
+    @media (hover: hover) {
+      .menu > summary:hover, .more > summary:hover {
+        background: var(--key-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 3px 0 var(--key-shadow);
+      }
+    }
+    .menu[open] > summary, .more[open] > summary,
+    .menu > summary:active, .more > summary:active {
+      transform: translateY(2px);
+      box-shadow: 0 0 0 var(--key-shadow);
+    }
+    .menu > summary::after, .more > summary::after { content: "▴"; font-size: 9px; opacity: 0.72; }
+    .menu[open] > summary::after, .more[open] > summary::after { content: "▾"; }
+
     .menu-body {
-      position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
-      display: flex; flex-direction: column; gap: 2px; min-width: 184px;
-      background: var(--surface); border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--line);
-      border-radius: 14px; padding: 6px;
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      z-index: 65;
+      min-width: 204px;
+      background: var(--deck-bg);
+      border: 1.5px solid var(--key-border);
+      box-shadow: 0 10px 28px rgba(20, 14, 12, 0.20);
+      border-radius: 11px;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      animation: popIn 0.14s var(--spring);
     }
     .menu-body button {
-      justify-content: flex-start; border: 1px solid transparent; box-shadow: none !important;
-      background: transparent; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 600; text-align: left;
+      height: 33px;
+      justify-content: flex-start;
+      border: 0;
+      box-shadow: none !important;
+      background: transparent;
+      border-radius: 7px;
+      padding: 0 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      transform: none !important;
     }
-    .menu-body button:hover { background: var(--sand); border-color: transparent; transform: none !important; }
-    #displayMenu { display: none; }
-    body[data-live="1"] #displayMenu { display: inline-block; }
+    .menu-body button:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+    #floatBtn:not(:disabled) {
+      background: color-mix(in srgb, var(--vibe-accent) 16%, transparent);
+      font-weight: 700;
+    }
+    body:not([data-live="1"]) #displayMenu > summary { opacity: 0.6; }
 
-    /* ---------- transcript strip ---------- */
-    .transcript-bar {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding-top: 12px; border-top: 1.5px solid var(--hair);
+    .opt-grid {
+      position: absolute;
+      left: 0;
+      bottom: calc(100% + 8px);
+      z-index: 65;
+      width: min(410px, 88vw);
+      background: var(--deck-bg);
+      border: 1.5px solid var(--key-border);
+      box-shadow: 0 10px 28px rgba(20, 14, 12, 0.20);
+      border-radius: 12px;
+      padding: 12px 13px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px 10px;
+      align-items: center;
+      animation: popIn 0.14s var(--spring);
     }
-    .transcript-bar .eyebrow { flex: 1 1 auto; min-width: 0; }
-    #transcriptStat { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--quiet); }
-    .transcript-actions { display: flex; align-items: center; gap: 4px; }
-    .past { margin-top: 8px; }
-    .past summary { cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; color: var(--quiet); }
-    .past summary::-webkit-details-marker { display: none; }
-    .past summary::before { content: "▸ "; }
-    .past[open] summary::before { content: "▾ "; }
-    #pastList { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-    #pastList li {
-      display: flex; justify-content: space-between; align-items: center; gap: 10px;
-      font-size: 12.5px; font-weight: 600; background: var(--sand);
-      border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 12px;
+    .opt-label { font: 800 10px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.09em; color: var(--quiet); }
+    .opt-input {
+      grid-column: 2 / 4;
+      width: 100%;
+      height: 32px;
+      padding: 0 10px;
+      font: 500 13px var(--swiss);
+      color: var(--ink);
+      background: var(--well-bg);
+      border: 1.5px solid var(--seam-strong);
+      border-radius: 7px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
     }
-    #pastList small { display: block; color: var(--quiet); font-weight: 400; font-size: 11px; }
-    #pastList button { padding: 6px 12px; font-size: 12px; }
+    .opt-flow { justify-self: start; }
+    .ring-row {
+      grid-column: 2 / 4;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .ring {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: 50%;
+      background: transparent;
+      border: 0;
+      box-shadow: none !important;
+      transform: none !important;
+      display: inline-grid;
+      place-items: center;
+    }
+    .ring::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--c);
+      border: 1.5px solid #1e1714;
+      display: block;
+    }
+    .ring[aria-checked="true"]::before {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .mini-btn {
+      height: 30px;
+      padding: 0 10px;
+      font: 700 11px/1 var(--mono);
+      border-radius: 7px;
+    }
 
-    /* ---------- the room ---------- */
-    .room { background: var(--sand); gap: 12px; text-align: center; }
-    .qr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+    /* ---------- Zone C: Right Audience & Room Pass Rail ---------- */
+    .room {
+      background: var(--rail-bg);
+      justify-content: space-between;
+      gap: clamp(8px, 1vmin, 11px);
+      text-align: center;
+    }
+    .qr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      flex: 0 0 auto;
+    }
+    #countBadge {
+      height: 24px;
+      padding: 0 9px;
+      font-size: 11px;
+      font-weight: 700;
+      background: color-mix(in srgb, var(--pass-bg) 82%, transparent);
+      color: #2a161a;
+      border-color: rgba(42, 22, 26, 0.22);
+    }
+    :root[data-vibe="night"] #countBadge {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--ink);
+      border-color: var(--seam);
+    }
+    #countBadge.bump { animation: bump 0.35s var(--spring); }
+    @keyframes bump { 35% { transform: scale(1.07); } 100% { transform: none; } }
+
     .qr-body {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 11px; flex: 1 1 auto; width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      background: var(--pass-bg);
+      color: #1e1714;
+      border: 1px solid rgba(30, 23, 20, 0.22);
+      border-radius: 11px;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+      padding: clamp(8px, 1.3vmin, 14px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(5px, 0.9vmin, 9px);
     }
-    #qrEmpty {
-      display: flex; flex-direction: column; align-items: center; gap: 12px;
-      padding: 8px 6px; cursor: pointer; border-radius: 18px;
-      transition: transform .18s var(--spring);
-    }
-    #qrEmpty:hover { transform: translateY(-2px); }
-    .qr-slot {
-      width: 168px; height: 168px; border-radius: 18px;
-      border: 2px solid #1e1714; box-shadow: 4px 4px 0 var(--pink);
-      display: grid; place-items: center; position: relative;
-      background-color: #fffdf5;
-      background-image:
-        linear-gradient(rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px),
-        linear-gradient(90deg, rgba(30, 23, 20, 0.08) 1.5px, transparent 1.5px);
-      background-size: 12px 12px; background-position: center;
-    }
-    .qr-slot::before, .qr-slot::after {
-      content: ""; position: absolute; width: 28px; height: 28px;
-      border: 4px solid #1e1714; border-radius: 6px; background: #fffdf5;
-    }
-    .qr-slot::before { top: 14px; left: 14px; box-shadow: 104px 0 0 -4px #fffdf5, 104px 0 0 0 #1e1714; }
-    .qr-slot::after { bottom: 14px; left: 14px; }
-    .qr-sub-hint { font-size: 11.5px; color: var(--quiet); font-weight: 600; margin-top: -4px; }
-    .qr-slot span {
-      font: 800 13px var(--mono); letter-spacing: .16em; text-indent: .16em;
-      color: #1e1714; background: var(--pink); border: 1.5px solid #1e1714;
-      box-shadow: 2px 2px 0 #1e1714; border-radius: 999px; padding: 5px 12px;
-      animation: breatheDot 3.2s ease-in-out infinite;
-    }
-    #qrEmpty p { margin: 0; font-size: 13px; color: var(--ink); font-weight: 700; line-height: 1.45; max-width: 18em; }
-    #qrGraphic {
-      padding: 12px; background: #fffdf5; border: 2px solid #1e1714; box-shadow: 4px 4px 0 var(--pink);
-      border-radius: 18px; line-height: 0; transition: box-shadow .2s var(--spring), transform .2s var(--spring);
-    }
-    #qrGraphic.pop { animation: bump .35s var(--spring); }
-    #qrGraphic:empty { display: none; }
-    #qrGraphic svg { width: 168px; height: 168px; }
     .qr-talk {
-      margin: 0; font-size: 12.5px; font-weight: 700; color: var(--quiet);
-      max-width: 20em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin: 0;
+      font: 800 12px/1.2 var(--swiss);
+      color: #2a161a;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #qrGraphic {
+      padding: clamp(6px, 0.9vmin, 10px);
+      background: #ffffff;
+      border: 1px solid rgba(30, 23, 20, 0.16);
+      border-radius: 10px;
+      line-height: 0;
+    }
+    #qrGraphic.pop { animation: bump 0.28s var(--spring); }
+    #qrGraphic:empty {
+      width: 140px;
+      height: 140px;
+      background: rgba(30, 23, 20, 0.04);
+    }
+    #qrGraphic svg {
+      width: clamp(110px, min(18cqw, 26cqh), 172px);
+      height: clamp(110px, min(18cqw, 26cqh), 172px);
+      display: block;
     }
     .join-host {
-      margin: 0; font: 700 12px var(--mono); color: var(--quiet); letter-spacing: .02em;
+      margin: 0;
+      font: 600 11px/1.2 var(--mono);
+      color: #635349;
     }
     .join-line {
-      display: inline-flex; align-items: center; gap: 10px;
-      background: var(--surface); border: 1.5px solid var(--line); box-shadow: 2px 2px 0 var(--line);
-      border-radius: 12px; padding: 6px 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5ede2;
+      border: 1px solid rgba(30, 23, 20, 0.22);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+      border-radius: 8px;
+      padding: 5px 14px;
     }
-    .join-line b { font: 800 30px/1 var(--mono); letter-spacing: .22em; text-indent: .22em; color: var(--ink); }
-    .qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--quiet); }
+    .join-line b {
+      font: 800 clamp(21px, 2.6vmin, 27px)/1 var(--mono);
+      letter-spacing: 0.22em;
+      text-indent: 0.22em;
+      color: #1e1714;
+    }
+    .qr-hint {
+      margin: 0;
+      font: 500 11.5px/1.3 var(--swiss);
+      color: #635349;
+    }
+
+    .room-footer {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      flex: 0 0 auto;
+    }
     .room-actions {
-      display: flex; align-items: center; gap: 8px; width: 100%;
-      padding-top: 12px; border-top: 1.5px solid var(--hair);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      width: 100%;
     }
-    .room-actions button { flex: 1; font-size: 12.5px; padding: 9px 10px; background: var(--surface); }
+    .room-actions button {
+      width: 100%;
+      height: 33px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+    .lapel-btn {
+      width: 100%;
+      height: 32px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--key-bg);
+      border: 1.5px solid var(--key-border);
+      box-shadow: 0 2px 0 var(--key-shadow);
+    }
+    @media (hover: hover) {
+      .lapel-btn:not(:disabled):hover { background: var(--key-hover); }
+    }
+
+    /* ---------- Bottom Console Status & Hotkey Bar (~30px, Desktop Only) ---------- */
+    .deck-footer {
+      flex: 0 0 auto;
+      min-height: 30px;
+      padding: 4px 14px;
+      background: var(--header-bg);
+      border-top: 1px solid var(--seam);
+      border-radius: 0 0 15px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--quiet);
+    }
+    .hotkey-group, .footer-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .kbd-hint { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+    kbd {
+      display: inline-block;
+      background: var(--key-bg);
+      border: 1px solid var(--seam-strong);
+      box-shadow: 0 1px 0 var(--seam-strong);
+      border-radius: 4px;
+      padding: 1.5px 5px;
+      font: 700 10.5px/1.1 var(--mono);
+      color: var(--ink);
+    }
+    #transcriptStat { font: 600 11.5px var(--swiss); color: var(--quiet); }
+    .footer-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 10px;
+      border-left: 1px solid var(--seam);
+    }
+    .footer-links a {
+      color: var(--quiet);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .footer-links a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* Earlier talks popover in footer */
+    .past { position: relative; }
+    .past summary {
+      cursor: pointer;
+      list-style: none;
+      font: 700 11.5px var(--swiss);
+      color: var(--ink);
+    }
+    .past summary::-webkit-details-marker { display: none; }
+    .past summary::after { content: " ▴"; font-size: 9px; }
+    #pastList {
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      z-index: 70;
+      width: min(340px, 90vw);
+      max-height: 240px;
+      overflow-y: auto;
+      list-style: none;
+      margin: 0;
+      padding: 6px;
+      background: var(--deck-bg);
+      border: 1.5px solid var(--key-border);
+      box-shadow: 0 10px 28px rgba(20, 14, 12, 0.22);
+      border-radius: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #pastList li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      background: var(--well-bg);
+      border: 1px solid var(--seam);
+      border-radius: 8px;
+      padding: 7px 9px;
+    }
+    #pastList small { display: block; color: var(--quiet); font-weight: 400; font-size: 10.5px; }
+    #pastList button { height: 26px; padding: 0 9px; font-size: 11px; }
+
+    /* ---------- Floating Auto-Dismissing Toast (#notice + #engineHint) ---------- */
+    .toast-stack {
+      position: fixed;
+      top: 62px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 85;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      max-width: min(560px, 92vw);
+      pointer-events: none;
+    }
+    .notice, .hint-toast {
+      pointer-events: auto;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font: 600 12.5px/1.35 var(--swiss);
+      color: #1e1714;
+      background: #ffd166;
+      border: 1.5px solid #1e1714;
+      box-shadow: 0 6px 20px rgba(20, 14, 12, 0.20);
+      border-radius: 10px;
+      padding: 8px 12px;
+      animation: popIn 0.18s var(--spring);
+    }
+    .toast-x {
+      height: 22px;
+      width: 22px;
+      padding: 0;
+      border-radius: 5px;
+      border: 1px solid rgba(30, 23, 20, 0.3);
+      background: rgba(255, 255, 255, 0.45);
+      color: #1e1714;
+      box-shadow: none !important;
+      font-size: 11px;
+      flex: 0 0 auto;
+    }
+
+    /* ---------- Fullscreen QR & Private Lapel Mic Modal ---------- */
+    #fsModal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(20, 14, 12, 0.82);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #fsModal.open { display: flex; }
+    #fsModal.open .fs-card { animation: popIn 0.2s var(--spring); }
+    .fs-card {
+      background: #fffdf9;
+      color: #1e1714;
+      border: 1.5px solid #1e1714;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 520px;
+      width: 92vw;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    #fsQr {
+      background: #ffffff;
+      padding: 14px;
+      border: 1.5px solid rgba(30, 23, 20, 0.22);
+      border-radius: 14px;
+      line-height: 0;
+    }
+    #fsQr[data-mode="mic"] { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18); }
+    #fsQr svg { width: min(58vw, 276px); height: min(58vw, 276px); display: block; }
+    .fs-host {
+      margin: 0;
+      font: 700 clamp(14px, 2.4vw, 19px)/1.2 var(--mono);
+      color: #1e1714;
+      background: #f5ede2;
+      border: 1px solid rgba(30, 23, 20, 0.2);
+      border-radius: 8px;
+      padding: 6px 14px;
+    }
+    .fs-code { display: flex; align-items: baseline; gap: 10px; }
+    .fs-code span { font: 800 11px var(--mono); text-transform: uppercase; letter-spacing: 0.14em; color: #635349; }
+    .fs-code b { font: 800 clamp(34px, 7vw, 54px)/1 var(--mono); letter-spacing: 0.2em; text-indent: 0.2em; color: #1e1714; }
+    #fsNote { margin: 0; color: #5a4b42; font-weight: 500; font-size: 13px; max-width: 30em; }
+    #closeFsBtn { background: #f5ede2; color: #1e1714; border-color: #1e1714; box-shadow: 0 2px 0 #1e1714; }
+
     .sr-only {
       position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
       white-space: nowrap; border: 0; padding: 0; margin: -1px;
     }
 
-    /* ---------- footer ---------- */
-    .deck-footer {
-      display: flex; justify-content: center; align-items: center; gap: 8px 14px; flex-wrap: wrap;
-      font-size: 11.5px; color: var(--quiet); font-weight: 600; padding: 2px;
+    /* ---------- Touch & Short-Height Adaptations ---------- */
+    @media (hover: none) and (pointer: coarse) {
+      .hotkey-group { display: none; }
     }
-    .deck-footer a { color: var(--ink); font-weight: 700; text-underline-offset: 2px; }
-    kbd {
-      background: var(--surface); border: 1px solid var(--line); box-shadow: 1px 1px 0 var(--line);
-      border-radius: 5px; padding: 2px 6px; font-family: var(--mono); font-size: 10.5px; color: var(--ink);
-    }
-    @media (hover: none) { .deck-footer .kbd-hint { display: none; } }
-    @media (pointer: coarse) {
-      .seg-btn { min-height: 36px; padding: 6px 10px; }
-      .segmented-control.swatches .seg-btn { width: 34px; height: 34px; }
-      .ring { width: 34px; height: 34px; }
-      .face-wrap .stage-select-btn, .more summary, .menu > summary { min-height: 40px; padding: 8px 12px; }
-      .deck-footer a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; font-size: 13px; }
+    @media (max-height: 700px) and (min-width: 641px) {
+      body { padding: 5px; }
+      .transport { min-height: 46px; padding: 4px 10px; }
+      .workspace { padding: 7px; }
+      .panel { padding: 9px; }
+      .deck-footer { min-height: 26px; padding: 2px 12px; font-size: 11px; }
+      #qrGraphic svg { width: clamp(96px, 21cqh, 136px); height: clamp(96px, 21cqh, 136px); }
     }
 
-    /* ---------- fullscreen QR ---------- */
-    #fsModal {
-      position: fixed; inset: 0; z-index: 100; background: rgba(30, 23, 20, 0.84);
-      display: none; align-items: center; justify-content: center; padding: 24px;
+    /* ---------- Split-Screen & Medium-Desktop Cascade Overrides (Must Follow Base Rules!) ---------- */
+    @container work (max-width: 919px) {
+      .console { grid-template-columns: minmax(0, 1fr); }
+      .console > .room { display: none; }
     }
-    #fsModal.open { display: flex; }
-    #fsModal.open .fs-card { animation: cardIn .28s var(--spring); }
-    @keyframes cardIn { from { transform: translateY(16px); opacity: 0; } }
-    .fs-card {
-      background: var(--surface); border: 2.5px solid var(--line); box-shadow: 6px 6px 0 var(--line);
-      border-radius: 28px; padding: 28px; max-width: 560px; width: 90vw;
-      text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    @container work (max-width: 830px) {
+      .stage-controls { gap: 4px; }
+      .seg-btn { padding: 0 7px; font-size: 11.5px; }
+      .segmented-control.swatches .seg-btn { padding: 0 6px; gap: 4px; }
+      .face-wrap { width: 112px; }
+      .face-wrap .stage-select-btn { padding: 0 8px; font-size: 11.5px; }
+      .menu > summary, .more > summary { padding: 0 8px; font-size: 11.5px; }
     }
-    #fsQr {
-      background: #fffdf5; padding: 14px; border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--pink);
-      border-radius: 18px; line-height: 0;
+    @media (max-width: 1080px) and (min-width: 641px) {
+      .vibe-pill #vibeLabel { display: none; }
+      .vibe-pill { padding: 0 9px; }
+      .field-lang { width: 154px; }
+      .field-engine { width: 98px; }
     }
-    #fsQr[data-mode="mic"] { box-shadow: 4px 4px 0 var(--violet); }
-    #fsQr svg { width: min(62vw, 300px); height: min(62vw, 300px); }
-    .fs-host {
-      margin: 0; font: 800 clamp(16px, 2.8vw, 22px)/1.2 var(--mono); color: var(--ink);
-      background: var(--sand); border: 1.5px solid var(--line); border-radius: 999px; padding: 6px 16px;
+    @media (max-width: 948px) and (min-width: 641px) {
+      .transport { gap: 6px; padding: 6px 10px; }
+      .transport-left { gap: 7px; }
+      .transport-right { gap: 5px; }
+      #compactRoomBtn { display: inline-flex; }
+      body:not([data-live="1"]) #liveBadge { display: none; }
+      body:not([data-live="1"]) .title-slot { max-width: 114px; }
+      body[data-live="1"] #liveBadge .pill-sep,
+      body[data-live="1"] #liveBadge #micPill { display: none; }
+      .footer-links { display: none; }
+      .hotkey-group { gap: 8px; }
     }
-    .fs-code { display: flex; align-items: baseline; gap: 12px; }
-    .fs-code span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: var(--quiet); }
-    .fs-code b { font: 800 clamp(38px, 8vw, 60px)/1 var(--mono); letter-spacing: .2em; text-indent: .2em; color: var(--ink); }
-    #fsNote { margin: 0; color: var(--quiet); font-weight: 600; font-size: 13px; max-width: 30em; }
-    #closeFsBtn { background: var(--amber); color: #1e1714; border-color: #1e1714; }
+
+    /* ---------- Viewport 4: Mobile Portrait (< 640px) Handheld Transceiver ---------- */
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .chassis {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .transport {
+        border-radius: 0;
+        padding: calc(env(safe-area-inset-top) + 7px) 10px 7px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+      .transport-sep, .title-slot { display: none; }
+      .transport-left {
+        width: 100%;
+        justify-content: space-between;
+      }
+      h1 { font-size: 19px; }
+      .transport-right {
+        width: 100%;
+        justify-content: space-between;
+        gap: 5px;
+      }
+      body:not([data-live="1"]) #liveBadge { display: none; }
+      body[data-live="1"] #liveBadge { flex: 1 1 auto; justify-content: flex-start; min-width: 0; }
+      .setup-group {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1.42fr 0.85fr;
+        gap: 5px;
+      }
+      .field-lang, .field-engine, .field-pass { width: 100%; }
+      .stage-select-btn { font-size: 11.5px; padding: 0 7px; }
+      #startBtn { padding: 0 11px; font-size: 12px; }
+      .vibe-pill #vibeLabel { display: none; }
+      .vibe-pill { padding: 0 8px; }
+      #compactRoomBtn { display: none !important; }
+
+      .mobile-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        height: 30px;
+        padding: 2px;
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--ink) 8%, var(--header-bg));
+        border: 1px solid var(--seam-strong);
+      }
+      .mob-tab {
+        height: 24px;
+        padding: 0 9px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: transparent;
+        box-shadow: none !important;
+        font: 700 11.5px/1 var(--swiss);
+        color: var(--quiet);
+        transform: none !important;
+      }
+      .mob-tab.active {
+        background: var(--key-bg);
+        border-color: var(--key-border);
+        color: var(--ink);
+        box-shadow: 0 1px 0 var(--key-shadow) !important;
+      }
+
+      .workspace { padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px); }
+      .console { grid-template-columns: minmax(0, 1fr); }
+      body:not([data-mob-view="qr"]) .console > .room { display: none !important; }
+      body[data-mob-view="qr"] .console > .stage { display: none !important; }
+      body[data-mob-view="qr"] .console > .room { display: flex !important; }
+      #qrGraphic svg { width: min(54vw, 204px); height: min(54vw, 204px); }
+
+      .stage-controls {
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .stage-controls::-webkit-scrollbar { display: none; }
+      .seg-btn { padding: 0 6px; font-size: 11px; }
+      .segmented-control.swatches .seg-label { display: none; }
+      .segmented-control.swatches .seg-btn { padding: 0 5px; }
+      [data-pref="size"], #displayMenu { display: none; }
+      .face-wrap { width: 96px; }
+      .deck-footer { display: none; }
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
-        animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important;
+        animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important;
       }
     }
     </style>
   </head>
   <body>
-    <main>
-      <header>
-        <div>
+    <main class="chassis">
+      <!-- ZONE A: Compact Top Transport Strip (Zero Collapsing Setup Card!) -->
+      <header class="transport" aria-label="Console transport">
+        <div class="transport-left">
           <h1>StageType</h1>
-          <p class="sub">Speak, and every phone in the room reads along.</p>
+          <span class="transport-sep" aria-hidden="true"></span>
+          <div class="title-slot">
+            <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Title…" aria-label="Talk title">
+            <button type="button" class="words-chip" id="wordsChip" hidden></button>
+          </div>
+          <div class="mobile-tabs" id="mobileTabs" role="tablist" aria-label="Mobile console view">
+            <button type="button" class="mob-tab active" data-mob="stage" role="tab" aria-selected="true">Stage</button>
+            <button type="button" class="mob-tab" data-mob="qr" role="tab" aria-selected="false" id="mobQrTab">QR Pass</button>
+          </div>
         </div>
-        <div class="status-pills">
-          <span class="pill-badge" id="liveBadge" role="status"><span class="pulse-dot" id="liveDot" aria-hidden="true"></span><span id="liveText">Ready</span><span class="pill-sep" aria-hidden="true">·</span><span id="micPill"><span id="micSource">Laptop mic</span></span></span>
-          <span class="pill-badge" id="countBadge">Room empty</span>
-          <button type="button" class="vibe-pill" id="vibePill" title="Cycle tabletop atmosphere">
+
+        <div class="transport-right">
+          <div class="setup-group" aria-label="Speech setup">
+            <div class="field field-lang">
+              <span class="sr-only" id="langLabel">Language</span>
+              <select id="lang" aria-labelledby="langLabel"></select>
+            </div>
+            <div class="field field-engine">
+              <span class="sr-only" id="engineLabel">Engine</span>
+              <select id="engine" aria-labelledby="engineLabel">
+                <option value="browser">Browser</option>
+                <option value="deepgram">Deepgram</option>
+              </select>
+            </div>
+            <div class="field field-pass" id="passField" hidden>
+              <label class="sr-only" for="speechPass">Speech pass</label>
+              <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Relay pass">
+            </div>
+          </div>
+
+          <span class="pill-badge" id="liveBadge" role="status">
+            <span class="pulse-dot" id="liveDot" aria-hidden="true"></span>
+            <span id="liveText">Ready</span>
+            <span class="pill-sep" aria-hidden="true">·</span>
+            <span id="micPill"><span id="micSource">Laptop mic</span></span>
+          </span>
+
+          <button type="button" id="compactRoomBtn" title="Show Audience QR Pass (Opt + Q)">
+            <span aria-hidden="true">▦</span>
+            <b id="compactCode">····</b>
+            <span class="compact-sub" id="compactCount">Lobby</span>
+          </button>
+
+          <div class="control-row">
+            <button id="startBtn" type="button">Start captions</button>
+            <button id="pauseBtn" type="button" hidden><span class="btn-label">Pause</span></button>
+            <button id="stopBtn" type="button" hidden>End</button>
+          </div>
+
+          <button type="button" class="vibe-pill" id="vibePill" title="Switch console faceplate">
             <span class="vibe-dot" aria-hidden="true"></span>
             <span id="vibeLabel">Peach Sunset</span>
           </button>
         </div>
       </header>
 
-      <!-- THE TALK BAR: name it, then start it. Language & Engine fold away once live. -->
-      <section class="bar" aria-label="Talk setup">
-        <div class="field field-title">
-          <div class="field-head">
-            <label for="title">Title</label>
-            <button type="button" class="words-chip" id="wordsChip" hidden></button>
-          </div>
-          <input id="title" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Optional" aria-label="Talk title">
+      <!-- Floating non-layout-shifting toast stack -->
+      <div class="toast-stack">
+        <p id="engineHint" class="hint-toast" hidden></p>
+        <div id="notice" class="notice" role="alert" hidden>
+          <span id="noticeMsg"></span>
+          <button type="button" class="toast-x" id="noticeClose" aria-label="Dismiss alert">✕</button>
         </div>
-        <div class="field field-lang">
-          <span class="field-label" id="langLabel">Language</span>
-          <select id="lang" aria-labelledby="langLabel"></select>
-        </div>
-        <div class="field field-engine">
-          <span class="field-label" id="engineLabel">Engine</span>
-          <select id="engine" aria-labelledby="engineLabel">
-            <option value="browser">Browser · free</option>
-            <option value="deepgram">Deepgram · relay</option>
-          </select>
-        </div>
-        <div class="field field-pass" id="passField" hidden>
-          <label class="field-label" for="speechPass">Speech pass</label>
-          <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Relay pass">
-        </div>
-        <div class="control-row">
-          <button id="startBtn" type="button">Start captions</button>
-          <button id="pauseBtn" type="button" hidden><span class="btn-label">Pause</span></button>
-          <button id="stopBtn" type="button" hidden>End</button>
-        </div>
-        <p id="engineHint" class="hint" hidden></p>
-        <p id="notice" class="notice" role="alert" hidden></p>
-      </section>
+      </div>
 
-      <div class="console">
-        <!-- THE STAGE: monitor, typing bar, single-row controls, image tray, transcript. -->
-        <section class="card stage" aria-labelledby="stageHeading">
-          <div class="stage-top">
-            <h2 class="eyebrow" id="stageHeading">Stage <span class="ghost-chip" id="ghostChip" hidden>sample</span></h2>
-            <span class="badge" id="monitorStyleBadge">Ink · Standard</span>
-          </div>
-          <div id="ticker" role="region" aria-label="Live caption preview" dir="auto">
-            <div class="ticker-text"></div>
-          </div>
-          <div class="stage-bar">
-            <div class="typed-bar">
-              <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled placeholder="Type a line · Enter" aria-label="Type a caption">
-              <kbd class="typed-kbd" aria-hidden="true">↵</kbd>
-            </div>
-            <div class="stage-controls">
-              <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
-                <button type="button" class="seg-btn" data-v="28px" title="Compact" aria-label="S Compact" aria-pressed="false">S</button>
-                <button type="button" class="seg-btn" data-v="38px" title="Standard" aria-label="M Standard" aria-pressed="false">M</button>
-                <button type="button" class="seg-btn" data-v="50px" title="Jumbotron" aria-label="L Jumbotron" aria-pressed="false">L</button>
+      <!-- ELASTIC MIDDLE WORKSPACE -->
+      <div class="workspace">
+        <div class="console">
+          <!-- ZONE B: Left Stage Deck -->
+          <section class="panel stage" aria-labelledby="stageHeading">
+            <h2 class="sr-only" id="stageHeading">Stage Monitor</h2>
+            <span class="sr-only" id="monitorStyleBadge">Ink · Standard</span>
+
+            <div class="monitor-well" id="monitorWell">
+              <div id="ticker" role="region" aria-label="Live caption preview" dir="auto">
+                <div class="ticker-text"></div>
               </div>
-              <div class="segmented-control swatches" data-pref="style" role="group" aria-label="Ticker style">
-                <button type="button" class="seg-btn" data-v="ink" title="Ink" aria-label="Ink style" aria-pressed="false">Aa</button>
-                <button type="button" class="seg-btn" data-v="paper" title="Paper" aria-label="Paper style" aria-pressed="false">Aa</button>
-                <button type="button" class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut style" aria-pressed="false">Aa</button>
-                <button type="button" class="seg-btn" data-v="hemingway" title="Hemingway" aria-label="Hemingway style" aria-pressed="false">Aa</button>
-              </div>
-              <div class="ring-row" data-pref="ring" role="radiogroup" aria-label="Stage ring accent">
-                <button type="button" class="ring" data-v="mint" style="--c: var(--teal)" title="Mint frame" aria-label="Mint frame" role="radio" aria-checked="true"></button>
-                <button type="button" class="ring" data-v="pink" style="--c: var(--pink)" title="Pink frame" aria-label="Pink frame" role="radio" aria-checked="false"></button>
-                <button type="button" class="ring" data-v="lilac" style="--c: var(--violet)" title="Lilac frame" aria-label="Lilac frame" role="radio" aria-checked="false"></button>
-                <button type="button" class="ring" data-v="butter" style="--c: var(--amber)" title="Amber frame" aria-label="Amber frame" role="radio" aria-checked="false"></button>
-              </div>
-              <div class="face-wrap">
-                <select id="faceSelect" data-pref="face" aria-label="Stage typeface">
-                  <option value="atkinson">Atkinson</option>
-                  <option value="inter">Inter</option>
-                  <option value="fraunces">Fraunces</option>
-                  <option value="mono">JetBrains Mono</option>
-                  <option value="system">Swiss Sans</option>
-                </select>
-              </div>
-              <details class="menu" id="displayMenu">
-                <summary>Display</summary>
-                <div class="menu-body">
-                  <button type="button" id="floatBtn" disabled>Float over slides</button>
-                  <button type="button" id="screenBtn" disabled>Second screen</button>
-                  <button type="button" id="copyObsBtn" disabled><span class="btn-label">Copy OBS URL</span></button>
+              <span class="ghost-chip" id="ghostChip" aria-hidden="true" hidden>Preview</span>
+              <div class="monitor-empty" id="monitorEmpty" aria-hidden="true" hidden>
+                <div class="vu-meter" id="vuMeter" data-sim="1">
+                  <i></i><i></i><i></i><i></i><i></i>
                 </div>
-              </details>
-              <details class="more" id="moreTicker">
-                <summary>More</summary>
-                <div class="opt-grid">
-                  <label class="opt-label" for="keyterms">Names</label>
-                  <input id="keyterms" class="opt-input" type="text" maxlength="300" placeholder="Pibulus, SoftStack, Fraunces" autocomplete="off" spellcheck="false">
-                  <label class="opt-label" for="roomLinks">Links</label>
-                  <input id="roomLinks" class="opt-input" type="text" maxlength="800" placeholder="Slides or take-home URLs (comma separated)" autocomplete="off" spellcheck="false">
-                  <span class="opt-label" id="flowLabel">Flow</span>
-                  <div class="segmented-control opt-flow" data-pref="flow" role="group" aria-labelledby="flowLabel">
-                    <button type="button" class="seg-btn" data-v="live" aria-pressed="false">Live words</button>
-                    <button type="button" class="seg-btn" data-v="settled" aria-pressed="false">Settled</button>
+                <p id="monitorPrompt">Listening on Laptop mic — speak or type below</p>
+              </div>
+            </div>
+
+            <div class="stage-bar">
+              <div class="typed-bar">
+                <input id="typed" type="text" autocomplete="off" spellcheck="true" disabled placeholder="Type a caption line or paste a screenshot…" aria-label="Type a caption">
+                <div class="asset-tray" id="assetTray">
+                  <button type="button" class="clip-chip" id="clipChip" hidden>
+                    <img alt="" id="clipThumb">
+                    <span>Share screenshot</span>
+                  </button>
+                  <button type="button" id="shareImageBtn" disabled title="Share an image with the room">Image</button>
+                  <input id="imageFile" type="file" accept="image/*" hidden>
+                  <span class="sr-only" id="pasteHint">Paste a screenshot to share it with the room.</span>
+                </div>
+                <kbd class="typed-kbd" aria-hidden="true">↵</kbd>
+              </div>
+
+              <div class="stage-controls">
+                <div class="segmented-control" data-pref="size" role="group" aria-label="Ticker size">
+                  <button type="button" class="seg-btn" data-v="28px" title="Compact (1 line)" aria-label="S Compact" aria-pressed="false">S</button>
+                  <button type="button" class="seg-btn" data-v="38px" title="Standard (2 lines)" aria-label="M Standard" aria-pressed="false">M</button>
+                  <button type="button" class="seg-btn" data-v="50px" title="Jumbotron (3 lines)" aria-label="L Jumbotron" aria-pressed="false">L</button>
+                </div>
+
+                <div class="segmented-control swatches" data-pref="style" role="group" aria-label="Stage preset">
+                  <button type="button" class="seg-btn" data-v="ink" title="Ink + Mint" aria-label="Ink style" aria-pressed="false">
+                    <span class="swatch-chip ink" aria-hidden="true"></span><span class="seg-label">Ink</span>
+                  </button>
+                  <button type="button" class="seg-btn" data-v="paper" title="Warm Paper" aria-label="Paper style" aria-pressed="false">
+                    <span class="swatch-chip paper" aria-hidden="true"></span><span class="seg-label">Paper</span>
+                  </button>
+                  <button type="button" class="seg-btn" data-v="brut" title="Yellow Brut" aria-label="Yellow Brut style" aria-pressed="false">
+                    <span class="swatch-chip brut" aria-hidden="true"></span><span class="seg-label">Brut</span>
+                  </button>
+                  <button type="button" class="seg-btn" data-v="hemingway" title="Hemingway Serif" aria-label="Hemingway style" aria-pressed="false">
+                    <span class="swatch-chip hemingway" aria-hidden="true"></span><span class="seg-label">Serif</span>
+                  </button>
+                </div>
+
+                <div class="face-wrap">
+                  <select id="faceSelect" data-pref="face" aria-label="Stage typeface">
+                    <option value="atkinson">Atkinson</option>
+                    <option value="inter">Inter</option>
+                    <option value="fraunces">Fraunces</option>
+                    <option value="mono">JetBrains Mono</option>
+                    <option value="system">Swiss Sans</option>
+                  </select>
+                </div>
+
+                <details class="more" id="moreTicker">
+                  <summary>More</summary>
+                  <div class="opt-grid">
+                    <label class="opt-label" for="keyterms">Names</label>
+                    <input id="keyterms" class="opt-input" type="text" maxlength="300" placeholder="Pibulus, SoftStack, Fraunces" autocomplete="off" spellcheck="false">
+                    <label class="opt-label" for="roomLinks">Links</label>
+                    <input id="roomLinks" class="opt-input" type="text" maxlength="800" placeholder="Slides or take-home URLs (comma separated)" autocomplete="off" spellcheck="false">
+                    <span class="opt-label" id="accentLabel">Accent</span>
+                    <div class="ring-row" data-pref="ring" role="radiogroup" aria-labelledby="accentLabel">
+                      <button type="button" class="ring" data-v="mint" style="--c: #2dd4bf" title="Mint accent" aria-label="Mint frame" role="radio" aria-checked="true"></button>
+                      <button type="button" class="ring" data-v="pink" style="--c: #ff6ac2" title="Pink accent" aria-label="Pink frame" role="radio" aria-checked="false"></button>
+                      <button type="button" class="ring" data-v="lilac" style="--c: #a78bfa" title="Lilac accent" aria-label="Lilac frame" role="radio" aria-checked="false"></button>
+                      <button type="button" class="ring" data-v="butter" style="--c: #ffc74d" title="Amber accent" aria-label="Amber frame" role="radio" aria-checked="false"></button>
+                    </div>
+                    <span class="opt-label" id="flowLabel">Flow</span>
+                    <div class="segmented-control opt-flow" data-pref="flow" role="group" aria-labelledby="flowLabel">
+                      <button type="button" class="seg-btn" data-v="live" aria-pressed="false">Live words</button>
+                      <button type="button" class="seg-btn" data-v="settled" aria-pressed="false">Settled</button>
+                    </div>
+                    <button type="button" id="shuffleTicker" class="mini-btn" title="Shuffle stage look">Shuffle</button>
                   </div>
-                  <button type="button" id="shuffleTicker" class="mini-btn" title="Shuffle the look">Shuffle</button>
-                </div>
-              </details>
-            </div>
-          </div>
+                </details>
 
-          <div class="asset-tray" id="assetTray" hidden>
-            <button type="button" id="shareImageBtn" disabled title="Share an image with the room">Image</button>
-            <input id="imageFile" type="file" accept="image/*" hidden>
-            <button type="button" class="clip-chip" id="clipChip" hidden>
-              <img alt="" id="clipThumb">
-              <span>Share clipboard image</span>
-            </button>
-            <span id="pasteHint">Paste a screenshot (⌘V) to share it with the room.</span>
-          </div>
-
-          <div class="transcript-bar">
-            <h2 class="eyebrow">Transcript <span id="transcriptStat">Ready for the first line.</span></h2>
-            <div class="transcript-actions" id="transcriptActions" hidden>
-              <details class="menu" id="exportMenu">
-                <summary aria-label="Export the transcript">Export</summary>
-                <div class="menu-body">
-                  <button type="button" id="copyTx" disabled><span class="btn-label">Copy transcript</span></button>
-                  <button type="button" id="saveTxTxt" disabled>Text file (.txt)</button>
-                  <button type="button" id="saveTxMd" disabled>Substack / Zine (.md)</button>
+                <div class="transcript-actions" id="transcriptActions" hidden>
+                  <details class="menu" id="exportMenu">
+                    <summary aria-label="Export the transcript">Export</summary>
+                    <div class="menu-body">
+                      <button type="button" id="copyTx" disabled><span class="btn-label">Copy transcript</span></button>
+                      <button type="button" id="saveTxTxt" disabled>Text file (.txt)</button>
+                      <button type="button" id="saveTxMd" disabled>Substack / Zine (.md)</button>
+                    </div>
+                  </details>
                 </div>
-              </details>
+
+                <details class="menu" id="displayMenu">
+                  <summary>Stage Output</summary>
+                  <div class="menu-body">
+                    <button type="button" id="floatBtn" disabled>Float over slides (Opt F)</button>
+                    <button type="button" id="screenBtn" disabled>Second screen / projector</button>
+                    <button type="button" id="copyObsBtn" disabled><span class="btn-label">Copy OBS URL</span></button>
+                  </div>
+                </details>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <!-- ZONE C: Right Audience & Room Pass Rail (Live Scannable Pass from t=0!) -->
+          <section class="panel room" aria-labelledby="joinHeading">
+            <div class="qr-top">
+              <h2 class="eyebrow" id="joinHeading">Audience Pass</h2>
+              <span class="pill-badge" id="countBadge">Lobby open</span>
+            </div>
+
+            <div class="qr-body">
+              <p class="qr-talk" id="qrTalk" hidden></p>
+              <div id="qrGraphic" role="img" aria-label="Audience QR code"></div>
+              <p class="join-host" id="joinHost"></p>
+              <div class="join-line" id="joinLine"><b id="joinCode">····</b></div>
+              <p class="qr-hint" id="qrHint">Scan on any phone to read along.</p>
+              <span class="sr-only" id="urlDisplay">Standby</span>
+            </div>
+
+            <div class="room-footer" id="qrActions">
+              <div class="room-actions">
+                <button type="button" id="copyUrlBtn" disabled><span class="btn-label">Copy link</span></button>
+                <button type="button" id="fsQrBtn" disabled>Project QR</button>
+              </div>
+              <button type="button" id="micBtn" class="lapel-btn" disabled title="Pair a phone as a wireless lapel mic">
+                Pair phone as lapel mic
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Whisper-quiet Bottom Status & Hotkey Strip (separated from nav links) -->
+      <footer class="deck-footer">
+        <div class="hotkey-group">
+          <span class="kbd-hint"><kbd>Space</kbd> Start / Pause</span>
+          <span class="kbd-hint"><kbd>Opt</kbd><kbd>F</kbd> Float over slides</span>
+          <span class="kbd-hint"><kbd>Opt</kbd><kbd>Q</kbd> Project QR</span>
+          <span class="kbd-hint"><kbd>Esc</kbd> Close</span>
+        </div>
+        <div class="footer-meta">
+          <span id="transcriptStat">Ready for the first line.</span>
           <details id="pastTalks" class="past" hidden>
             <summary>Earlier talks</summary>
             <ul id="pastList"></ul>
           </details>
-        </section>
-
-        <!-- THE ROOM: clean audience QR + visible join host + 4-letter code. Lapel mic QR lives safely behind Mic modal. -->
-        <section class="card room" aria-labelledby="joinHeading">
-          <div class="qr-top">
-            <h2 class="eyebrow" id="joinHeading">Join</h2>
-          </div>
-          <div class="qr-body">
-            <div id="qrEmpty" role="button" tabindex="0" aria-label="Start captions and show the room code">
-              <div class="qr-slot" aria-hidden="true"><span>READY</span></div>
-              <p>Start captions and the live QR lands right here.</p>
-              <span class="qr-sub-hint">Phones scan to read along, or pair as a wireless lapel mic.</span>
-            </div>
-            <div id="qrGraphic" role="img" aria-label="Audience QR code"></div>
-            <p class="qr-talk" id="qrTalk" hidden></p>
-            <p class="join-host" id="joinHost" hidden></p>
-            <div class="join-line" id="joinLine" hidden><b id="joinCode"></b></div>
-            <p class="qr-hint" id="qrHint" hidden>Point a phone camera at the code to read along.</p>
-            <span class="sr-only" id="urlDisplay" hidden>Standby</span>
-            <div class="room-actions" id="qrActions" hidden>
-              <button type="button" id="copyUrlBtn" disabled><span class="btn-label">Copy link</span></button>
-              <button type="button" id="fsQrBtn" disabled>Full screen</button>
-              <button type="button" id="micBtn" disabled title="Pair a phone as the lapel mic">Mic</button>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <footer class="deck-footer">
-        <span class="kbd-hint"><kbd>Space</kbd> Start / pause mic</span>
-        <span class="kbd-hint"><kbd>⌥ F</kbd> Float ticker</span>
-        <span class="kbd-hint"><kbd>⌥ Q</kbd> Fullscreen QR</span>
-        <span class="kbd-hint"><kbd>Esc</kbd> Close</span>
-        <a href="/demo">Live demo</a>
-        <a href="/join">Join by code</a>
-        <a href="https://talktype.app" target="_blank" rel="noopener">TalkType</a>
+          <nav class="footer-links" aria-label="StageType links">
+            <a href="/demo">Live demo</a>
+            <a href="/join">Join by code</a>
+            <a href="https://talktype.app" target="_blank" rel="noopener">TalkType</a>
+          </nav>
+        </div>
       </footer>
     </main>
 
-    <!-- Pre-Talk Fullscreen QR Projector Modal (also hosts private Lapel Mic pairing QR) -->
+    <!-- Fullscreen Projector QR Modal (also hosts private Lapel Mic pairing QR) -->
     <div id="fsModal" role="dialog" aria-modal="true" aria-labelledby="fsTitle" aria-describedby="fsNote">
       <div class="fs-card">
         <div style="display:flex;justify-content:space-between;width:100%;align-items:center;gap:12px">
           <div style="text-align:left">
-            <p id="fsTalk" style="margin:0 0 4px;font-weight:700;font-size:13px;color:var(--quiet)" hidden></p>
-            <h2 id="fsTitle" style="margin:0;font-size:1.55rem;letter-spacing:-0.03em">Read along on any phone</h2>
+            <p id="fsTalk" style="margin:0 0 4px;font-weight:700;font-size:13px;color:#635349" hidden></p>
+            <h2 id="fsTitle" style="margin:0;font-size:1.45rem;letter-spacing:-0.03em">Read along on any phone</h2>
           </div>
           <button type="button" id="closeFsBtn">Close</button>
         </div>
@@ -1067,14 +1803,46 @@
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
     const PASTE_KEY = isMac ? "⌘V" : "Ctrl+V";
-    $("#pasteHint").textContent = matchMedia("(pointer: coarse)").matches
+    const isCoarse = matchMedia("(pointer: coarse)").matches;
+    $("#typed").placeholder = isCoarse
+      ? "Type a caption line…"
+      : `Type a caption line or ${PASTE_KEY} screenshot…`;
+    $("#pasteHint").textContent = isCoarse
       ? "Tap Image to share a photo with the room."
       : `Paste a screenshot (${PASTE_KEY}) to share it with the room.`;
 
+    // Keep mobile handheld transceiver locked cleanly above software keyboard
+    if (window.visualViewport) {
+      const syncVvh = () => {
+        document.documentElement.style.setProperty("--vvh", `${Math.round(window.visualViewport.height)}px`);
+      };
+      window.visualViewport.addEventListener("resize", syncVvh);
+      syncVvh();
+    }
+
+    // Mobile Stage | QR Pass view switcher
+    $$("#mobileTabs .mob-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.mob;
+        if (mode === "qr") document.body.dataset.mobView = "qr";
+        else delete document.body.dataset.mobView;
+        $$("#mobileTabs .mob-tab").forEach((b) => {
+          const on = b === btn;
+          b.classList.toggle("active", on);
+          b.setAttribute("aria-selected", String(on));
+        });
+      });
+    });
+
     fillLanguages($("#lang"), store.get("st-lang") || "en-AU");
-    $("#lang").addEventListener("change", () => store.set("st-lang", $("#lang").value));
+    $("#lang").addEventListener("change", () => {
+      store.set("st-lang", $("#lang").value);
+      applyRoomStyle();
+    });
 
     let room = null;
+    let lobby = null; // Pre-live stateless pass ({ id, code, token, exp })
+    let lobbyPoll = null;
     let opening = false;
     let rec = null;
     let localLive = false;
@@ -1084,7 +1852,7 @@
     let lastInterimSent = 0;
     let interimTimer = null;
     let tickerEls = [$("#ticker")];
-    let lanBase = "";
+    let lanBase = location.origin;
     let lastWordTime = Date.now();
     let silenceInterval = null;
     let keepaliveInterval = null;
@@ -1097,13 +1865,14 @@
     let saveTimer = null;
     let pausedByPhone = false;
     let fsOpener = null;
+    let noticeTimer = null;
 
-    // Page Atmosphere / Vibe Pill (4 curated palettes)
+    // Console Faceplate Switcher (4 curated hardware themes)
     const VIBES = {
-      peach: { name: "Peach Sunset", accent: "#ff6ac2", themeColor: "#fff6e6" },
-      stage: { name: "Stage Lights", accent: "#2dd4bf", themeColor: "#f3fbf8" },
-      paper: { name: "Warm Paper", accent: "#ff8a5c", themeColor: "#f7ecdc" },
-      night: { name: "Night Ink", accent: "#ffc74d", themeColor: "#1e1714" },
+      peach: { name: "Peach Sunset", accent: "#ff6b4a", themeColor: "#ffe6d4" },
+      stage: { name: "Stage Lights", accent: "#14b8a6", themeColor: "#daf2e9" },
+      paper: { name: "Warm Paper", accent: "#ff7a3d", themeColor: "#eee1ce" },
+      night: { name: "Night Ink", accent: "#ffc74d", themeColor: "#1a1513" },
     };
     const VIBE_KEYS = Object.keys(VIBES);
     let currentVibe = store.get("st-vibe") || "peach";
@@ -1174,13 +1943,15 @@
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => { if (room) persist(talkRecord(false)); }, 800);
     }
+    let exportRoom = null;
     function updateTranscriptStat() {
       const n = words(transcript);
       $("#transcriptStat").textContent = n
         ? `${n} word${n === 1 ? "" : "s"} captioned${room ? "" : " · saved on this machine"}`
         : "Ready for the first line.";
-      $("#transcriptActions").hidden = transcript.length === 0;
-      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = transcript.length === 0;
+      const hasTx = transcript.length > 0;
+      $("#transcriptActions").hidden = !hasTx;
+      for (const b of ["#copyTx", "#saveTxTxt", "#saveTxMd"]) $(b).disabled = !hasTx;
     }
     function renderPastTalks() {
       const idx = store.json("st-talks", []);
@@ -1208,7 +1979,6 @@
         list.append(li);
       }
     }
-    let exportRoom = null;
     const currentRecord = () => (room ? talkRecord(false) : exportRoom);
     $("#copyTx").onclick = async () => {
       const rec = currentRecord();
@@ -1235,11 +2005,33 @@
 
     const engine = () => $("#engine").value;
     let dg = null;
-    const notice = (msg) => {
-      const n = $("#notice");
-      n.textContent = msg || "";
-      n.hidden = !msg;
-    };
+    function notice(msg, autoDismissMs = 6500) {
+      clearTimeout(noticeTimer);
+      const wrap = $("#notice");
+      const textEl = $("#noticeMsg");
+      textEl.textContent = msg || "";
+      wrap.hidden = !msg;
+      if (msg && autoDismissMs > 0) {
+        noticeTimer = setTimeout(() => { wrap.hidden = true; }, autoDismissMs);
+      }
+    }
+    $("#noticeClose").onclick = () => notice("", 0);
+
+    function syncMonitorOverlay() {
+      const isLive = Boolean(room);
+      const isEmpty = finals.length === 0 && !interim;
+      $("#monitorEmpty").hidden = !(isLive && isEmpty);
+      if (isLive && isEmpty) {
+        if (phoneLive) {
+          $("#monitorPrompt").textContent = "Phone lapel mic live — speak into the phone or type below";
+        } else if (paused) {
+          $("#monitorPrompt").textContent = "Mic paused — press Space or Resume to continue";
+        } else {
+          const src = engine() === "deepgram" ? "Laptop mic (Deepgram)" : "Laptop mic";
+          $("#monitorPrompt").textContent = `Listening on ${src} — speak or type below`;
+        }
+      }
+    }
 
     function renderTicker() {
       const tail = finals.slice(-Number(prefs.depth));
@@ -1260,6 +2052,7 @@
         const holder = el.querySelector?.(".ticker-text") || el;
         holder.innerHTML = html ? `<div>${html}</div>` : "";
       }
+      syncMonitorOverlay();
     }
 
     function closeStageSelects(except = null) {
@@ -1270,7 +2063,7 @@
       }
     }
     document.addEventListener("click", (e) => {
-      for (const m of $$(".menu[open], .more[open]")) if (!m.contains(e.target)) m.open = false;
+      for (const m of $$(".menu[open], .more[open], .past[open]")) if (!m.contains(e.target)) m.open = false;
       for (const s of $$(".stage-select.open")) {
         if (!s.contains(e.target)) {
           s.classList.remove("open");
@@ -1279,13 +2072,14 @@
       }
     });
 
-    // Progressive enhancement for <select> -> tactile Neo-Toybrut .stage-select popovers
-    const CHEV_SVG = `<svg width="11" height="7" viewBox="0 0 12 8" aria-hidden="true"><path d="M1.5 1.5 6 6 10.5 1.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    // Progressive enhancement for <select> -> tactile keycap .stage-select popovers
+    const CHEV_SVG = `<svg width="10" height="6" viewBox="0 0 12 8" aria-hidden="true"><path d="M1.5 1.5 6 6 10.5 1.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const stageSelectSyncers = new Map();
     function initStageSelects() {
       for (const sel of $$("#lang, #engine, #faceSelect")) {
         if (sel.parentElement?.classList.contains("stage-select")) continue;
-        const fieldLabel = sel.closest(".field")?.querySelector(".field-label")?.textContent?.trim();
+        const labelId = sel.getAttribute("aria-labelledby");
+        const fieldLabel = labelId ? document.getElementById(labelId)?.textContent?.trim() : "";
         const ariaName = sel.getAttribute("aria-label") || fieldLabel || "Select option";
         const wrap = document.createElement("div");
         wrap.className = "stage-select";
@@ -1385,7 +2179,7 @@
     }
     const syncStageSelects = () => stageSelectSyncers.forEach((fn) => fn());
 
-    // Stage ticker preferences: modular customization (style preset + direct ring & face controls).
+    // Stage ticker preferences
     const SIZE_DEPTH = { "28px": "1", "38px": "2", "50px": "3" };
     const SIZE_NAME = { "28px": "Compact", "38px": "Standard", "50px": "Jumbo" };
     const STYLE_PRESETS = {
@@ -1394,7 +2188,6 @@
       brut: { ring: "ink", face: "system", weight: "700", name: "Yellow Brut" },
       hemingway: { ring: "clay", face: "fraunces", weight: "400", name: "Hemingway" },
     };
-    // Only auto-prime genuine proper-case compounds, acronyms, or alphanumeric codes (never plain Title Case words like "The" or "How").
     const termsFrom = (text) =>
       text
         .split(/[^\p{L}\p{N}'-]+/u)
@@ -1408,7 +2201,7 @@
       const chip = $("#wordsChip");
       const n = keyterms().length;
       chip.hidden = n === 0;
-      chip.textContent = n ? `${n} word${n === 1 ? "" : "s"} primed` : "";
+      chip.textContent = n ? `${n} primed` : "";
     }
     $("#wordsChip").addEventListener("click", (e) => {
       e.preventDefault(); e.stopPropagation();
@@ -1428,7 +2221,8 @@
     };
     const presetFor = () => STYLE_PRESETS[prefs.style] || STYLE_PRESETS.ink;
     const tickerUrl = () => {
-      if (!room) return "";
+      const active = room || lobby;
+      if (!active) return "";
       const p = presetFor();
       const q = new URLSearchParams({
         style: prefs.style,
@@ -1439,17 +2233,19 @@
         ring: prefs.ring || p.ring,
         size: prefs.size,
       });
-      return `${location.origin}/ticker/${room.id}?${q}`;
+      return `${location.origin}/ticker/${active.id}?${q}`;
     };
     function applyPrefs() {
       const p = presetFor();
       const face = prefs.face || p.face;
       const ring = prefs.ring || p.ring;
+      $("#monitorWell").dataset.light = prefs.style === "ink" ? "0" : "1";
       for (const el of tickerEls) {
         el.style.setProperty("--ticker-size", prefs.size);
         el.style.setProperty("--ticker-face", `var(--face-${face})`);
         el.style.setProperty("--ticker-weight", p.weight);
         el.style.setProperty("--ticker-depth", prefs.depth);
+        el.dataset.size = prefs.size;
         el.dataset.face = face;
         el.dataset.flow = prefs.flow;
         el.dataset.ring = ring;
@@ -1506,7 +2302,7 @@
     async function shareImage(file) {
       if (!room || sharing || !file?.type?.startsWith("image/")) return;
       if (file.size > 40_000_000) {
-        notice("That image is over 40 MB. Crop it first, or paste a screenshot instead.");
+        notice("That image is over 40 MB. Crop it first, or paste a screenshot instead.", 8000);
         return;
       }
       sharing = true;
@@ -1532,7 +2328,7 @@
         const saved = await res.json();
         addTrayImage(saved.thumb, saved.id);
       } catch (err) {
-        notice(`Couldn't share that image (${err.message}).`);
+        notice(`Couldn't share that image (${err.message}).`, 8000);
       } finally {
         sharing = false;
         $("#shareImageBtn").disabled = !room;
@@ -1553,8 +2349,7 @@
       const img = document.createElement("img");
       img.src = thumb; img.alt = "";
       button.append(img);
-      tray.append(button);
-      tray.hidden = false;
+      tray.insertBefore(button, $("#shareImageBtn"));
       paintTray();
     }
     function removeTrayThumb(assetId) {
@@ -1565,7 +2360,6 @@
       const tray = $("#assetTray");
       tray.querySelectorAll(".tray-thumb").forEach((b) => b.remove());
       hideClipChip();
-      tray.hidden = true;
       paintTray();
     }
     function paintTray() {
@@ -1587,7 +2381,7 @@
         });
         if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
       } catch {
-        notice("Couldn't pull that picture back, so it stays in the room.");
+        notice("Couldn't pull that picture back, so it stays in the room.", 8000);
         if (src) addTrayImage(src, assetId);
       }
     }
@@ -1648,7 +2442,6 @@
       clipObjectUrl = URL.createObjectURL(file);
       $("#clipThumb").src = clipObjectUrl;
       $("#clipChip").hidden = false;
-      $("#assetTray").hidden = false;
     }
     async function peekClipboard() {
       if (!room || !clipboardReadGranted) return;
@@ -1695,6 +2488,9 @@
       if (text) push({ text, final: true, source: "typed" });
       else push({ text: "", final: false, source: "typed" });
     });
+
+    // Live title updates on QR Pass even while typing pre-live
+    $("#title").addEventListener("input", () => applyRoomStyle());
 
     // Presenter-pinned Take-Home Links (synced live to every phone's #linksTray)
     let linksSyncTimer = null;
@@ -1748,7 +2544,7 @@
     });
 
     function applyRoomStyle() {
-      const t = room?.title || "";
+      const t = (room ? room.title : $("#title").value.trim()) || "";
       $("#qrTalk").textContent = t;
       $("#qrTalk").hidden = !t;
       $("#fsTalk").textContent = t;
@@ -1764,7 +2560,11 @@
       qr.make();
       return qr.createSvgTag({ cellSize, margin: 0, scalable: true });
     }
-    const roomUrl = () => `${lanBase}/live/${room.id}`;
+    const activePass = () => room || lobby;
+    const roomUrl = () => {
+      const p = activePass();
+      return p ? `${lanBase}/live/${p.id}` : "";
+    };
     const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
     let dgPassRequired = false;
     const currentPass = () => $("#speechPass").value.trim();
@@ -1779,39 +2579,98 @@
       } catch {}
     });
     const micUrl = () => {
+      const p = activePass();
+      if (!p) return "";
       const q = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
       for (const term of keyterms()) q.append("keyterm", term);
       const pass = currentPass();
-      const hash = pass ? new URLSearchParams({ token: room.token, pass }).toString() : room.token;
-      return `${lanBase}/mic/${room.id}?${q}#${hash}`;
+      const hash = pass ? new URLSearchParams({ token: p.token, pass }).toString() : p.token;
+      return `${lanBase}/mic/${p.id}?${q}#${hash}`;
     };
 
-    function updateQR() {
-      if (!room) return;
+    function setRoomCountLabel(label, compactSub) {
+      if ($("#countBadge").textContent !== label) {
+        $("#countBadge").textContent = label;
+        $("#countBadge").classList.remove("bump");
+        void $("#countBadge").offsetWidth;
+        $("#countBadge").classList.add("bump");
+      }
+      $("#compactCount").textContent = compactSub || label;
+    }
+
+    function updateQR(animate = true) {
+      const p = activePass();
+      if (!p) return;
       const targetUrl = roomUrl();
       $("#qrGraphic").innerHTML = qrSvgFor(targetUrl, 5);
-      $("#qrGraphic").classList.remove("pop");
-      void $("#qrGraphic").offsetWidth;
-      $("#qrGraphic").classList.add("pop");
+      if (animate) {
+        $("#qrGraphic").classList.remove("pop");
+        void $("#qrGraphic").offsetWidth;
+        $("#qrGraphic").classList.add("pop");
+      }
       $("#urlDisplay").textContent = targetUrl;
       $("#joinHost").textContent = joinHostText();
-      $("#joinHost").hidden = !room.code;
-      $("#joinLine").hidden = !room.code;
-      $("#joinCode").textContent = room.code || "";
-      $("#joinCode").setAttribute("aria-label", `Room code ${(room.code || "").split("").join(" ")}`);
+      $("#joinHost").hidden = !p.code;
+      $("#joinLine").hidden = !p.code;
+      $("#joinCode").textContent = p.code || "";
+      $("#joinCode").setAttribute("aria-label", `Room code ${(p.code || "").split("").join(" ")}`);
+      $("#compactCode").textContent = p.code || "····";
+      $("#mobQrTab").textContent = p.code ? `QR · ${p.code}` : "QR Pass";
+      $("#copyUrlBtn").disabled = false;
+      $("#fsQrBtn").disabled = false;
+      $("#micBtn").disabled = false;
+    }
+
+    // Stateless Pre-Live Lobby Pass: renders scannable QR + 4-letter code at t=0 without allocating a server Room.
+    async function mintLobbyPass() {
+      if (room) return;
+      clearInterval(lobbyPoll);
+      try {
+        lanBase = await lanBaseFor();
+        const res = await fetch("/api/lobby/mint");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (room || !data?.id || !data?.code) return;
+        lobby = data;
+        applyRoomStyle();
+        updateQR(false);
+        setRoomCountLabel("Lobby open", "Lobby");
+        $("#qrHint").hidden = false;
+        lobbyPoll = setInterval(checkLobbyStatus, 2500);
+      } catch { /* offline or starting up */ }
+    }
+
+    async function checkLobbyStatus() {
+      if (room || !lobby || document.hidden) return;
+      try {
+        const r = await fetch(`/api/lobby/${lobby.id}`);
+        if (r.status === 404) { mintLobbyPass(); return; }
+        if (!r.ok) return;
+        const j = await r.json();
+        if (room) return;
+        const waiting = Number(j.listeners || 0);
+        if (waiting > 0) {
+          setRoomCountLabel(`${waiting} waiting`, `${waiting} waiting`);
+          $("#qrHint").hidden = true;
+        } else {
+          setRoomCountLabel("Lobby open", "Lobby");
+          $("#qrHint").hidden = false;
+        }
+      } catch { /* ignore transient poll failure */ }
     }
 
     // Fullscreen modal: Room QR (for projector) OR private Lapel Mic QR (never writes secret token into #urlDisplay).
     function renderModalQR(isMic) {
-      if (!room) return;
+      const p = activePass();
+      if (!p) return;
       const target = isMic ? micUrl() : roomUrl();
       $("#fsQr").dataset.mode = isMic ? "mic" : "room";
       $("#fsQr").innerHTML = qrSvgFor(target, 9);
       $("#fsHost").textContent = isMic ? "" : joinHostText();
-      $("#fsHost").hidden = isMic || !room.code;
-      $("#fsCode").hidden = isMic || !room.code;
-      $("#fsCodeText").textContent = isMic ? "" : room.code || "";
-      $("#fsCodeText").setAttribute("aria-label", isMic ? "" : `Room code ${(room.code || "").split("").join(" ")}`);
+      $("#fsHost").hidden = isMic || !p.code;
+      $("#fsCode").hidden = isMic || !p.code;
+      $("#fsCodeText").textContent = isMic ? "" : p.code || "";
+      $("#fsCodeText").setAttribute("aria-label", isMic ? "" : `Room code ${(p.code || "").split("").join(" ")}`);
       $("#fsTitle").textContent = isMic ? "Pair a wireless lapel mic" : "Read along on any phone";
       $("#fsNote").textContent = isMic
         ? "Keys ride in this private code. Scan it on the speaker's phone, then close before projecting."
@@ -1830,7 +2689,7 @@
       sseSource.addEventListener("open", () => {
         if (relayOffline) {
           relayOffline = false;
-          notice("");
+          notice("", 0);
         }
       });
 
@@ -1903,7 +2762,7 @@
       sseSource.onerror = () => {
         if (room && !pageUnloading) {
           relayOffline = true;
-          notice("Relay paused for a beat, reconnecting now. Audience phones catch right back up once online.");
+          notice("Relay paused for a beat, reconnecting now. Audience phones catch right back up once online.", 0);
         }
       };
     }
@@ -1917,29 +2776,25 @@
           body: JSON.stringify(body),
         });
         if (r.status === 404) {
-          notice("The room is gone on the relay. End the talk and start again.");
+          notice("The room is gone on the relay. End the talk and start again.", 0);
           return false;
         }
         if (r.ok && relayOffline) {
           relayOffline = false;
-          notice("");
+          notice("", 0);
         }
         const j = await r.json().catch(() => ({}));
         if (typeof j.listeners === "number") {
           const others = Math.max(0, j.listeners - (sseSource && sseSource.readyState === EventSource.OPEN ? 1 : 0));
           const label = others === 0 ? "Room empty" : `${others} reading`;
+          const short = others === 0 ? "0 reading" : `${others} reading`;
           $("#qrHint").hidden = others > 0;
-          if ($("#countBadge").textContent !== label) {
-            $("#countBadge").textContent = label;
-            $("#countBadge").classList.remove("bump");
-            void $("#countBadge").offsetWidth;
-            $("#countBadge").classList.add("bump");
-          }
+          setRoomCountLabel(label, short);
         }
         return r.ok;
       } catch {
         relayOffline = true;
-        notice("Relay unreachable. Captions keep flowing locally until the connection returns.");
+        notice("Relay unreachable. Captions keep flowing locally until the connection returns.", 0);
         return false;
       }
     }
@@ -1959,7 +2814,7 @@
 
     async function startDeepgram() {
       if (dgPassRequired && !currentPass()) {
-        notice("Enter the relay Speech pass in the top bar before starting Deepgram.");
+        notice("Enter the relay Speech pass in the top bar before starting Deepgram.", 9000);
         setPaused(true, false);
         $("#speechPass").focus();
         return;
@@ -1974,7 +2829,7 @@
           pass: currentPass(),
           onError: (msg) => {
             dg = null;
-            notice(`Deepgram: ${msg}`);
+            notice(`Deepgram: ${msg}`, 9000);
             setPaused(true, false);
           },
         });
@@ -1982,7 +2837,7 @@
         dg = started;
         updateMicLabel(true);
       } catch (err) {
-        notice(`Couldn't start the Deepgram link: ${err.message}.`);
+        notice(`Couldn't start the Deepgram link: ${err.message}.`, 9000);
         setPaused(true, false);
       }
     }
@@ -1992,8 +2847,9 @@
       clearTimeout(recRestartTimer);
       if (engine() === "deepgram") { startDeepgram(); return; }
       if (!Rec) {
-        notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.");
+        notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.", 9000);
         $("#micSource").textContent = "Phone mic only";
+        syncMonitorOverlay();
         return;
       }
       rec = new Rec();
@@ -2041,6 +2897,7 @@
             isBrave
               ? "Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, use Chrome/Safari/Edge, or pair the phone lapel mic."
               : "Speech recognition stopped: network error. Browser speech uses cloud recognition servers. Check connection, use Chrome/Safari, or pair the phone lapel mic.",
+            10000,
           );
         } else if (FATAL_REC.has(e.error)) {
           setPaused(true, false);
@@ -2048,6 +2905,7 @@
             e.error === "not-allowed"
               ? "Microphone blocked. Allow the mic for this site, or pair the phone lapel mic instead."
               : `Speech recognition stopped: ${e.error}. Pair the phone lapel mic instead.`,
+            10000,
           );
         } else {
           console.warn("Speech recognition error:", e.error);
@@ -2062,7 +2920,7 @@
       try {
         rec.start();
       } catch (err) {
-        notice(`Couldn't start speech recognition: ${err.message}. Pair the phone lapel mic instead.`);
+        notice(`Couldn't start speech recognition: ${err.message}. Pair the phone lapel mic instead.`, 9000);
         setPaused(true, false);
       }
     }
@@ -2077,21 +2935,23 @@
           setPaused(true, false, false);
         }
         $("#liveText").textContent = "Live";
-        if (/^(Phone mic|The phone mic)/.test($("#notice").textContent)) notice("");
+        delete document.body.dataset.paused;
+        if (/^(Phone mic|The phone mic)/.test($("#noticeMsg").textContent)) notice("", 0);
       } else if (lost) {
         label.textContent = "Phone mic dropped";
         if (pausedByPhone && localLive) {
           pausedByPhone = false;
           setPaused(false);
-          notice("The phone mic dropped out (battery, lock screen or wifi). The laptop mic is back on.");
+          notice("The phone mic dropped out (battery, lock screen or wifi). The laptop mic is back on.", 8000);
         } else {
-          notice("The phone mic dropped out (battery, lock screen or wifi).");
+          notice("The phone mic dropped out (battery, lock screen or wifi).", 8000);
         }
       } else {
         label.textContent = "Phone mic paused";
-        if (pausedByPhone) notice("Phone mic paused. Resume the laptop mic with Space or Resume.");
+        if (pausedByPhone) notice("Phone mic paused. Resume the laptop mic with Space or Resume.", 8000);
       }
       updateMicLabel();
+      syncMonitorOverlay();
     }
     function updateMicLabel(force = false) {
       if (phoneLive) return;
@@ -2105,6 +2965,8 @@
       if (!on) pausedByPhone = false;
       $("#pauseBtn").querySelector(".btn-label").textContent = on ? "Resume" : "Pause";
       $("#pauseBtn").dataset.paused = on ? "1" : "0";
+      if (on && !phoneLive) document.body.dataset.paused = "1";
+      else delete document.body.dataset.paused;
       if (tellRoom && room && !phoneLive) push({ paused: on });
       if (on) {
         clearTimeout(recRestartTimer);
@@ -2116,12 +2978,13 @@
         renderTicker();
         $("#liveText").textContent = phoneLive ? "Live" : "Paused";
       } else if (restart && localLive) {
-        notice("");
+        notice("", 0);
         $("#liveText").textContent = "Live";
         lastWordTime = Date.now();
         startLocalRec();
       }
       updateMicLabel(true);
+      syncMonitorOverlay();
     }
 
     async function lanBaseFor() {
@@ -2187,18 +3050,26 @@
     async function openRoom() {
       if (room || opening) return;
       opening = true;
-      notice("");
+      clearInterval(lobbyPoll);
+      notice("", 0);
       try {
         lanBase = await lanBaseFor();
         const title = $("#title").value.trim();
+        const payload = {
+          title,
+          lang: $("#lang").value,
+          links: parsedRoomLinks(),
+          ...(lobby ? { lobbyId: lobby.id, lobbyToken: lobby.token } : {}),
+        };
         const roomRes = await fetch("/api/room", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ title, lang: $("#lang").value, links: parsedRoomLinks() }),
+          body: JSON.stringify(payload),
         });
         if (!roomRes.ok) throw new Error(`HTTP ${roomRes.status}`);
         const created = await roomRes.json();
         created.startedAt = Date.now();
+        lobby = null;
         if (!$("#keyterms").value.trim() && title) {
           $("#keyterms").value = termsFrom(title);
           updateWordsChip();
@@ -2209,7 +3080,7 @@
         seen = 0;
         attachRoom(created);
       } catch (err) {
-        notice(`Couldn't open a room on the relay (${err.message}). Check that the server process is running.`);
+        notice(`Couldn't open a room on the relay (${err.message}). Check that the server process is running.`, 9000);
       } finally {
         opening = false;
       }
@@ -2241,7 +3112,7 @@
         while (transcriptTimes.length < transcript.length) transcriptTimes.push(saved.startedAt || Date.now());
         while (transcriptSpeakers.length < transcript.length) transcriptSpeakers.push("");
         attachRoom(saved);
-        notice("Picked the talk back up after a reload. Phones never noticed.");
+        notice("Picked the talk back up after a reload. Phones never noticed.", 6500);
         return true;
       } finally {
         opening = false;
@@ -2249,6 +3120,8 @@
     }
 
     function attachRoom(r) {
+      clearInterval(lobbyPoll);
+      lobby = null;
       room = r;
       try { sessionStorage.setItem("st-room", JSON.stringify(room)); } catch {}
       exportRoom = null;
@@ -2260,14 +3133,13 @@
       paused = false;
       phoneLive = false;
       pausedByPhone = false;
-      $("#countBadge").textContent = "Room empty";
+      delete document.body.dataset.paused;
+      setRoomCountLabel("Room empty", "0 reading");
       updateMicLabel(true);
       applyRoomStyle();
-      renderTicker();
-      updateQR();
+      updateQR(true);
       $("#qrHint").hidden = false;
       $("#shareImageBtn").disabled = false;
-      $("#assetTray").hidden = false;
       $("#title").disabled = true;
       $("#typed").disabled = false;
       $("#screenBtn").disabled = false;
@@ -2282,15 +3154,10 @@
       $("#pauseBtn").dataset.paused = "0";
       $("#pauseBtn").querySelector(".btn-label").textContent = "Pause";
       $("#floatBtn").disabled = false;
-      $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (⌥ + F)" : "Pop out ticker over slides (⌥ + F)";
+      $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (Opt + F)" : "Pop out ticker over slides (Opt + F)";
       $("#engine").disabled = true;
       syncStageSelects();
-      $("#qrEmpty").hidden = true;
       $("#urlDisplay").hidden = false;
-      $("#copyUrlBtn").disabled = false;
-      $("#fsQrBtn").disabled = false;
-      $("#micBtn").disabled = false;
-      $("#qrActions").hidden = false;
 
       $("#liveDot").classList.add("active");
       $("#liveText").textContent = "Live";
@@ -2298,7 +3165,10 @@
 
       localLive = true;
       lastWordTime = Date.now();
+      renderTicker();
       startLocalRec();
+      // Immediately fetch live listener count in case early-bird phones joined the lobby before Start!
+      push({ ping: true });
 
       clearInterval(keepaliveInterval);
       keepaliveInterval = setInterval(() => push({ ping: true }), 30_000);
@@ -2316,6 +3186,7 @@
       paused = false;
       phoneLive = false;
       pausedByPhone = false;
+      delete document.body.dataset.paused;
       clearTimeout(recRestartTimer);
       clearTimeout(interimTimer);
       clearTimeout(typedTimer);
@@ -2344,13 +3215,12 @@
       }
       try { sessionStorage.removeItem("st-room"); } catch {}
       room = null;
-      notice("");
+      notice("", 0);
       updateTranscriptStat();
       renderPastTalks();
 
       $("#liveDot").classList.remove("active");
       $("#liveText").textContent = "Ended";
-      $("#countBadge").textContent = "Room empty";
       delete document.body.dataset.live;
       $("#startBtn").hidden = false;
       $("#stopBtn").hidden = true;
@@ -2359,17 +3229,6 @@
       $("#shareImageBtn").disabled = true;
       clearTray();
       $("#engine").disabled = false;
-      $("#qrEmpty").hidden = false;
-      $("#qrTalk").hidden = true;
-      $("#qrHint").hidden = true;
-      $("#joinHost").hidden = true;
-      $("#urlDisplay").hidden = true;
-      $("#copyUrlBtn").disabled = true;
-      $("#fsQrBtn").disabled = true;
-      $("#micBtn").disabled = true;
-      $("#qrActions").hidden = true;
-      interim = "";
-      renderTicker();
       $("#lang").disabled = false;
       syncStageSelects();
       $("#title").disabled = false;
@@ -2377,26 +3236,19 @@
       $("#typed").value = "";
       $("#screenBtn").disabled = true;
       $("#copyObsBtn").disabled = true;
-      $("#urlDisplay").textContent = "Standby";
-      $("#qrGraphic").innerHTML = "";
-      $("#joinLine").hidden = true;
-      $("#fsCode").hidden = true;
-      $("#fsHost").hidden = true;
+      interim = "";
+      renderTicker();
+      applyRoomStyle();
+      // Mint a fresh pre-live lobby pass so the console is immediately ready for the next talk
+      mintLobbyPass();
     }
 
     $("#startBtn").onclick = () => openRoom();
-    $("#qrEmpty").onclick = () => { if (!room) openRoom(); };
-    $("#qrEmpty").onkeydown = (e) => {
-      if (!room && (e.key === "Enter" || e.key === " ")) {
-        e.preventDefault(); e.stopPropagation();
-        openRoom();
-      }
-    };
     $("#stopBtn").onclick = () => handleTalkEnded(true);
     $("#pauseBtn").onclick = () => setPaused(!paused);
 
     $("#copyUrlBtn").onclick = async () => {
-      const text = room ? roomUrl() : "";
+      const text = roomUrl();
       if (!text) return;
       const lbl = $("#copyUrlBtn").querySelector(".btn-label");
       const orig = lbl.textContent;
@@ -2410,7 +3262,7 @@
     };
 
     const openFullscreenQR = (isMic = false) => {
-      if (!room) return;
+      if (!activePass()) return;
       fsOpener = document.activeElement;
       renderModalQR(isMic);
       $("#fsModal").classList.add("open");
@@ -2423,12 +3275,12 @@
       fsOpener = null;
     };
     $("#fsQrBtn").onclick = () => openFullscreenQR(false);
+    $("#compactRoomBtn").onclick = () => openFullscreenQR(false);
     $("#micBtn").onclick = () => openFullscreenQR(true);
     $("#closeFsBtn").onclick = closeFullscreenQR;
     $("#fsModal").onclick = (e) => { if (e.target === $("#fsModal")) closeFullscreenQR(); };
 
     // Float Ticker via Document Picture-in-Picture with popup fallback.
-    // Crucially resets min-height: 0; flex: 1 1 auto so compact/standard PiP windows never clip captions!
     function floatBox() {
       const size = Number(prefs.size.replace("px", "")) || 38;
       const lines = Number(prefs.depth) || 2;
@@ -2449,9 +3301,9 @@
           fonts.rel = "stylesheet";
           fonts.href = new URL("/vendor/fonts.css", location.origin).href;
           pip.document.head.append(fonts, document.querySelector("style").cloneNode(true));
-          const bgMap = { ink: "#1e1714", paper: "#fbf1e4", brut: "#ffc74d", hemingway: "#f7ecdc" };
-          pip.document.body.style.cssText = `margin:0;min-height:0;height:100vh;background:${
-            bgMap[prefs.style] || "#1e1714"
+          const bgMap = { ink: "#191412", paper: "#fbf3e6", brut: "#f6c445", hemingway: "#f5ead8" };
+          pip.document.body.style.cssText = `margin:0;padding:0;min-height:0;height:100vh;background:${
+            bgMap[prefs.style] || "#191412"
           };background-image:none;display:flex;flex-direction:column;overflow:hidden;`;
 
           const t = pip.document.createElement("div");
@@ -2459,7 +3311,7 @@
           t.dir = isRtlLang($("#lang").value) ? "rtl" : "auto";
           t.style.cssText = [
             "position:static;transform:none;width:100vw;height:100vh;min-height:0;max-height:none;flex:1 1 auto",
-            "border-radius:0;box-shadow:none;border-width:3px;padding:12px 24px",
+            `font-size:${prefs.size};border-radius:0;box-shadow:none;border-top-width:3px;padding:12px 24px`,
           ].join(";");
           pip.document.body.append(t);
           tickerEls.push(t);
@@ -2484,7 +3336,7 @@
         "StageTypeFloatTicker",
         `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes`,
       );
-      if (!pop) notice("Pop-up blocked. Allow pop-ups for this site so the ticker can float over slides.");
+      if (!pop) notice("Pop-up blocked. Allow pop-ups for this site so the ticker can float over slides.", 8000);
       else pop.focus();
     };
     $("#floatBtn").onclick = floatTickerWindow;
@@ -2505,6 +3357,7 @@
       syncPassField();
       updateMicLabel(true);
       syncStageSelects();
+      syncMonitorOverlay();
     };
     fetch("/api/engines").then((r) => r.json()).then((e) => {
       const opt = $('#engine option[value="deepgram"]');
@@ -2528,9 +3381,15 @@
     updateWordsChip();
     initStageSelects();
     applyPrefs();
+    applyRoomStyle();
     renderPastTalks();
     updateTranscriptStat();
-    resumeRoom().then((resumed) => { if (!resumed) startGhost(); });
+    resumeRoom().then((resumed) => {
+      if (!resumed) {
+        startGhost();
+        mintLobbyPass();
+      }
+    });
 
     // Keyboard Shortcuts (never hijack interactive controls or Space inside modal!)
     window.addEventListener("keydown", (e) => {
@@ -2538,7 +3397,7 @@
       if (e.key === "Escape") {
         const openSel = $(".stage-select.open .stage-select-btn");
         if (openSel) { closeStageSelects(); openSel.focus(); return; }
-        for (const m of $$(".menu[open], .more[open]")) {
+        for (const m of $$(".menu[open], .more[open], .past[open]")) {
           m.open = false;
           m.querySelector("summary")?.focus();
           return;

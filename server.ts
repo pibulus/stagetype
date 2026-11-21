@@ -146,6 +146,9 @@ const DEMO_IDLE_EMPTY_MS = 90_000;
 const DEMO_MAX_ROOMS = 200;
 const DEMO_MAX_LISTENERS = 3;
 const DEMO_MINT_LIMIT = 60;
+const LOBBY_TTL_MS = 30 * 60_000;
+const LOBBY_MAX = 2_000;
+const LOBBY_MINT_LIMIT = 60;
 // Join-code lookups: 300/min handles a 200-300 person hall behind one venue NAT while throttling scans.
 const JOIN_WINDOW_MS = 60_000;
 const JOIN_LIMIT = 300;
@@ -166,10 +169,14 @@ const SITEMAP_PAGES = [
 
 export const rooms: Map<string, Room> = new Map();
 const codes = new Map<string, string>(); // join code -> room id, only while the room is open
+type Lobby = { id: string; code: string; exp: number };
+export const lobbies: Map<string, Lobby> = new Map(); // pre-live stateless-token lobby stubs (~64B each, zero Room RAM)
+const lobbyCodes = new Map<string, string>(); // join code -> lobby id before first scan or Start captions
 type RateBucket = { count: number; resetAt: number };
 const roomCreateBuckets = new Map<string, RateBucket>();
 const joinBuckets = new Map<string, RateBucket>();
 const demoMintBuckets = new Map<string, RateBucket>();
+const lobbyMintBuckets = new Map<string, RateBucket>();
 let globalAssetBytes = 0;
 let totalListeners = 0;
 
@@ -235,8 +242,43 @@ export function newCode(): string {
   for (;;) {
     const bytes = crypto.getRandomValues(new Uint8Array(4));
     const c = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
-    if (!CODE_BLOCKLIST.has(c) && !codes.has(c)) return c;
+    if (!CODE_BLOCKLIST.has(c) && !codes.has(c) && !lobbyCodes.has(c)) return c;
   }
+}
+
+function dropLobby(lobbyId: string) {
+  const l = lobbies.get(lobbyId);
+  if (!l) return;
+  lobbies.delete(lobbyId);
+  if (lobbyCodes.get(l.code) === lobbyId) lobbyCodes.delete(l.code);
+}
+
+function activeLobby(lobbyId: string, now = Date.now()): Lobby | null {
+  const l = lobbies.get(lobbyId);
+  if (!l) return null;
+  if (l.exp <= now) {
+    dropLobby(lobbyId);
+    return null;
+  }
+  return l;
+}
+
+function activeLobbyIdForCode(code: string, now = Date.now()): string | undefined {
+  const lid = lobbyCodes.get(code);
+  if (!lid) return undefined;
+  return activeLobby(lid, now) ? lid : undefined;
+}
+
+async function materialiseLobby(lobbyId: string, now = Date.now()): Promise<Room | undefined> {
+  if (rooms.has(lobbyId)) return rooms.get(lobbyId);
+  const l = activeLobby(lobbyId, now);
+  if (!l || rooms.size >= MAX_ROOMS) return undefined;
+  const token = await noise.derive(SECRET, lobbyId, "lobby-write");
+  dropLobby(lobbyId);
+  const room = makeRoom({ token, code: l.code, title: "", now });
+  rooms.set(lobbyId, room);
+  codes.set(l.code, lobbyId);
+  return room;
 }
 
 const isLoopbackIp = (ip: string) => ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1" || ip === "localhost";
@@ -645,6 +687,40 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return json({ alive: !!r, listeners: r?.listeners.size ?? 0 });
   }
 
+  // Mint a pre-live presenter lobby pass so QR + 4-letter code render at t=0 without allocating a Room
+  // until the first audience phone scans or the presenter starts captions.
+  if (get && path === "/api/lobby/mint") {
+    if (req.headers.get("sec-fetch-site") === "cross-site") return json({ error: "cross-site refused" }, 403);
+    const key = clientKey(req, info);
+    if (key && takeSlot(lobbyMintBuckets, key, LOBBY_MINT_LIMIT, JOIN_WINDOW_MS) !== null) {
+      return json({ error: "too many lobby passes from this address" }, 429, { "retry-after": "60" });
+    }
+    const now = Date.now();
+    if (lobbies.size >= LOBBY_MAX) {
+      for (const [lid, l] of lobbies) if (l.exp <= now) dropLobby(lid);
+      while (lobbies.size >= LOBBY_MAX) {
+        const oldest = lobbies.keys().next().value;
+        if (!oldest) break;
+        dropLobby(oldest);
+      }
+    }
+    const lobbyId = id(32);
+    const code = newCode();
+    const exp = now + LOBBY_TTL_MS;
+    lobbies.set(lobbyId, { id: lobbyId, code, exp });
+    lobbyCodes.set(code, lobbyId);
+    const token = await noise.derive(SECRET, lobbyId, "lobby-write");
+    return json({ id: lobbyId, code, token, exp, ttlMs: LOBBY_TTL_MS });
+  }
+  const lobbyStatus = path.match(/^\/api\/lobby\/([a-z0-9]{32})$/);
+  if (get && lobbyStatus) {
+    const lid = lobbyStatus[1];
+    const r = rooms.get(lid);
+    if (r) return json({ ok: true, materialized: true, listeners: r.listeners.size, phone: r.phone.live });
+    if (activeLobby(lid)) return json({ ok: true, materialized: false, listeners: 0, phone: false });
+    return json({ error: "lobby gone" }, 404);
+  }
+
   // Type-the-code entry for people who can't scan the projector
   if (get && (path === "/live" || path === "/live/")) {
     return new Response(null, {
@@ -669,7 +745,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
       return json({ error: "too many code lookups from this address" }, 429, { "retry-after": "60" });
     }
     const code = path.slice(3).toUpperCase();
-    const roomId = codes.get(code);
+    const roomId = codes.get(code) ?? activeLobbyIdForCode(code);
     return new Response(null, {
       status: 302,
       headers: {
@@ -684,7 +760,8 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     if (key && takeSlot(joinBuckets, key, JOIN_LIMIT, JOIN_WINDOW_MS) !== null) {
       return json({ error: "too many code lookups from this address" }, 429, { "retry-after": "60" });
     }
-    const roomId = codes.get(path.slice(10).toUpperCase());
+    const code = path.slice(10).toUpperCase();
+    const roomId = codes.get(code) ?? activeLobbyIdForCode(code);
     return roomId ? json({ id: roomId }) : json({ error: "no talk with that code" }, 404);
   }
 
@@ -735,10 +812,9 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
         return json({ error: "too many rooms from this address" }, 429, { "retry-after": String(Math.ceil(wait / 1000)) });
       }
     }
-    if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
     const raw = await readBody(req);
     if (raw === null) return json({ error: "too big" }, 413);
-    let opts: { title?: unknown; lang?: unknown; links?: unknown } = {};
+    let opts: { title?: unknown; lang?: unknown; links?: unknown; lobbyId?: unknown; lobbyToken?: unknown } = {};
     if (raw.trim()) {
       try {
         opts = JSON.parse(raw) ?? {};
@@ -749,10 +825,34 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const title = typeof opts.title === "string" ? opts.title.replace(/\s+/g, " ").trim().slice(0, MAX_TITLE) : "";
     const lang = cleanLang(opts.lang);
     const links = cleanLinks(opts.links);
+    const now = Date.now();
+    if (typeof opts.lobbyId === "string" && /^[a-z0-9]{32}$/.test(opts.lobbyId) && typeof opts.lobbyToken === "string") {
+      const expectedToken = await noise.derive(SECRET, opts.lobbyId, "lobby-write");
+      if (sameToken(opts.lobbyToken, expectedToken)) {
+        const existing = rooms.get(opts.lobbyId);
+        if (existing && sameToken(opts.lobbyToken, existing.token)) {
+          existing.title = title;
+          existing.lang = lang;
+          existing.links = links;
+          existing.touched = now;
+          existing.startedAt = now;
+          send(existing, "meta", { title, lang, links });
+          return json({ id: opts.lobbyId, token: existing.token, title, lang, links, code: existing.code });
+        }
+        if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
+        const pending = activeLobby(opts.lobbyId, now);
+        if (pending) {
+          dropLobby(pending.id);
+          rooms.set(pending.id, makeRoom({ token: expectedToken, code: pending.code, title, lang, links, now }));
+          codes.set(pending.code, pending.id);
+          return json({ id: pending.id, token: expectedToken, title, lang, links, code: pending.code });
+        }
+      }
+    }
+    if (rooms.size >= MAX_ROOMS) return json({ error: "server full" }, 503);
     const roomId = id(32);
     const token = id(32);
     const code = newCode();
-    const now = Date.now();
     rooms.set(roomId, makeRoom({ token, code, title, lang, links, now }));
     codes.set(code, roomId);
     return json({ id: roomId, token, title, lang, links, code });
@@ -776,9 +876,13 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
         return json({ error: "bad origin" }, 403);
       }
     }
+    const offered = (req.headers.get("sec-websocket-protocol") ?? "").split(",").map((p) => p.trim());
+    if (!rooms.has(audio[1]) && activeLobby(audio[1])) {
+      const derived = await noise.derive(SECRET, audio[1], "lobby-write");
+      if (offered[0] === "bearer" && sameToken(offered[1] ?? "", derived)) await materialiseLobby(audio[1]);
+    }
     const r = rooms.get(audio[1]);
     if (!r) return json({ error: "room gone" }, 404);
-    const offered = (req.headers.get("sec-websocket-protocol") ?? "").split(",").map((p) => p.trim());
     if (offered[0] !== "bearer" || !tokenOk(`Bearer ${offered[1] ?? ""}`, r.token)) return json({ error: "nope" }, 403);
     if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
     if (r.demo) return json({ error: "not in the demo" }, 403);
@@ -861,7 +965,14 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
   }
 
   const m = path.match(/^\/api\/room\/([a-z0-9]+)(\/stream)?$/);
-  if (m && m[2] && req.method === "GET" && !rooms.has(m[1])) await materialiseDemo(m[1], url.searchParams.get("s"));
+  if (m && m[2] && req.method === "GET" && !rooms.has(m[1])) {
+    await materialiseDemo(m[1], url.searchParams.get("s"));
+    if (!rooms.has(m[1])) await materialiseLobby(m[1]);
+  }
+  if (m && !m[2] && req.method === "POST" && !rooms.has(m[1]) && activeLobby(m[1])) {
+    const derived = await noise.derive(SECRET, m[1], "lobby-write");
+    if (tokenOk(req.headers.get("authorization"), derived)) await materialiseLobby(m[1]);
+  }
   const room = m ? rooms.get(m[1]) : undefined;
   if (m && !room) return json({ error: "room gone" }, 404);
 
@@ -1276,8 +1387,9 @@ export function sweep(now: number = Date.now()): void {
     const emptyDemoIdle = r.demo && r.listeners.size === 0 && now - r.touched > DEMO_IDLE_EMPTY_MS;
     if (now - r.touched > ROOM_TTL_MS || (r.demo && now > r.demo) || emptyDemoIdle) endRoom(k, r);
   }
+  for (const [lid, l] of [...lobbies]) if (l.exp <= now) dropLobby(lid);
   // Rate-limit buckets hold client addresses; they belong to a window, not to the process.
-  for (const buckets of [roomCreateBuckets, joinBuckets, demoMintBuckets]) {
+  for (const buckets of [roomCreateBuckets, joinBuckets, demoMintBuckets, lobbyMintBuckets]) {
     for (const [k, b] of buckets) if (b.resetAt <= now) buckets.delete(k);
   }
 }

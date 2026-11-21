@@ -242,12 +242,12 @@ const faceAfter = await p.inputValue("#faceSelect");
 ok(faceAfter !== faceBefore && (await p.getAttribute(".face-wrap .stage-select-btn", "aria-expanded")) === "true", ".stage-select ArrowDown opens menu and advances selection");
 await p.keyboard.press("Escape");
 ok((await p.getAttribute(".face-wrap .stage-select-btn", "aria-expanded")) === "false" && await p.evaluate(() => document.activeElement?.classList.contains("stage-select-btn")), ".stage-select Escape closes menu and restores focus");
-// fixed-height #ticker geometry check across lines
+// elastic viewport-filling #ticker geometry check across lines (stretches to window, zero layout shift!)
 const geomBefore = await p.evaluate(() => ({ h: document.querySelector("#ticker").getBoundingClientRect().height, barTop: document.querySelector(".typed-bar").getBoundingClientRect().top }));
 await push2({ text: "Long jumbo line one that wraps inside the fixed monitor box without shifting controls below.", final: true });
 await push2({ text: "Long jumbo line two that also wraps inside the fixed monitor box.", final: true });
 const geomAfter = await p.evaluate(() => ({ h: document.querySelector("#ticker").getBoundingClientRect().height, barTop: document.querySelector(".typed-bar").getBoundingClientRect().top }));
-ok(geomBefore.h === 220 && geomAfter.h === 220 && Math.abs(geomBefore.barTop - geomAfter.barTop) < 0.5, "fixed-height #ticker causes zero vertical layout shift");
+ok(geomBefore.h >= 300 && Math.abs(geomBefore.h - geomAfter.h) < 0.5 && Math.abs(geomBefore.barTop - geomAfter.barTop) < 0.5, "elastic #ticker fills workspace height and causes zero vertical layout shift");
 // Duplicate inline QR tabs removed (safer Mic modal only); pinned Take-Home links reach reader!
 ok((await p.$("#qrTabMic")) === null, "inline Phone mic tab removed to prevent accidental write-key screenshare");
 // Title auto-primer only extracts real acronyms/compounds (never ransom-notes "The" or "Week")
@@ -354,7 +354,15 @@ await p.click('[data-pref="style"] [data-v="ink"]');
 await p.click("#stopBtn");
 await tkp.waitForFunction(() => document.querySelector("#ticker").classList.contains("over"));
 ok(true, "standalone ticker notices the end");
-ok(await p.$eval("#typed", (i) => i.disabled) && await p.$eval("#joinLine", (e) => e.hidden), "typing box and code retire with the room");
+await p.waitForFunction((prev) => {
+  const c = document.querySelector("#joinCode")?.textContent || "";
+  return /^[A-Z]{4}$/.test(c) && c !== prev;
+}, joinCode);
+ok(
+  await p.$eval("#typed", (i) => i.disabled) &&
+    (await (await fetch(`${base}/api/join/${joinCode}`)).status) === 404,
+  "typing box locks on end, old room code retires, and a fresh lobby pass stands ready",
+);
 
 // ---- Phone handoff: the laptop mic steps aside for the phone and only comes back on its own if the phone drops
 await p.click("#startBtn");

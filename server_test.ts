@@ -888,3 +888,45 @@ Deno.test({
     await dg.shutdown();
   },
 });
+
+Deno.test("lobby pass: mint allocates zero rooms until first scan or Start captions, then keeps code & broadcasts meta", async () => {
+  const beforeRooms = rooms.size;
+  const minted = await (await handler(new Request(`${base}/api/lobby/mint`))).json() as {
+    id: string;
+    code: string;
+    token: string;
+  };
+  assert(/^[a-z0-9]{32}$/.test(minted.id) && /^[A-Z]{4}$/.test(minted.code) && minted.token.length === 32);
+  assertEquals(rooms.size, beforeRooms); // zero Room allocated at t=0
+
+  // Early-bird phone resolves the 4-letter lobby code before Start captions
+  const redir = await handler(new Request(`${base}/j/${minted.code}`));
+  assertEquals(redir.status, 302);
+  assertEquals(redir.headers.get("location"), `/live/${minted.id}`);
+  assertEquals(rooms.size, beforeRooms); // redirect alone still hasn't allocated a Room
+
+  // Phone opens SSE stream -> materialises the Room on demand
+  const s = await openStream(minted.id);
+  assert((await s.read()).includes("event: backlog"));
+  assertEquals(rooms.size, beforeRooms + 1);
+  const statusRes = await (await handler(new Request(`${base}/api/lobby/${minted.id}`))).json();
+  assertEquals(statusRes.materialized, true);
+  assertEquals(statusRes.listeners, 1);
+
+  // Presenter clicks Start captions -> claims the exact same id/code and broadcasts meta to waiting phone
+  const claimed = await (await post("/api/room", {
+    title: "Early Bird Keynote",
+    lang: "en-AU",
+    links: ["https://madebypablo.app"],
+    lobbyId: minted.id,
+    lobbyToken: minted.token,
+  })).json();
+  assertEquals(claimed.id, minted.id);
+  assertEquals(claimed.code, minted.code);
+  assertEquals(claimed.token, minted.token);
+  const metaEvt = await s.read();
+  assert(metaEvt.includes("event: meta") && metaEvt.includes("Early Bird Keynote"));
+
+  await s.reader.cancel();
+  await del(`/api/room/${minted.id}`, minted.token);
+});

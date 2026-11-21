@@ -1013,6 +1013,11 @@ function connectStream() {
     follow();
   });
 
+  es.addEventListener("meta", (e) => {
+    applyRoom(JSON.parse(e.data));
+    if (linesArr.length) saveTalk();
+  });
+
   es.addEventListener("final", (e) => {
     const { text, speaker = "" } = JSON.parse(e.data);
     if ($("#bar").dataset.state === "paused") setState("live", "Live");

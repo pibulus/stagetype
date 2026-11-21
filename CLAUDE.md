@@ -14,7 +14,7 @@ deno task e2e           # Browser suite (e2e/browser_test.js), needs Chromium: C
 ```
 
 ## 📁 Where things live
-- Docs: README.md is the front door only. Depth goes in `docs/ARCHITECTURE.md` (API, engines, persistence, security, file map), `docs/DEPLOY.md` (env vars, launch checklist), `docs/ACCESSIBILITY.md` (contrast table, typefaces), `docs/GLOSSARY.md`. Product and business in `ROADMAP.md`. Update the doc that owns a fact; don't duplicate it into the README.
+- Docs: README.md is the front door only. Visual & interaction laws live in `DESIGN.md` (read before touching CSS or HTML!). Depth goes in `docs/ARCHITECTURE.md` (API, engines, persistence, security, file map), `docs/DEPLOY.md` (env vars, launch checklist), `docs/ACCESSIBILITY.md` (contrast table, typefaces), `docs/GLOSSARY.md`. Product and business in `ROADMAP.md`. Update the doc that owns a fact; don't duplicate it into the README.
 - Tests: `server_test.ts` (unit), `e2e/browser_test.js` (browser, plain JS because most of it runs in the page), `e2e/mock_deepgram.ts` (shared by both). New behaviour gets a test in the right one.
 - Config: every env var is in `.env.example` and the DEPLOY table. Add to both or neither.
 - CI: `.github/workflows/ci.yml` runs `deno task ci` then `deno task e2e`.
@@ -31,28 +31,27 @@ deno task e2e           # Browser suite (e2e/browser_test.js), needs Chromium: C
 - Network Discovery: `GET /api/info` (returns LAN IP and port for QR encoding)
 - Static: `GET /vendor/qrcode.js`, `GET /vendor/fonts.css`, `GET /vendor/fonts/*.woff2` (allowlisted names only, immutable cache), `GET /ghost.svg` (Toybrut `ST.` favicon, sandboxed SVG), `GET /apple-touch-icon.png`, `GET /og-image.png`, `GET /manifest.webmanifest`, `GET /sw.js`, `GET /shared.js`, `GET /deepgram.js`, `GET /robots.txt`, `GET /sitemap.xml`, `GET /healthz`, `GET /version.json`
 - Engines: `GET /api/engines` -> `{ browser, deepgram, passRequired? }`; `WS /api/room/:id/audio?source=&lang=&phone=` with subprotocol `["bearer", token]` (or `["bearer", token, "pass-b64", b64]` / `["bearer", token, "pass", pass]` when `STAGETYPE_DEEPGRAM_PASS` is set; both console and lapel mic render a session-scoped `Speech pass` field when `passRequired` is true) streams PCM16 @ 16 kHz to Deepgram via the relay. Env: `DEEPGRAM_API_KEY`, `STAGETYPE_DEEPGRAM_PASS`, `DEEPGRAM_MODEL` (`nova-3`), `DEEPGRAM_URL`.
-- Room Lifecycle API:
-  - `POST /api/room` (optional `{ title, lang, links }`) -> `{ id, token, title, lang, links, code }`; codes are 4 letters from ABCDEFGHJKLMNPRSTUVWXYZ, blocklisted words skipped, unique among open rooms, released on end (capped at 1000 open rooms; title ≤ 80 chars)
+- Room & Pre-Live Lobby Lifecycle API:
+  - `GET /api/lobby/mint` -> `{ id, code, token, exp, ttlMs }` (stateless-token pre-live pass ~64B; allocates zero `Room` until first audience scan on `/api/room/:id/stream` or presenter `POST /api/room`); `GET /api/lobby/:id` -> `{ ok, materialized, listeners, phone }`
+  - `POST /api/room` (optional `{ title, lang, links, lobbyId, lobbyToken }`) -> `{ id, token, title, lang, links, code }`; claims/promotes an active pre-live lobby pass seamlessly (broadcasting `meta { title, lang, links }` to early-bird phones), or mints a fresh 4-letter code from ABCDEFGHJKLMNPRSTUVWXYZ (blocklisted words skipped, unique among open rooms & lobbies, capped at 1000 open rooms; title ≤ 80 chars)
   - `POST /api/room/:id` (Bearer auth) -> pushes speech chunk `{ text, final, source: mic|phone|typed, speaker?, phone? }`, `{ paused: bool }`, or `{ links: string[] }`; `{ ping: true }` is a silent keepalive; `{ ping: true, source: "phone", live, phone? }` announces/heartbeats a phone session in `room.phones` (up to 8 concurrent phones, lost after 45 s of silence, checked every 5 s)
   - `GET /api/room/:id/stream` -> Server-Sent Events: `backlog { lines, speakers?, offset, startedAt, title, lang, paused, phone, links, assets, assetIds }`, `interim { text, source, speaker? }`, `final { text, seq, source, speaker? }`, `paused { paused }`, `links { links }`, `source { source, live, lost }`, `end { endedAt }`
   - `DELETE /api/room/:id` (Bearer auth) -> ends talk and flushes room
 - Invariants: token compared in constant time (`sameToken`); push body ≤ 16 KB; images ≤ 2 MB with a ≤ 90k-char thumb, magic-byte sniffed, streaming byte-capped before `formData()`, 40/24 MB per room and `MAX_ASSET_RAM_MB` (default 128 MB) globally; join-code lookups rate limited on BOTH `/api/join/:code` and `/j/:code` (300/min); `HOST` + `TRUST_PROXY=cloudflare|fly` client IP isolation; SSE backpressure drop (`CountQueuingStrategy` 64); backlog keeps last 400 lines and reports `offset`; every listener's ping timer is cleared on end/sweep.
 
-## 🎨 Design System & Aesthetic Laws
-- **Soft Neo Toybrut** (console tokens; the reader keeps its own theme pairs):
-  - Ground: `#fff6e6` (plus 4 Page Atmospheres cycled via `#vibePill`: Peach Sunset, Stage Lights, Warm Paper, Night Ink)
-  - Surface: `#fffdf5`
-  - Sand (the room card): `#fdf1e0`
-  - Ink: `#1e1714`
-  - Borders & Shadows: `2px solid var(--line)` with `4px 4px 0 var(--line)` hard offset shadows on `.bar` and `.card`; `1.5px solid var(--line)` with `2px 2px 0` on controls and custom `.stage-select` popovers
-  - Accents: pink `#ff6ac2`, coral `#ff8a5c`, amber `#ffc74d`, teal `#2dd4bf`, violet `#a78bfa`
-- **Zero absolute white (`#fff`) or absolute black (`#000`)** across body and UI surfaces.
-- **NO EMOJIS as button labels or copy garnish**. Keep buttons typographic and clear.
-- `button { display: inline-flex }` beats the `hidden` attribute; keep the `button[hidden] { display: none }` rule.
-- **No mascot.** The console, the demo landing and the join page are type-led: a wordmark, a status pill, nothing smiling at the presenter. Lumen lives in git history, not on screen.
-- **Tactile Neo-Toybrut hardware framing.** The console is centered in the viewport (`min-height: 100dvh`) as a balanced hardware deck. Cards wear crisp `2px` warm sepia borders and `4px 4px 0` offset shadows; `#ticker` is locked to a fixed `220px` height (`overflow: hidden`, bottom-anchored) so multi-line wraps never push controls downward. Native `<select>` elements are progressively enhanced into `.stage-select` spring popovers while keeping `<select>` synced in DOM for accessibility and tests.
-- **One palette, intentional accents.** Hot pink `#ff6ac2` is the primary "go" colour on the console, amber `#ffc74d` the pause, teal `#2dd4bf` the live ring, violet `#a78bfa` the float and lapel-mic QR accent. Audience CTAs (join, demo) may wear mint. No dot grid behind running text.
-- **Layout before decoration.** The talk bar runs full width on top (title + `#wordsChip`, language, engine, optional speech pass, one action), then two cards of matched height: the stage on the left, the room (QR + visible `/join` host + 4-letter code + Copy link / Full screen / Mic modal button) on the right.
+## 🎨 Design System & Aesthetic Laws (`DESIGN.md`)
+- **Read `DESIGN.md` before modifying any CSS or HTML.** It locks the 6 UI Laws, 4 Physical Primitives (`.ui-zone`, `.ui-well`, `.ui-keycap`, `.ui-pill`), 2 Theme Layers (Console Faceplate vs Stage Screen), and the mandatory 4-viewport visual verification gate (`1440×900`, `780×860` split-screen, `1280×640` short projector, `390×844` mobile transceiver).
+- **Elevation = Pressability & Zero Pill Fatigue:**
+  - `.ui-zone` (chassis & panels): `1px` warm machined seam + `1px` top inner specular highlight, **zero hard offset shadows**.
+  - `.ui-well` (Stage Monitor bezel, input trough, QR pass): recessed `inset` depth, zero neon double-borders.
+  - `.ui-keycap` (every interactive button, `.stage-select`, and menu summary): crisp `8px` radius, `1.5px` warm-ink border, `0 2px 0` tactile bottom lip + `:active` flush travel.
+  - `.ui-pill` (`999px`): **strictly passive telemetry badges** (`Ready · Laptop mic`, `Lobby open`, `14 reading`). Never put `999px` or flat/missing shadows on clickable buttons.
+- **2-Layer Theme Architecture:**
+  - **Console Faceplates (`#vibePill`):** `Peach Sunset` (`#ffe6d4` chassis / `#ff6b4a` coral switch), `Stage Lights` (`#daf2e9` celadon / `#2dd4bf` mint), `Warm Paper` (`#eee1ce` Braun sand / `#ff7a3d` orange), and `Night Ink` (`#1a1513` dark backstage lectern / `#ffc74d` amber).
+  - **Stage Presets (`[data-pref="style"]`):** Controls only `#ticker` (`Ink`, `Paper`, `Brut`, `Serif`).
+- **Zero absolute white (`#fff`) or absolute black (`#000`)** on outer body/chassis surfaces; **NO EMOJIS as button labels or copy garnish**; **no mascot**.
+- `button { display: inline-flex }` beats the `hidden` attribute; keep `[hidden] { display: none !important }`.
+- **Viewport-native `100dvh` shell.** Zero desktop page scroll; `#ticker` stretches elastically (`flex: 1`) with `@container` fluid sizing and zero layout shift across multi-line wraps. Bottom toolbar popovers open upward so they never clip inside short (`640px`) projector windows.
 - **Auto-sent means pull-back-able.** Anything that reaches forty phones without a second glance needs an undo: the console's tray thumbnails are buttons, and DELETE on the asset broadcasts `asset-gone` so the figure leaves every feed (and reconnects reconcile `assets` against the live set).
 - **Images are a catch, not a gallery.** A shared picture lands in the reader's transcript where it was shared, live only, capped at 58vh, tap for the full frame. They are compressed in the console (1280 WebP q0.7 + 320 thumb, with `bitmap.close()` in `finally`) before upload, so the relay never sees a 12 MP photo, and they die with the room: no image ever enters the saved copy.
 - **Offering beats sending.** Coming back to the console with a screenshot on the clipboard shows a chip (thumbnail + "Share the clipboard image"); it never broadcasts by itself. A private DM or a password manager on the clipboard must not walk into a room of eighty. ⌘V, drag-drop and the file picker are the explicit paths.
@@ -92,8 +91,8 @@ deno task e2e           # Browser suite (e2e/browser_test.js), needs Chromium: C
 - One process, one machine (in-memory rooms). `Dockerfile` + `fly.toml` (never scale to zero). Not Deno Deploy / multi-isolate until rooms move to KV.
 
 ## 🎛️ Console layout (keep it this lean)
-- Top: the talk bar (title, language, engine, one action) which collapses to the title plus Pause/End once live. Then two cards of matched height: **Stage** (fixed 220px ticker, dedicated `.typed-bar` below, single-row controls: size S/M/L, 4 style swatches, 4 ring dots, face picker, Display menu, More = Names + Take-Home Links + Flow + Shuffle, `.asset-tray` with Image button + clipboard chip + pull-back thumbs, transcript strip with Export) and **Room** (one audience QR, visible `/join` host, four-letter code, Copy link / Full screen / Mic). The lapel mic pairing card lives strictly inside the modal behind **Mic** because it carries the write key.
-- Gone on purpose: the quickstart strip, the VU meter and Test mic button (removed completely — zero background `getUserMedia` meter), inline Room/Phone-mic QR tabs, and the Screen Overlay blurb. Don't bring them back; add guidance to empty states instead.
+- **Viewport-locked 3-track hardware shell (`100dvh`):** Compact Top Transport Bar (`StageType.` + inline editable `#title` + `#wordsChip`, pre-live `Language`/`Engine`, passive `#liveBadge`, split-screen `#compactRoomBtn`, `Start captions` → `Pause` + `End`, `#vibePill`), elastic `@container` workspace (**Stage Deck** on left with stretching `.monitor-well` + unified `.typed-bar` w/ inline `Image`/clipboard chip + single-row `.stage-controls`; **Audience Pass Rail** on right with `t=0` scannable lobby QR, `/join` host, 4-letter code, `Copy link` / `Project QR`, and `Pair phone as lapel mic`), and quiet bottom hotkey/status strip. Reload/handoff notices float as auto-dismissing toasts (`#notice`).
+- Gone on purpose: separate collapsing setup `.bar` card, separate `Image` row, bottom `TRANSCRIPT` strip inside Stage card, background `getUserMedia` meter (prevents Bluetooth/Safari mic contention), inline Room/Phone-mic QR tabs, and symbolic 3-square QR placeholders.
 
 ## 🗺️ Strategy
 - ROADMAP.md holds the position, pricing model, numbers, guardrails and build order. Read it before proposing product work; update it when a decision changes. Licence: Pablo has OK'd moving to AGPL, deferred until a hosted service is close. Stay MIT until asked.
