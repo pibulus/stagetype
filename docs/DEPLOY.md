@@ -41,7 +41,9 @@ fly deploy
 | `TRUST_PROXY` | unset | `cloudflare` (reads `CF-Connecting-IP` from loopback only), `fly` (`Fly-Client-IP`), or blank |
 | `MAX_ASSET_RAM_MB` | `128` | Global RAM cap (MB) for live shared images across all open rooms |
 | `STAGETYPE_SECRET` | random per process | Signs `/demo` room ids. **Set in production**, or demo QRs die on restart |
-| `DEEPGRAM_API_KEY` | unset | Turns on the Deepgram engine. Without it, browser speech only |
+| `GROQ_API_KEY` | unset | Turns on Cloud Turbo (`whisper-large-v3-turbo`, ~US$0.04/hr via `/api/room/:id/transcribe`) |
+| `GROQ_MODEL` | `whisper-large-v3-turbo` | Groq Whisper model ID for Cloud Turbo |
+| `DEEPGRAM_API_KEY` | unset | Turns on the Deepgram Live WebSocket engine |
 | `STAGETYPE_DEEPGRAM_PASS` | unset | Pass code gating `WS /api/room/:id/audio` (strongly recommended on public relays) |
 | `DEEPGRAM_MODEL` | `nova-3` | Deepgram model for the relay-side engine |
 | `DEEPGRAM_URL` | Deepgram's live endpoint | Override for a proxy or a test double |

@@ -324,7 +324,7 @@
     body[data-live="1"] .setup-group { display: none; }
     .field { display: flex; align-items: center; min-width: 0; }
     .field-lang { width: 158px; }
-    .field-engine { width: 108px; }
+    .field-engine { width: 124px; }
     .field-pass { width: 124px; }
     .pass-btn {
       height: 32px;
@@ -1659,6 +1659,8 @@
               <span class="sr-only" id="engineLabel">Engine</span>
               <select id="engine" aria-labelledby="engineLabel">
                 <option value="browser">Browser</option>
+                <option value="ondevice">On-device</option>
+                <option value="turbo">Cloud Turbo</option>
                 <option value="deepgram">Deepgram</option>
               </select>
             </div>
@@ -1892,14 +1894,14 @@
       <div class="pass-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
-            <p style="margin:0 0 3px;font:800 11px var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:#635349">Deepgram Nova-3 Relay</p>
+            <p style="margin:0 0 3px;font:800 11px var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:#635349">Cloud Turbo &amp; Deepgram Relay</p>
             <h2 id="passModalTitle" style="margin:0;font-size:1.3rem;letter-spacing:-0.02em">Event Passes</h2>
           </div>
           <button type="button" id="closePassBtn">Close</button>
         </div>
 
         <p id="passModalLead" class="pass-foot" style="font-size:13px;color:#1e1714">
-          Browser speech is free forever. Event Passes unlock high-accuracy Deepgram Nova-3 streaming on both the laptop console and paired phone lapel mics. The hour clock starts on first live caption.
+          Browser and On-device (Moonshine / Whisper WebGPU) run free forever. Event Passes unlock Cloud Turbo (Whisper Large v3 Turbo) and Deepgram Nova-3 across the laptop console and paired phone lapel mics. The hour clock starts on first live cloud caption.
         </p>
 
         <div id="passPaidBox" hidden style="display:flex;flex-direction:column;gap:10px">
@@ -1916,28 +1918,28 @@
               <strong>Meetup Pass · 3 hours</strong>
               <span>Single talk, guest lecture, or evening meetup</span>
             </span>
-            <span class="tier-price">A$15</span>
+            <span class="tier-price">A$5</span>
           </button>
           <button type="button" class="tier-btn" data-tier="day">
             <span class="tier-meta">
               <strong>Day Pass · 24 hours</strong>
               <span>Full-day workshop, conference track, or class day</span>
             </span>
-            <span class="tier-price">A$39</span>
+            <span class="tier-price">A$12</span>
           </button>
           <button type="button" class="tier-btn" data-tier="weekend">
             <span class="tier-meta">
               <strong>Weekend Pass · 72 hours</strong>
               <span>Multi-day summit, festival, or weekend services</span>
             </span>
-            <span class="tier-price">A$89</span>
+            <span class="tier-price">A$24</span>
           </button>
         </div>
 
         <p id="passStatusMsg" class="pass-foot" hidden style="font-weight:700;color:#1e1714"></p>
 
         <p class="pass-foot">
-          One-time pass, zero auto-renewal · $1 from every pass supports Palestine relief · Own a Deepgram key? Paste <code>dg:YOUR_KEY</code> in the pass box for direct passthrough.
+          One-time pass, zero auto-renewal · $1 from every pass supports Palestine relief · Own an API key? Paste <code>groq:YOUR_KEY</code> or <code>dg:YOUR_KEY</code> in the pass box for direct passthrough.
         </p>
       </div>
     </div>
@@ -2717,9 +2719,10 @@
     const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
     let dgPassRequired = false;
     let dgPassesAvailable = false;
+    const isCloudEngine = (e = engine()) => e === "deepgram" || e === "turbo";
     const currentPass = () => $("#speechPass").value.trim();
     const syncPassField = () => {
-      const show = dgPassRequired && engine() === "deepgram";
+      const show = dgPassRequired && isCloudEngine();
       $("#passField").hidden = !show;
       $("#buyPassBtn").hidden = !(show && dgPassesAvailable);
       if (show && dgPassesAvailable) {
@@ -3004,12 +3007,94 @@
       }
     }
 
+    async function startTurbo() {
+      if (dgPassRequired && !currentPass()) {
+        notice("Enter an Event Pass (or groq:YOUR_KEY) in the top bar before starting Cloud Turbo.", 9000);
+        setPaused(true, false);
+        $("#speechPass").focus();
+        return;
+      }
+      try {
+        const started = await StageTypeDeepgram.startTurbo({
+          roomId: room.id,
+          token: room.token,
+          source: "mic",
+          lang: $("#lang").value,
+          keyterms: keyterms(),
+          pass: currentPass(),
+          onInterim: (txt) => {
+            interim = applyRoomWords(txt, keyterms());
+            renderTicker();
+            if (interim) pushInterim();
+          },
+          onError: (msg) => {
+            dg = null;
+            notice(`Cloud Turbo: ${msg}`, 9000);
+            setPaused(true, false);
+          },
+        });
+        if (!localLive || paused || !room) { started.stop(); return; }
+        dg = started;
+        updateMicLabel(true);
+      } catch (err) {
+        notice(`Couldn't start Cloud Turbo: ${err.message}.`, 9000);
+        setPaused(true, false);
+      }
+    }
+
+    async function startOnDevice() {
+      const activeTerms = keyterms();
+      try {
+        const started = await StageTypeDeepgram.startOnDevice({
+          lang: $("#lang").value,
+          onStatus: (st) => {
+            if (st && !phoneLive) $("#micSource").textContent = st;
+            else updateMicLabel(true);
+          },
+          onInterim: (txt) => {
+            interim = applyRoomWords(txt, activeTerms);
+            renderTicker();
+            if (interim) pushInterim();
+          },
+          onFinal: (raw) => {
+            const t = applyRoomWords(raw.trim(), activeTerms);
+            if (!t) return;
+            push({ text: t, final: true, source: "mic" }).then((ok) => {
+              if (!ok) {
+                finals.push({ text: t, speaker: "" });
+                transcript.push(t);
+                transcriptTimes.push(Date.now());
+                transcriptSpeakers.push("");
+                seen++;
+                updateTranscriptStat();
+                saveTalk();
+                renderTicker();
+              }
+            });
+          },
+          onError: (msg) => {
+            dg = null;
+            notice(`On-device speech: ${msg}`, 9000);
+            setPaused(true, false);
+          },
+        });
+        if (!localLive || paused || !room) { started.stop(); return; }
+        dg = started;
+        updateMicLabel(true);
+      } catch (err) {
+        notice(`Couldn't start on-device speech: ${err.message}.`, 9000);
+        setPaused(true, false);
+      }
+    }
+
     let recRestartTimer = null;
     function startLocalRec() {
       clearTimeout(recRestartTimer);
       if (engine() === "deepgram") { startDeepgram(); return; }
+      if (engine() === "turbo") { startTurbo(); return; }
+      if (engine() === "ondevice") { startOnDevice(); return; }
       if (!Rec) {
-        notice("This browser has no speech recognition. Use Chrome or Edge here, or pair the phone lapel mic.", 9000);
+        notice("This browser has no built-in speech recognition. Switch Engine to On-device (runs locally in any browser) or pair the phone lapel mic.", 9000);
         $("#micSource").textContent = "Phone mic only";
         syncMonitorOverlay();
         return;
@@ -3119,7 +3204,18 @@
       if (phoneLive) return;
       const label = $("#micSource");
       if (!force && label.textContent.startsWith("Phone")) return;
-      label.textContent = paused ? "Laptop mic paused" : (engine() === "deepgram" ? "Laptop mic · Deepgram" : "Laptop mic");
+      if (paused) {
+        label.textContent = "Laptop mic paused";
+        return;
+      }
+      const eng = engine();
+      label.textContent = eng === "deepgram"
+        ? "Laptop mic · Deepgram"
+        : eng === "turbo"
+        ? "Laptop mic · Turbo"
+        : eng === "ondevice"
+        ? "Laptop mic · On-device"
+        : "Laptop mic";
     }
 
     function setPaused(on, restart = true, tellRoom = true) {
@@ -3616,8 +3712,9 @@
         notice("Checkout session expired in this tab. Check your Square receipt if payment completed.", 9000);
         return;
       }
-      $("#engine").value = "deepgram";
-      store.set("st-engine", "deepgram");
+      const nextEng = !$('#engine option[value="turbo"]').disabled ? "turbo" : "deepgram";
+      $("#engine").value = nextEng;
+      store.set("st-engine", nextEng);
       $("#passPaidBox").hidden = true;
       $("#passStatusMsg").textContent = "Confirming Square payment…";
       $("#passStatusMsg").hidden = false;
@@ -3649,13 +3746,20 @@
     }
 
     fetch("/api/engines").then((r) => r.json()).then((e) => {
-      const opt = $('#engine option[value="deepgram"]');
-      opt.disabled = !e.deepgram;
-      dgPassRequired = Boolean(e.deepgram && e.passRequired);
-      dgPassesAvailable = Boolean(e.deepgram && e.passesAvailable);
+      const dgOpt = $('#engine option[value="deepgram"]');
+      const turboOpt = $('#engine option[value="turbo"]');
+      const hasCloud = Boolean(e.deepgram || e.turbo);
+      dgOpt.disabled = !e.deepgram;
+      turboOpt.disabled = !e.turbo;
+      dgPassRequired = Boolean(hasCloud && e.passRequired);
+      dgPassesAvailable = Boolean(hasCloud && e.passesAvailable);
       if (!e.deepgram) {
-        opt.textContent = "Deepgram (key needed on relay)";
-        if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
+        dgOpt.textContent = "Deepgram (key needed)";
+        if (engine() === "deepgram") { $("#engine").value = e.turbo ? "turbo" : "browser"; store.set("st-engine", $("#engine").value); }
+      }
+      if (!e.turbo) {
+        turboOpt.textContent = "Cloud Turbo (key needed)";
+        if (engine() === "turbo") { $("#engine").value = e.deepgram ? "deepgram" : "browser"; store.set("st-engine", $("#engine").value); }
       }
       syncPassField();
       syncStageSelects();

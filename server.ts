@@ -122,10 +122,17 @@ const ROOM_CREATE_WINDOW_MS = 60_000;
 const ROOM_CREATE_LIMIT = 10;
 const MAX_RATE_BUCKETS = 10_000;
 const DEEPGRAM_DEFAULT_URL = "wss://api.deepgram.com/v1/listen";
+const GROQ_DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+const MAX_WAV_BYTES = 1_200_000; // ~37s of 16 kHz mono PCM16 WAV
+const WHISPER_HALLUCINATION_RE =
+  /^(?:\[.*?\]|\(.*?\)|\*.*?\*|thank you(?: for watching| very much)?\.?|thanks for watching\.?|subtitles by .*|amara\.org.*|you|\.+|\s*)$/i;
 const deepgramKey = () => env("DEEPGRAM_API_KEY");
 const deepgramPass = () => env("STAGETYPE_DEEPGRAM_PASS");
 const deepgramUrl = () => env("DEEPGRAM_URL", DEEPGRAM_DEFAULT_URL);
 const deepgramModel = () => env("DEEPGRAM_MODEL", "nova-3");
+const groqKey = () => env("GROQ_API_KEY");
+const groqUrl = () => env("GROQ_API_URL", GROQ_DEFAULT_URL);
+const groqModel = () => env("GROQ_MODEL", "whisper-large-v3-turbo");
 const PHONE_LOST_MS = 45_000; // a live phone that goes this long without a push is treated as dropped
 // Images: compressed on the presenter's device before they ever reach the relay. Caps are per room + global.
 const MAX_ASSET_BYTES = 2_000_000;
@@ -799,6 +806,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
   }
   if (get && path === "/shared.js") return file("shared.js", head, "text/javascript; charset=utf-8", false);
   if (get && path === "/deepgram.js") return file("deepgram.js", head, "text/javascript; charset=utf-8", false);
+  if (get && path === "/stt_worker.js") return file("stt_worker.js", head, "text/javascript; charset=utf-8", false);
 
   // Only answer the LAN address to a browser on this machine; nobody else needs the internal IP.
   if (get && path === "/api/info") {
@@ -861,15 +869,98 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     return json({ id: roomId, token, title, lang, links, code });
   }
 
-  // Which speech engines this relay offers. Browser recognition is always there; Deepgram needs a key.
+  // Which speech engines this relay offers. Browser & On-Device are always there; Turbo needs Groq, Deepgram needs a key.
   if (get && path === "/api/engines") {
     const passGate = Boolean(deepgramPass() || passes.isPassCheckoutConfigured());
     return json({
       browser: true,
       deepgram: deepgramKey() !== "",
+      ...(groqKey() ? { turbo: true } : {}),
       ...(passGate ? { passRequired: true } : {}),
       ...(passes.isPassCheckoutConfigured() ? { passesAvailable: true } : {}),
     });
+  }
+
+  // Cloud Turbo utterance transcription: VAD-gated 10-15s 16 kHz mono WAV -> Groq whisper-large-v3-turbo (~US$0.04/hr).
+  const turboPost = path.match(/^\/api\/room\/([a-z0-9]+)\/transcribe$/);
+  if (turboPost && req.method === "POST") {
+    if (req.headers.get("sec-fetch-site") === "cross-site") return json({ error: "cross-site refused" }, 403);
+    const r = rooms.get(turboPost[1]);
+    if (!r) return json({ error: "room gone" }, 404);
+    if (!tokenOk(req.headers.get("authorization"), r.token)) return json({ error: "nope" }, 403);
+    if (r.demo) return json({ error: "not in the demo" }, 403);
+
+    const rawPassHdr = req.headers.get("x-stagetype-pass") ?? "";
+    const provided = rawPassHdr ? (decodePassB64(rawPassHdr) || rawPassHdr.trim()) : "";
+    let apiKey = groqKey();
+    if (provided.startsWith("groq:") && provided.slice(5).trim().length >= 16) {
+      apiKey = provided.slice(5).trim();
+    } else {
+      if (!apiKey) return json({ error: "no turbo engine on this relay" }, 503);
+      const requiredPass = deepgramPass();
+      const passGate = Boolean(requiredPass || passes.isPassCheckoutConfigured());
+      if (passGate) {
+        if (!provided) return json({ error: "speech pass required" }, 403);
+        if (requiredPass && sameToken(provided, requiredPass)) {
+          // Operator master pass accepted
+        } else if (passes.hasPassSecret()) {
+          const verdict = await passes.validateAndActivatePass(provided);
+          if (!verdict.ok) {
+            return json({ error: verdict.reason === "expired" ? "event pass expired" : "speech pass required" }, 403);
+          }
+        } else {
+          return json({ error: "speech pass required" }, 403);
+        }
+      }
+    }
+
+    const wavBytes = await readBoundedBytes(req, MAX_WAV_BYTES);
+    if (wavBytes === null) return json({ error: "audio chunk too big" }, 413);
+    if (
+      wavBytes.length < 44 ||
+      wavBytes[0] !== 0x52 || wavBytes[1] !== 0x49 || wavBytes[2] !== 0x46 || wavBytes[3] !== 0x46 ||
+      wavBytes[8] !== 0x57 || wavBytes[9] !== 0x41 || wavBytes[10] !== 0x56 || wavBytes[11] !== 0x45
+    ) {
+      return json({ error: "expected 16kHz WAV" }, 415);
+    }
+
+    const source: Source = url.searchParams.get("source") === "phone" ? "phone" : "mic";
+    const rawLang = cleanLang(url.searchParams.get("lang"));
+    const isoLang = rawLang && rawLang !== "multi" ? rawLang.split("-")[0].toLowerCase() : "";
+    const speaker = cleanSpeaker(url.searchParams.get("speaker"));
+    const phoneId = url.searchParams.get("phone") ? cleanPhoneId(url.searchParams.get("phone")) : (speaker || "default");
+    const terms = keytermsFrom(url);
+
+    const form = new FormData();
+    form.append("file", new Blob([wavBytes as unknown as BlobPart], { type: "audio/wav" }), "speech.wav");
+    form.append("model", groqModel());
+    form.append("response_format", "json");
+    form.append("temperature", "0");
+    if (isoLang && isoLang.length === 2) form.append("language", isoLang);
+    if (terms.length) form.append("prompt", terms.join(", "));
+
+    let upRes: Response;
+    try {
+      upRes = await fetch(groqUrl(), {
+        method: "POST",
+        headers: { authorization: `Bearer ${apiKey}` },
+        body: form,
+      });
+    } catch {
+      return json({ error: "turbo speech upstream unreachable" }, 502);
+    }
+    if (!upRes.ok) {
+      return json({ error: `turbo upstream HTTP ${upRes.status}` }, upRes.status === 401 ? 403 : 502);
+    }
+    const data = await upRes.json().catch(() => ({})) as { text?: unknown };
+    const rawText = typeof data.text === "string" ? data.text.trim() : "";
+    const cleaned = WHISPER_HALLUCINATION_RE.test(rawText) ? "" : rawText;
+    if (cleaned && !r.closed) {
+      pushChunk(r, { text: cleaned, final: true, source, speaker, phoneId });
+    } else if (!r.closed) {
+      pushChunk(r, { text: "", final: false, source, speaker, phoneId, touchPhone: source === "phone" });
+    }
+    return json({ ok: true, text: cleaned });
   }
 
   // Event Passes: one-time 3h / 24h / 72h Deepgram relay passes ($1 per pass to Palestine relief).
@@ -1405,13 +1496,13 @@ async function materialiseDemo(id: string, sig: string | null) {
 }
 
 // Read a request body up to MAX_BODY bytes; null when it is larger.
-async function readBody(req: Request, maxBytes = MAX_BODY): Promise<string | null> {
+async function readBoundedBytes(req: Request, maxBytes: number): Promise<Uint8Array | null> {
   const cl = req.headers.get("content-length");
   if (cl !== null) {
     const declared = Number(cl);
     if (!Number.isFinite(declared) || declared < 0 || declared > maxBytes) return null;
   }
-  if (!req.body) return "";
+  if (!req.body) return new Uint8Array(0);
   const parts: Uint8Array[] = [];
   let size = 0;
   for await (const chunk of req.body) {
@@ -1428,7 +1519,12 @@ async function readBody(req: Request, maxBytes = MAX_BODY): Promise<string | nul
     out.set(p, at);
     at += p.byteLength;
   }
-  return dec.decode(out);
+  return out;
+}
+
+async function readBody(req: Request, maxBytes = MAX_BODY): Promise<string | null> {
+  const bytes = await readBoundedBytes(req, maxBytes);
+  return bytes === null ? null : dec.decode(bytes);
 }
 
 type FileOpts = {
@@ -1468,9 +1564,13 @@ async function file(name: string, isHead = false, type = "text/html; charset=utf
     headers["content-security-policy"] = "default-src 'none'; sandbox";
   } else if (type.startsWith("text/html")) {
     const beaconHost = opts.publicPage ? " https://hits.madebypablo.app" : "";
+    const mlScripts = opts.allowMic ? " https://cdn.jsdelivr.net" : "";
+    const mlConnect = opts.allowMic
+      ? " https://cdn.jsdelivr.net https://huggingface.co https://*.hf.co https://*.cdn.hf.co https://cdn-lfs.huggingface.co https://cas-bridge.xethub.hf.co"
+      : "";
     headers["content-security-policy"] =
-      `default-src 'self'; script-src 'self' 'unsafe-inline' blob:${beaconHost}; style-src 'self' 'unsafe-inline'; ` +
-      `img-src 'self' data: blob:; connect-src 'self' ws: wss:${beaconHost}; font-src 'self'; worker-src 'self' blob:; ` +
+      `default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:${beaconHost}${mlScripts}; style-src 'self' 'unsafe-inline'; ` +
+      `img-src 'self' data: blob:; connect-src 'self' ws: wss:${beaconHost}${mlConnect}; font-src 'self'; worker-src 'self' blob:; ` +
       `base-uri 'none'; form-action 'self'; frame-ancestors ${opts.embeddable ? "*" : "'none'"}`;
     if (!opts.embeddable) headers["x-frame-options"] = "DENY";
     headers["permissions-policy"] = opts.allowMic

@@ -1110,3 +1110,95 @@ Deno.test({
     }
   },
 });
+
+Deno.test({
+  name:
+    "cloud turbo (/api/room/:id/transcribe): validates WAV, passes prompt glossary to Groq Whisper-v3-Turbo, strips hallucinations, and broadcasts final",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    let lastPrompt = "";
+    let nextTranscript = "Welcome to Brunswick tonight.";
+    const groqMock = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen: () => {} }, async (req) => {
+      const form = await req.formData();
+      lastPrompt = String(form.get("prompt") ?? "");
+      return Response.json({ text: nextTranscript });
+    });
+
+    Deno.env.set("GROQ_API_KEY", "gsk_test_relay_key_1234567890");
+    Deno.env.set("GROQ_API_URL", `http://127.0.0.1:${groqMock.addr.port}/v1/audio/transcriptions`);
+    Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "turbo-pass");
+
+    try {
+      const eng = await (await handler(new Request(`${base}/api/engines`))).json();
+      assertEquals(eng, { browser: true, deepgram: false, turbo: true, passRequired: true });
+
+      const { id, token } = await mkRoom();
+      const s = await openStream(id);
+      await s.read(); // backlog
+
+      // Build minimal valid 48-byte RIFF WAVE
+      const wav = new Uint8Array(48);
+      wav.set(new TextEncoder().encode("RIFF"), 0);
+      wav.set(new TextEncoder().encode("WAVEfmt "), 8);
+      wav.set(new TextEncoder().encode("data"), 36);
+
+      // Missing pass -> 403
+      const denied = await handler(
+        new Request(`${base}/api/room/${id}/transcribe?source=mic&lang=en-AU&keyterm=Slide-o-Matic`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${token}`, "content-type": "audio/wav" },
+          body: wav,
+        }),
+      );
+      assertEquals(denied.status, 403);
+
+      // Valid pass -> forwards WAV + glossary prompt to Groq and broadcasts settled line to SSE listeners
+      const passB64 = btoa("turbo-pass").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const okRes = await handler(
+        new Request(`${base}/api/room/${id}/transcribe?source=mic&lang=en-AU&keyterm=Slide-o-Matic&keyterm=StageType`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "audio/wav",
+            "x-stagetype-pass": passB64,
+          },
+          body: wav,
+        }),
+      );
+      assertEquals(okRes.status, 200);
+      assertEquals((await okRes.json()).text, "Welcome to Brunswick tonight.");
+      assertEquals(lastPrompt, "Slide-o-Matic, StageType");
+      const evt = await s.read();
+      assert(evt.includes("event: final") && evt.includes("Welcome to Brunswick tonight."));
+
+      // Classic Whisper silence hallucination ("Thank you for watching.") is stripped cleanly
+      nextTranscript = "Thank you for watching.";
+      const hallRes = await handler(
+        new Request(`${base}/api/room/${id}/transcribe?source=mic&lang=en-AU`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "audio/wav",
+            "x-stagetype-pass": passB64,
+          },
+          body: wav,
+        }),
+      );
+      assertEquals(hallRes.status, 200);
+      assertEquals((await hallRes.json()).text, "");
+
+      // Static worker script is served cleanly
+      const workerRes = await handler(new Request(`${base}/stt_worker.js`));
+      assertEquals(workerRes.status, 200);
+
+      await s.reader.cancel();
+      await del(`/api/room/${id}`, token);
+    } finally {
+      Deno.env.delete("GROQ_API_KEY");
+      Deno.env.delete("GROQ_API_URL");
+      Deno.env.delete("STAGETYPE_DEEPGRAM_PASS");
+      await groqMock.shutdown();
+    }
+  },
+});

@@ -177,6 +177,7 @@
     <span class="engine-label" id="engineLbl">Engine</span>
     <div class="seg" id="engineSeg" role="group" aria-labelledby="engineLbl">
       <button type="button" data-v="browser" aria-pressed="true">Browser</button>
+      <button type="button" data-v="turbo" aria-pressed="false">Turbo</button>
       <button type="button" data-v="deepgram" aria-pressed="false">Deepgram</button>
     </div>
   </div>
@@ -283,25 +284,27 @@ const speakerName = () => speakerEl.value.trim().slice(0, 24);
 
 let engine = (() => {
   const inherited = qp.get("engine");
-  if (inherited === "browser" || inherited === "deepgram") return inherited;
+  if (inherited === "browser" || inherited === "turbo" || inherited === "deepgram") return inherited;
   try { return localStorage.getItem("stm-engine") || "browser"; } catch { return "browser"; }
 })();
 let dg = null;
 let dgAvailable = false;
+let turboAvailable = false;
 let passRequired = false;
 let talkTitle = "";
 const startedAt = Date.now();
 
 function syncGoAvailability() {
   if ($("#stateText").textContent === "Talk ended") return;
-  $("#passRow").hidden = !(dgAvailable && passRequired && engine === "deepgram");
+  const isCloud = (engine === "deepgram" && dgAvailable) || (engine === "turbo" && turboAvailable);
+  $("#passRow").hidden = !(isCloud && passRequired);
   const unusable = !token || (engine === "browser" && !Rec);
   $("#go").disabled = unusable;
   if (!token) {
     $("#err").textContent = "Pairing link incomplete. Rescan the mic QR code on stage.";
   } else if (engine === "browser" && !Rec) {
-    $("#err").textContent = dgAvailable
-      ? "This browser has no built-in speech recognition. Switch Engine to Deepgram, or open in Safari."
+    $("#err").textContent = (dgAvailable || turboAvailable)
+      ? "This browser has no built-in speech recognition. Switch Engine to Turbo or Deepgram, or open in Safari."
       : "This browser has no speech recognition. Open this link in Safari (iOS) or Chrome (Android).";
   } else if (location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
     $("#err").textContent = "Phones need an https link for the mic. Serve StageType over https (see docs/DEPLOY.md) and rescan.";
@@ -324,13 +327,16 @@ document.querySelectorAll("#engineSeg button").forEach((b) => {
 paintEngine();
 fetch("/api/engines").then((r) => r.json()).then((e) => {
   dgAvailable = Boolean(e.deepgram);
+  turboAvailable = Boolean(e.turbo);
   passRequired = Boolean(e.passRequired);
-  $("#engineRow").hidden = !dgAvailable;
-  const b = document.querySelector('#engineSeg [data-v="deepgram"]');
-  b.disabled = !dgAvailable;
-  b.title = dgAvailable ? "" : "The relay has no Deepgram key";
-  if (!dgAvailable && engine === "deepgram") { engine = "browser"; }
-  else if (dgAvailable && !Rec && engine === "browser") { engine = "deepgram"; }
+  $("#engineRow").hidden = !(dgAvailable || turboAvailable);
+  const bDg = document.querySelector('#engineSeg [data-v="deepgram"]');
+  const bTb = document.querySelector('#engineSeg [data-v="turbo"]');
+  bDg.disabled = !dgAvailable;
+  bTb.disabled = !turboAvailable;
+  if (!dgAvailable && engine === "deepgram") engine = turboAvailable ? "turbo" : "browser";
+  if (!turboAvailable && engine === "turbo") engine = dgAvailable ? "deepgram" : "browser";
+  if (!Rec && engine === "browser" && (turboAvailable || dgAvailable)) engine = turboAvailable ? "turbo" : "deepgram";
   paintEngine();
 }).catch(() => {});
 
@@ -477,17 +483,23 @@ function startRec() {
   }
 }
 
-async function startDeepgram() {
+async function startCloudMic() {
   if (passRequired && !currentPass()) {
-    $("#err").textContent = "Enter the relay speech pass above before going live with Deepgram.";
+    $("#err").textContent = "Enter the speech pass above before going live.";
     stop();
     $("#speechPass").focus();
     return;
   }
+  const isTurbo = engine === "turbo";
+  const fn = isTurbo ? StageTypeDeepgram.startTurbo : StageTypeDeepgram.start;
   try {
-    const started = await StageTypeDeepgram.start({
+    const started = await fn({
       roomId, token, source: "phone", lang: $("#lang").value, keyterms: roomTerms, speaker: speakerName(), phoneId, pass: currentPass(),
-      onInterim: (i) => render(i),
+      onInterim: (i) => {
+        const clean = applyRoomWords(i, roomTerms);
+        render(clean);
+        if (isTurbo && clean) push({ text: clean, final: false, source: "phone" });
+      },
       onFinal: (t) => {
         finals.push(t);
         finalTimes.push(Date.now());
@@ -497,7 +509,7 @@ async function startDeepgram() {
         renderSettled(true);
         render("");
       },
-      onError: (msg) => { dg = null; $("#err").textContent = `Deepgram: ${msg}`; stop(); },
+      onError: (msg) => { dg = null; $("#err").textContent = `${isTurbo ? "Turbo" : "Deepgram"}: ${msg}`; stop(); },
     });
     if (!live) {
       started.stop();
@@ -505,7 +517,7 @@ async function startDeepgram() {
     }
     dg = started;
   } catch (err) {
-    $("#err").textContent = `Couldn't start the Deepgram link: ${err.message}.`;
+    $("#err").textContent = `Couldn't start the audio link: ${err.message}.`;
     stop();
   }
 }
@@ -566,7 +578,7 @@ async function go() {
   push({ ping: true, source: "phone", live: true });
   clearInterval(heartbeat);
   heartbeat = setInterval(() => push({ ping: true, source: "phone", live: true }), 20_000);
-  if (engine === "deepgram") startDeepgram(); else startRec();
+  if (engine === "deepgram" || engine === "turbo") startCloudMic(); else startRec();
   if (!live) return;
   try {
     const lock = await navigator.wakeLock?.request("screen");

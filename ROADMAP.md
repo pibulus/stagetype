@@ -13,9 +13,9 @@ Hardened, visually unified across all 6 pages, copy-polished, accessible, and li
 **Deliberately lean by design:** rooms run fast in memory (400 lines + 40 images), transcripts live on each listener's own phone, and the stage stays calm and focused on the speaker's words.
 
 **The next three, in order:**
-1. **Shipped 25 Nov 2026: One-time Event Passes (A$15 Meetup 3h / A$39 Day 24h / A$89 Weekend 72h with $1/pass to Palestine)** + `dg:YOUR_KEY` BYO Deepgram escape hatch + `?title=&words=&links=` Slide-o-Matic URL pre-primer.
+1. **Shipped 26 Nov 2026: 4-Engine Speech Stack & Pocket Event Passes (A$5 Meetup 3h / A$12 Day 24h / A$24 Weekend 72h with $1/pass to Palestine)** — `Browser` ($0), `On-device` Moonshine/Whisper WebGPU ($0, offline/private), `Cloud Turbo` Dual-Track Groq Whisper-v3-Turbo (~A$0.05/hr), and `Deepgram Live` w/ 9s VAD silence hibernate + `groq:`/`dg:` BYOK.
 2. **Live translation (10 to 15 languages on the relay).** Each final line translates once per active audience language and fans out via SSE, opening multilingual rooms for conferences, classrooms, and congregations.
-3. **Speaker diarisation on Deepgram + Mac host app ($29 one-time)** once web room pull is proven.
+3. **Speaker diarisation + Mac host app ($29 one-time, macOS 26 `SpeechTranscriber`)** once web room pull is proven.
 
 ## The one-line position
 

@@ -21,8 +21,8 @@ export const PASS_TIERS: Record<TierId, PassTier> = {
     name: "StageType Meetup Pass (3h)",
     label: "Meetup Pass",
     hours: 3,
-    priceMinor: 1500,
-    displayPrice: "A$15",
+    priceMinor: 500,
+    displayPrice: "A$5",
     summary: "3 hours · single talk, lecture, or evening meetup",
   },
   day: {
@@ -30,8 +30,8 @@ export const PASS_TIERS: Record<TierId, PassTier> = {
     name: "StageType Day Pass (24h)",
     label: "Day Pass",
     hours: 24,
-    priceMinor: 3900,
-    displayPrice: "A$39",
+    priceMinor: 1200,
+    displayPrice: "A$12",
     summary: "24 hours · full workshop, conference track, or class day",
   },
   weekend: {
@@ -39,8 +39,8 @@ export const PASS_TIERS: Record<TierId, PassTier> = {
     name: "StageType Weekend Pass (72h)",
     label: "Weekend Pass",
     hours: 72,
-    priceMinor: 8900,
-    displayPrice: "A$89",
+    priceMinor: 2400,
+    displayPrice: "A$24",
     summary: "72 hours · multi-day summit, festival, or weekend services",
   },
 };
