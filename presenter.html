@@ -30,6 +30,7 @@
     <meta name="twitter:description" content="Open a tab, start speaking, and give the back row a front-row seat. Floating captions over slides and OBS, a wireless phone lapel mic, and take-home notes.">
     <meta name="twitter:image" content="https://stage.talktype.app/og-image.png">
     <meta name="twitter:image:alt" content="StageType — The room reads along. Live captions over slides, OBS, and every phone in the back row.">
+    <script defer src="https://hits.madebypablo.app/beacon.js" data-site="stage.talktype.app"></script>
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -325,6 +326,12 @@
     .field-lang { width: 158px; }
     .field-engine { width: 108px; }
     .field-pass { width: 124px; }
+    .pass-btn {
+      height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+      background: color-mix(in srgb, var(--teal) 18%, var(--key-bg));
+    }
     #speechPass {
       width: 100%;
       height: 32px;
@@ -1391,6 +1398,92 @@
     #fsNote { margin: 0; color: #5a4b42; font-weight: 500; font-size: 13px; max-width: 30em; }
     #closeFsBtn { background: #f5ede2; color: #1e1714; border-color: #1e1714; box-shadow: 0 2px 0 #1e1714; }
 
+    /* ---------- Event Pass Checkout & Unlock Modal ---------- */
+    #passModal {
+      position: fixed;
+      inset: 0;
+      z-index: 105;
+      background: rgba(20, 14, 12, 0.82);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #passModal.open { display: flex; }
+    #passModal.open .pass-card { animation: popIn 0.2s var(--spring); }
+    .pass-card {
+      background: #fffdf9;
+      color: #1e1714;
+      border: 1.5px solid #1e1714;
+      border-radius: 18px;
+      padding: 22px;
+      max-width: 500px;
+      width: 92vw;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .pass-tiers {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tier-btn {
+      width: 100%;
+      height: auto;
+      min-height: 54px;
+      padding: 10px 14px;
+      justify-content: space-between;
+      text-align: left;
+      background: #fbf1e4;
+      color: #1e1714;
+      border: 1.5px solid #1e1714;
+      box-shadow: 0 2px 0 #1e1714;
+      border-radius: 9px;
+      white-space: normal;
+    }
+    .tier-btn:hover:not(:disabled) { background: #f6e7d3; }
+    .tier-meta { display: flex; flex-direction: column; gap: 2px; }
+    .tier-meta strong { font: 800 14px/1.2 var(--swiss); color: #1e1714; }
+    .tier-meta span { font: 500 12px/1.3 var(--swiss); color: #5a4b42; }
+    .tier-price {
+      font: 800 15px/1 var(--mono);
+      color: #1e1714;
+      padding-left: 10px;
+      flex: 0 0 auto;
+    }
+    .pass-readout {
+      background: #f5ede2;
+      border: 1.5px solid rgba(30, 23, 20, 0.25);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .pass-readout code {
+      font: 800 clamp(17px, 3.6vw, 22px)/1.1 var(--mono);
+      letter-spacing: 0.06em;
+      color: #1e1714;
+    }
+    .pass-foot {
+      margin: 0;
+      font: 500 12px/1.45 var(--swiss);
+      color: #5a4b42;
+    }
+    .pass-foot code {
+      font: 700 11.5px var(--mono);
+      background: #f5ede2;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #1e1714;
+    }
+    #closePassBtn { background: #f5ede2; color: #1e1714; border-color: #1e1714; box-shadow: 0 2px 0 #1e1714; }
+
     .sr-only {
       position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
       white-space: nowrap; border: 0; padding: 0; margin: -1px;
@@ -1571,8 +1664,9 @@
             </div>
             <div class="field field-pass" id="passField" hidden>
               <label class="sr-only" for="speechPass">Speech pass</label>
-              <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Relay pass">
+              <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Pass or dg:key">
             </div>
+            <button type="button" id="buyPassBtn" class="pass-btn" hidden title="Get a one-time Deepgram Event Pass">Get pass</button>
           </div>
 
           <span class="pill-badge" id="liveBadge" role="status">
@@ -1790,6 +1884,61 @@
         <p class="fs-host" id="fsHost" hidden></p>
         <div class="fs-code" id="fsCode" hidden><span>Code</span><b id="fsCodeText"></b></div>
         <p id="fsNote">Project this before the talk starts so the whole room can scan in.</p>
+      </div>
+    </div>
+
+    <!-- Event Pass Checkout & Instant Unlock Modal -->
+    <div id="passModal" role="dialog" aria-modal="true" aria-labelledby="passModalTitle">
+      <div class="pass-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <p style="margin:0 0 3px;font:800 11px var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:#635349">Deepgram Nova-3 Relay</p>
+            <h2 id="passModalTitle" style="margin:0;font-size:1.3rem;letter-spacing:-0.02em">Event Passes</h2>
+          </div>
+          <button type="button" id="closePassBtn">Close</button>
+        </div>
+
+        <p id="passModalLead" class="pass-foot" style="font-size:13px;color:#1e1714">
+          Browser speech is free forever. Event Passes unlock high-accuracy Deepgram Nova-3 streaming on both the laptop console and paired phone lapel mics. The hour clock starts on first live caption.
+        </p>
+
+        <div id="passPaidBox" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div class="pass-readout">
+            <code id="mintedPassCode">ST-····-····</code>
+            <button type="button" id="copyPassBtn" style="height:30px;padding:0 10px;font-size:12px;background:#fffdf9;color:#1e1714;border-color:#1e1714;box-shadow:0 2px 0 #1e1714">Copy pass</button>
+          </div>
+          <p id="passPaidNote" class="pass-foot">Loaded into the Speech pass field. Hit Start captions whenever the room is ready.</p>
+        </div>
+
+        <div class="pass-tiers" id="passTiers">
+          <button type="button" class="tier-btn" data-tier="meetup">
+            <span class="tier-meta">
+              <strong>Meetup Pass · 3 hours</strong>
+              <span>Single talk, guest lecture, or evening meetup</span>
+            </span>
+            <span class="tier-price">A$15</span>
+          </button>
+          <button type="button" class="tier-btn" data-tier="day">
+            <span class="tier-meta">
+              <strong>Day Pass · 24 hours</strong>
+              <span>Full-day workshop, conference track, or class day</span>
+            </span>
+            <span class="tier-price">A$39</span>
+          </button>
+          <button type="button" class="tier-btn" data-tier="weekend">
+            <span class="tier-meta">
+              <strong>Weekend Pass · 72 hours</strong>
+              <span>Multi-day summit, festival, or weekend services</span>
+            </span>
+            <span class="tier-price">A$89</span>
+          </button>
+        </div>
+
+        <p id="passStatusMsg" class="pass-foot" hidden style="font-weight:700;color:#1e1714"></p>
+
+        <p class="pass-foot">
+          One-time pass, zero auto-renewal · $1 from every pass supports Palestine relief · Own a Deepgram key? Paste <code>dg:YOUR_KEY</code> in the pass box for direct passthrough.
+        </p>
       </div>
     </div>
 
@@ -2567,16 +2716,29 @@
     };
     const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
     let dgPassRequired = false;
+    let dgPassesAvailable = false;
     const currentPass = () => $("#speechPass").value.trim();
     const syncPassField = () => {
-      $("#passField").hidden = !(dgPassRequired && engine() === "deepgram");
+      const show = dgPassRequired && engine() === "deepgram";
+      $("#passField").hidden = !show;
+      $("#buyPassBtn").hidden = !(show && dgPassesAvailable);
+      if (show && dgPassesAvailable) {
+        const v = currentPass();
+        $("#buyPassBtn").textContent = /^ST-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(v) ? "Pass ✓" : "Get pass";
+      }
     };
-    try { $("#speechPass").value = sessionStorage.getItem("st-dg-pass") || ""; } catch {}
+    try {
+      $("#speechPass").value = sessionStorage.getItem("st-dg-pass") || store.get("st-event-pass") || "";
+    } catch {}
     $("#speechPass").addEventListener("input", () => {
+      const val = $("#speechPass").value.trim();
       try {
-        if ($("#speechPass").value) sessionStorage.setItem("st-dg-pass", $("#speechPass").value);
+        if (val) sessionStorage.setItem("st-dg-pass", val);
         else sessionStorage.removeItem("st-dg-pass");
+        if (/^ST-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(val)) store.set("st-event-pass", val.toUpperCase());
+        else if (!val) store.del("st-event-pass");
       } catch {}
+      syncPassField();
     });
     const micUrl = () => {
       const p = activePass();
@@ -3359,16 +3521,148 @@
       syncStageSelects();
       syncMonitorOverlay();
     };
+    let passOpener = null;
+    const openPassModal = () => {
+      passOpener = document.activeElement;
+      $("#passStatusMsg").hidden = true;
+      const existing = currentPass();
+      if (/^ST-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(existing)) {
+        $("#mintedPassCode").textContent = existing.toUpperCase();
+        $("#passPaidBox").hidden = false;
+        fetch(`/api/passes/check?code=${encodeURIComponent(existing)}`)
+          .then((r) => r.json())
+          .then((st) => {
+            if (st.valid) {
+              const hrs = Math.max(0.1, (st.remainingMs || 0) / 3600_000);
+              const rem = hrs >= 2 ? `${Math.round(hrs)}h` : `${Math.max(1, Math.round((st.remainingMs || 0) / 60_000))}m`;
+              $("#passPaidNote").textContent = st.activated
+                ? `${st.label} active · ${rem} remaining.`
+                : `${st.label} ready · ${st.hours}h clock starts on first live Deepgram caption.`;
+            } else if (st.expired) {
+              $("#passPaidNote").textContent = "This Event Pass has expired. Grab a fresh pass below.";
+            }
+          })
+          .catch(() => {});
+      } else {
+        $("#passPaidBox").hidden = true;
+      }
+      $("#passModal").classList.add("open");
+      $("#closePassBtn").focus();
+    };
+    const closePassModal = () => {
+      if (!$("#passModal").classList.contains("open")) return;
+      $("#passModal").classList.remove("open");
+      passOpener?.focus?.();
+      passOpener = null;
+    };
+    $("#buyPassBtn").onclick = openPassModal;
+    $("#closePassBtn").onclick = closePassModal;
+    $("#passModal").onclick = (e) => { if (e.target === $("#passModal")) closePassModal(); };
+    $("#copyPassBtn").onclick = async () => {
+      const code = $("#mintedPassCode").textContent.trim();
+      if (!code) return;
+      const orig = $("#copyPassBtn").textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        $("#copyPassBtn").textContent = "Copied!";
+      } catch {
+        $("#copyPassBtn").textContent = "Blocked";
+      }
+      setTimeout(() => ($("#copyPassBtn").textContent = orig), 1400);
+    };
+    $$("#passTiers .tier-btn").forEach((btn) => {
+      btn.onclick = async () => {
+        const tier = btn.dataset.tier;
+        $$("#passTiers .tier-btn").forEach((b) => (b.disabled = true));
+        $("#passStatusMsg").textContent = "Opening Square checkout…";
+        $("#passStatusMsg").hidden = false;
+        try {
+          if ($("#title").value.trim()) store.set("st-draft-title", $("#title").value.trim());
+          if ($("#keyterms").value.trim()) store.set("st-keyterms", $("#keyterms").value.trim());
+          if ($("#roomLinks").value.trim()) store.set("st-links", $("#roomLinks").value.trim());
+          const res = await fetch("/api/passes/checkout", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ tier }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.checkoutUrl || !data.checkoutId || !data.claimToken) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+          try {
+            sessionStorage.setItem("st-pass-claim", JSON.stringify({ id: data.checkoutId, claim: data.claimToken }));
+          } catch {}
+          location.assign(data.checkoutUrl);
+        } catch (err) {
+          $("#passStatusMsg").textContent = `Couldn't open checkout (${err.message}).`;
+          $$("#passTiers .tier-btn").forEach((b) => (b.disabled = false));
+        }
+      };
+    });
+
+    async function claimReturnedPassCheckout(checkoutId) {
+      let saved = null;
+      try { saved = JSON.parse(sessionStorage.getItem("st-pass-claim") || "null"); } catch {}
+      const draftTitle = store.get("st-draft-title");
+      if (draftTitle && !$("#title").value.trim()) {
+        $("#title").value = draftTitle;
+        store.del("st-draft-title");
+        applyRoomStyle();
+      }
+      const cleanUrl = new URL(location.href);
+      cleanUrl.searchParams.delete("pass_checkout");
+      history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+      if (!saved || saved.id !== checkoutId || !saved.claim) {
+        notice("Checkout session expired in this tab. Check your Square receipt if payment completed.", 9000);
+        return;
+      }
+      $("#engine").value = "deepgram";
+      store.set("st-engine", "deepgram");
+      $("#passPaidBox").hidden = true;
+      $("#passStatusMsg").textContent = "Confirming Square payment…";
+      $("#passStatusMsg").hidden = false;
+      $("#passModal").classList.add("open");
+      for (let i = 0; i < 24; i++) {
+        try {
+          const r = await fetch(`/api/passes/checkout/${encodeURIComponent(checkoutId)}`, {
+            headers: { "x-stagetype-claim": saved.claim },
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d.status === "paid" && d.code) {
+            $("#speechPass").value = d.code;
+            try { sessionStorage.setItem("st-dg-pass", d.code); } catch {}
+            store.set("st-event-pass", d.code);
+            try { sessionStorage.removeItem("st-pass-claim"); } catch {}
+            $("#mintedPassCode").textContent = d.code;
+            $("#passPaidNote").textContent = `${d.label || "Event Pass"} unlocked · ${d.hours || ""}h clock starts on first live Deepgram caption.`;
+            $("#passPaidBox").hidden = false;
+            $("#passStatusMsg").hidden = true;
+            syncPassField();
+            syncStageSelects();
+            return;
+          }
+          if (r.status === 403 || r.status === 404) break;
+        } catch {}
+        await new Promise((res) => setTimeout(res, 2200));
+      }
+      $("#passStatusMsg").textContent = "Still waiting on Square confirmation. Keep this tab open a moment or refresh.";
+    }
+
     fetch("/api/engines").then((r) => r.json()).then((e) => {
       const opt = $('#engine option[value="deepgram"]');
       opt.disabled = !e.deepgram;
       dgPassRequired = Boolean(e.deepgram && e.passRequired);
+      dgPassesAvailable = Boolean(e.deepgram && e.passesAvailable);
       if (!e.deepgram) {
         opt.textContent = "Deepgram (key needed on relay)";
         if (engine() === "deepgram") { $("#engine").value = "browser"; store.set("st-engine", "browser"); }
       }
       syncPassField();
       syncStageSelects();
+      const pendingCheckout = new URLSearchParams(location.search).get("pass_checkout");
+      if (pendingCheckout && /^[a-f0-9]{16,40}$/.test(pendingCheckout)) {
+        claimReturnedPassCheckout(pendingCheckout);
+      }
     }).catch(() => {});
 
     // Slide-o-Matic bridge: seed #title, #keyterms, and #roomLinks from URL params
@@ -3394,7 +3688,9 @@
     // Keyboard Shortcuts (never hijack interactive controls or Space inside modal!)
     window.addEventListener("keydown", (e) => {
       const fsOpen = $("#fsModal").classList.contains("open");
+      const passOpen = $("#passModal").classList.contains("open");
       if (e.key === "Escape") {
+        if (passOpen) { closePassModal(); return; }
         const openSel = $(".stage-select.open .stage-select-btn");
         if (openSel) { closeStageSelects(); openSel.focus(); return; }
         for (const m of $$(".menu[open], .more[open], .past[open]")) {
@@ -3405,8 +3701,8 @@
         closeFullscreenQR();
         return;
       }
-      if (fsOpen) {
-        if (e.key === "Tab") { e.preventDefault(); $("#closeFsBtn").focus(); }
+      if (fsOpen || passOpen) {
+        if (fsOpen && e.key === "Tab") { e.preventDefault(); $("#closeFsBtn").focus(); }
         return;
       }
       if (e.target.closest?.('input, select, textarea, button, summary, a, [role="button"], [role="tab"], [role="radio"], [role="option"], [contenteditable]')) {

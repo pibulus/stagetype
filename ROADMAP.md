@@ -13,9 +13,9 @@ Hardened, visually unified across all 6 pages, copy-polished, accessible, and li
 **Deliberately lean by design:** rooms run fast in memory (400 lines + 40 images), transcripts live on each listener's own phone, and the stage stays calm and focused on the speaker's words.
 
 **The next three, in order:**
-1. **Wire the 1-click Slide-o-Matic `?title=&words=` bridge button** and rehearse a live room with pass-gated Deepgram Nova-3.
+1. **Shipped 25 Nov 2026: One-time Event Passes (A$15 Meetup 3h / A$39 Day 24h / A$89 Weekend 72h with $1/pass to Palestine)** + `dg:YOUR_KEY` BYO Deepgram escape hatch + `?title=&words=&links=` Slide-o-Matic URL pre-primer.
 2. **Live translation (10 to 15 languages on the relay).** Each final line translates once per active audience language and fans out via SSE, opening multilingual rooms for conferences, classrooms, and congregations.
-3. **One-time Event Passes ($15 / $39 / $89 with $1/pass to Palestine)** + BYO Deepgram escape hatch + AGPL-3.0 relicense once hosted passes open. Mac host app ($29 one-time) later once web pull is proven.
+3. **Speaker diarisation on Deepgram + Mac host app ($29 one-time)** once web room pull is proven.
 
 ## The one-line position
 

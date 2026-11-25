@@ -930,3 +930,183 @@ Deno.test("lobby pass: mint allocates zero rooms until first scan or Start capti
   await s.reader.cancel();
   await del(`/api/room/${minted.id}`, minted.token);
 });
+
+Deno.test({
+  name: "event passes: Square checkout -> signed webhook -> claim poll -> first-use clock activation, expiry & dg: BYOK",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const { resetMemoryStoreForTests, validateAndActivatePass } = await import("./passes.ts");
+    resetMemoryStoreForTests();
+
+    const dg = mockDeepgram(0);
+    const sqOrders = new Map<string, string>();
+    const sqServer = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen: () => {} }, async (req) => {
+      const u = new URL(req.url);
+      if (req.method === "POST" && u.pathname === "/v2/online-checkout/payment-links") {
+        const body = await req.json();
+        const orderId = `ord_${crypto.randomUUID().slice(0, 8)}`;
+        sqOrders.set(orderId, "OPEN");
+        return Response.json({
+          payment_link: {
+            id: "pl_test_1",
+            order_id: orderId,
+            url: `https://checkout.square.site/pay/${orderId}`,
+            description: body.description,
+          },
+        });
+      }
+      const ordMatch = u.pathname.match(/^\/v2\/orders\/(.+)$/);
+      if (req.method === "GET" && ordMatch) {
+        return Response.json({ order: { id: ordMatch[1], state: sqOrders.get(ordMatch[1]) ?? "OPEN" } });
+      }
+      return new Response("not found", { status: 404 });
+    });
+
+    const sigKey = "sq_wh_secret_test_key_123456";
+    const notifUrl = "https://stage.talktype.app/api/square/webhook";
+    Deno.env.set("DEEPGRAM_API_KEY", "dg-relay-test-key");
+    Deno.env.set("DEEPGRAM_URL", `ws://localhost:${dg.addr.port}/listen`);
+    Deno.env.set("STAGETYPE_PASS_SECRET", "stagetype-super-secret-pass-hmac-key-2026");
+    Deno.env.set("SQUARE_BASE_URL", `http://127.0.0.1:${sqServer.addr.port}`);
+    Deno.env.set("SQUARE_ACCESS_TOKEN", "sq_test_access_token_12345");
+    Deno.env.set("SQUARE_LOCATION_ID", "LS821EYMQCANH");
+    Deno.env.set("SQUARE_WEBHOOK_SIGNATURE_KEY", sigKey);
+    Deno.env.set("SQUARE_WEBHOOK_NOTIFICATION_URL", notifUrl);
+
+    const relay = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen: () => {} }, handler);
+    const origin = `ws://localhost:${relay.addr.port}`;
+
+    try {
+      const eng = await (await handler(new Request(`${base}/api/engines`))).json();
+      assertEquals(eng, { browser: true, deepgram: true, passRequired: true, passesAvailable: true });
+
+      const tiersRes = await (await handler(new Request(`${base}/api/passes`))).json();
+      assertEquals(tiersRes.available, true);
+      assertEquals(tiersRes.tiers.length, 3);
+
+      // 1. Create Meetup Pass checkout (A$15 / 3h)
+      const coRes = await post("/api/passes/checkout", { tier: "meetup" });
+      assertEquals(coRes.status, 200);
+      const co = await coRes.json() as { checkoutId: string; claimToken: string; checkoutUrl: string };
+      assert(co.checkoutUrl.startsWith("https://checkout.square.site/pay/ord_"));
+      const orderId = co.checkoutUrl.split("/").pop()!;
+
+      // Pending before payment
+      const pollPending = await (await handler(
+        new Request(`${base}/api/passes/checkout/${co.checkoutId}`, {
+          headers: { "x-stagetype-claim": co.claimToken },
+        }),
+      )).json();
+      assertEquals(pollPending.status, "pending");
+
+      // Wrong claim token rejected
+      const badClaim = await handler(
+        new Request(`${base}/api/passes/checkout/${co.checkoutId}`, {
+          headers: { "x-stagetype-claim": "wrong-token" },
+        }),
+      );
+      assertEquals(badClaim.status, 403);
+
+      // Bad webhook signature rejected
+      const webhookPayload = JSON.stringify({
+        type: "payment.updated",
+        data: { object: { payment: { status: "COMPLETED", order_id: orderId } } },
+      });
+      const badWh = await handler(
+        new Request(`${base}/api/square/webhook`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-square-hmacsha256-signature": "forged" },
+          body: webhookPayload,
+        }),
+      );
+      assertEquals(badWh.status, 401);
+
+      // Valid Square HMAC-SHA256 webhook mints deterministic ST-XXXX-XXXX pass
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(sigKey),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(notifUrl + webhookPayload)));
+      const sig = btoa(String.fromCharCode(...mac));
+      const goodWh = await handler(
+        new Request(`${base}/api/square/webhook`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-square-hmacsha256-signature": sig },
+          body: webhookPayload,
+        }),
+      );
+      assertEquals(goodWh.status, 200);
+
+      // Poll now returns paid ST-XXXX-XXXX code
+      const pollPaid = await (await handler(
+        new Request(`${base}/api/passes/checkout/${co.checkoutId}`, {
+          headers: { "x-stagetype-claim": co.claimToken },
+        }),
+      )).json() as { status: string; code: string; hours: number };
+      assertEquals(pollPaid.status, "paid");
+      assertEquals(pollPaid.hours, 3);
+      assert(/^ST-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(pollPaid.code));
+
+      // Read-only check shows valid & NOT yet activated (clock hasn't started!)
+      const preCheck = await (await handler(new Request(`${base}/api/passes/check?code=${pollPaid.code}`))).json();
+      assertEquals(preCheck.valid, true);
+      assertEquals(preCheck.activated, false);
+
+      // Connecting to Deepgram audio WS activates the pass & starts the 3h clock
+      const { id, token } = await mkRoom();
+      const b64 = btoa(pollPaid.code.toLowerCase()).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const ws = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token, "pass-b64", b64]);
+      await new Promise<void>((resolve, reject) => {
+        ws.onopen = () => resolve();
+        ws.onerror = () => reject(new Error("event pass WS upgrade failed"));
+      });
+      ws.send(JSON.stringify({ type: "stop" }));
+      await new Promise<void>((r) => {
+        ws.onclose = () => r();
+      });
+
+      const postCheck = await (await handler(new Request(`${base}/api/passes/check?code=${pollPaid.code}`))).json();
+      assertEquals(postCheck.valid, true);
+      assertEquals(postCheck.activated, true);
+
+      // Fast-forward past 3h -> pass is rejected as expired
+      const afterExpiry = await validateAndActivatePass(pollPaid.code, Date.now() + 4 * 3600_000);
+      assertEquals(afterExpiry, { ok: false, reason: "expired" });
+
+      // BYO Deepgram escape hatch (`dg:...`) works even without a relay pass
+      const byoB64 = btoa("dg:custom_speaker_deepgram_key_12345").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      const wsByo = new WebSocket(`${origin}/api/room/${id}/audio?source=mic&lang=en-AU`, ["bearer", token, "pass-b64", byoB64]);
+      await new Promise<void>((resolve, reject) => {
+        wsByo.onopen = () => resolve();
+        wsByo.onerror = () => reject(new Error("dg: BYO WS upgrade failed"));
+      });
+      wsByo.send(JSON.stringify({ type: "stop" }));
+      await new Promise<void>((r) => {
+        wsByo.onclose = () => r();
+      });
+
+      await del(`/api/room/${id}`, token);
+    } finally {
+      for (
+        const k of [
+          "DEEPGRAM_API_KEY",
+          "DEEPGRAM_URL",
+          "STAGETYPE_PASS_SECRET",
+          "SQUARE_BASE_URL",
+          "SQUARE_ACCESS_TOKEN",
+          "SQUARE_LOCATION_ID",
+          "SQUARE_WEBHOOK_SIGNATURE_KEY",
+          "SQUARE_WEBHOOK_NOTIFICATION_URL",
+        ]
+      ) Deno.env.delete(k);
+      resetMemoryStoreForTests();
+      await relay.shutdown();
+      await sqServer.shutdown();
+      await dg.shutdown();
+    }
+  },
+});

@@ -45,6 +45,14 @@ fly deploy
 | `STAGETYPE_DEEPGRAM_PASS` | unset | Pass code gating `WS /api/room/:id/audio` (strongly recommended on public relays) |
 | `DEEPGRAM_MODEL` | `nova-3` | Deepgram model for the relay-side engine |
 | `DEEPGRAM_URL` | Deepgram's live endpoint | Override for a proxy or a test double |
+| `STAGETYPE_PASS_SECRET` | unset | HMAC secret (`>=16` chars) deriving `ST-XXXX-XXXX` Event Passes |
+| `STAGETYPE_DATA_DIR` | in-memory | Persistent folder (e.g. `/var/lib/stagetype`) storing checkouts and passes |
+| `SQUARE_ENVIRONMENT` | `sandbox` | `production` or `sandbox` |
+| `SQUARE_ACCESS_TOKEN` | unset | Square API token for `/api/passes/checkout` |
+| `SQUARE_LOCATION_ID` | unset | Active `AUD` Square location ID |
+| `SQUARE_WEBHOOK_NOTIFICATION_URL` | unset | Exact HTTPS URL registered for `payment.updated` (`/api/square/webhook`) |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | unset | HMAC signature key from the Square webhook subscription |
+| `PUBLIC_APP_URL` | request origin | Canonical public origin for Square checkout redirects |
 | `STAGETYPE_VERSION` | `dev` | Commit SHA served at `/version.json` |
 
 ## Launch checklist

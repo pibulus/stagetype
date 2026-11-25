@@ -1,4 +1,5 @@
 import * as noise from "./signed_noise.ts";
+import * as passes from "./passes.ts";
 
 // StageType: one presenter speaks, many phones read along.
 // Zero deps. Rooms live in memory; a restart ends every talk.
@@ -177,6 +178,8 @@ const roomCreateBuckets = new Map<string, RateBucket>();
 const joinBuckets = new Map<string, RateBucket>();
 const demoMintBuckets = new Map<string, RateBucket>();
 const lobbyMintBuckets = new Map<string, RateBucket>();
+const passCheckoutBuckets = new Map<string, RateBucket>();
+const passPollBuckets = new Map<string, RateBucket>();
 let globalAssetBytes = 0;
 let totalListeners = 0;
 
@@ -860,7 +863,83 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
 
   // Which speech engines this relay offers. Browser recognition is always there; Deepgram needs a key.
   if (get && path === "/api/engines") {
-    return json({ browser: true, deepgram: deepgramKey() !== "", ...(deepgramPass() ? { passRequired: true } : {}) });
+    const passGate = Boolean(deepgramPass() || passes.isPassCheckoutConfigured());
+    return json({
+      browser: true,
+      deepgram: deepgramKey() !== "",
+      ...(passGate ? { passRequired: true } : {}),
+      ...(passes.isPassCheckoutConfigured() ? { passesAvailable: true } : {}),
+    });
+  }
+
+  // Event Passes: one-time 3h / 24h / 72h Deepgram relay passes ($1 per pass to Palestine relief).
+  if (get && path === "/api/passes") {
+    return json({
+      available: passes.isPassCheckoutConfigured(),
+      currency: "AUD",
+      tiers: passes.PUBLIC_TIERS,
+    });
+  }
+
+  if (get && path === "/api/passes/check") {
+    const key = clientKey(req, info);
+    if (key) {
+      const wait = takeSlot(passPollBuckets, key, 45, 60_000);
+      if (wait !== null) return json({ error: "slow down" }, 429, { "retry-after": String(Math.ceil(wait / 1000)) });
+    }
+    const rawCode = url.searchParams.get("code") ?? "";
+    const status = await passes.inspectPass(rawCode);
+    return json(status, status.valid ? 200 : 404);
+  }
+
+  if (req.method === "POST" && path === "/api/passes/checkout") {
+    if (req.headers.get("sec-fetch-site") === "cross-site") return json({ error: "cross-site refused" }, 403);
+    const origin = req.headers.get("origin");
+    if (origin) {
+      try {
+        if (new URL(origin).host !== url.host) return json({ error: "origin mismatch" }, 403);
+      } catch {
+        return json({ error: "bad origin" }, 403);
+      }
+    }
+    const key = clientKey(req, info);
+    if (key) {
+      const wait = takeSlot(passCheckoutBuckets, key, 15, 60_000);
+      if (wait !== null) {
+        return json({ error: "too many checkouts; try again shortly" }, 429, { "retry-after": String(Math.ceil(wait / 1000)) });
+      }
+    }
+    const raw = await readBody(req);
+    if (raw === null) return json({ error: "too big" }, 413);
+    let body: { tier?: unknown } = {};
+    try {
+      body = raw.trim() ? (JSON.parse(raw) ?? {}) : {};
+    } catch {
+      return json({ error: "bad json" }, 400);
+    }
+    const tier = typeof body.tier === "string" ? body.tier.trim().toLowerCase() : "";
+    const publicOrigin = `${canonicalProto}://${url.host}`;
+    const res = await passes.createPassCheckout({ tier, origin: publicOrigin });
+    if (!res.ok) return json({ error: res.error }, res.status);
+    return json({ checkoutId: res.checkoutId, claimToken: res.claimToken, checkoutUrl: res.checkoutUrl });
+  }
+
+  const passPoll = path.match(/^\/api\/passes\/checkout\/([a-f0-9]{16,40})$/);
+  if (get && passPoll) {
+    const key = clientKey(req, info);
+    if (key) {
+      const wait = takeSlot(passPollBuckets, key, 90, 60_000);
+      if (wait !== null) return json({ error: "slow down" }, 429, { "retry-after": String(Math.ceil(wait / 1000)) });
+    }
+    const res = await passes.pollPassCheckout(passPoll[1], req.headers.get("x-stagetype-claim"));
+    return json(res.body, res.status);
+  }
+
+  if (req.method === "POST" && path === "/api/square/webhook") {
+    const raw = await readBody(req, 65_536);
+    if (raw === null) return json({ error: "too big" }, 413);
+    const res = await passes.handleSquareWebhook(raw, req.headers.get("x-square-hmacsha256-signature"));
+    return json(res.body, res.status);
   }
 
   // Relay-side speech: the page streams PCM over a WebSocket, the relay forwards it to Deepgram and
@@ -884,13 +963,29 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const r = rooms.get(audio[1]);
     if (!r) return json({ error: "room gone" }, 404);
     if (offered[0] !== "bearer" || !tokenOk(`Bearer ${offered[1] ?? ""}`, r.token)) return json({ error: "nope" }, 403);
-    if (!deepgramKey()) return json({ error: "no speech engine on this relay" }, 503);
     if (r.demo) return json({ error: "not in the demo" }, 403);
-    const requiredPass = deepgramPass();
-    if (requiredPass) {
-      const provided = offered[2] === "pass" ? (offered[3] ?? "") : offered[2] === "pass-b64" ? decodePassB64(offered[3] ?? "") : "";
-      if (!provided || !sameToken(provided, requiredPass)) {
-        return json({ error: "speech pass required" }, 403);
+    const provided = offered[2] === "pass" ? (offered[3] ?? "") : offered[2] === "pass-b64" ? decodePassB64(offered[3] ?? "") : "";
+    let sessionDgKey = deepgramKey();
+    let sessionMaxMs = DEEPGRAM_SESSION_MAX_MS;
+    if (provided.startsWith("dg:") && provided.slice(3).trim().length >= 16) {
+      sessionDgKey = provided.slice(3).trim();
+    } else {
+      if (!sessionDgKey) return json({ error: "no speech engine on this relay" }, 503);
+      const requiredPass = deepgramPass();
+      const passGate = Boolean(requiredPass || passes.isPassCheckoutConfigured());
+      if (passGate) {
+        if (!provided) return json({ error: "speech pass required" }, 403);
+        if (requiredPass && sameToken(provided, requiredPass)) {
+          // Operator master pass accepted
+        } else if (passes.hasPassSecret()) {
+          const verdict = await passes.validateAndActivatePass(provided);
+          if (!verdict.ok) {
+            return json({ error: verdict.reason === "expired" ? "event pass expired" : "speech pass required" }, 403);
+          }
+          sessionMaxMs = Math.min(DEEPGRAM_SESSION_MAX_MS, Math.max(5_000, verdict.remainingMs));
+        } else {
+          return json({ error: "speech pass required" }, 403);
+        }
       }
     }
     const activeSessions = [...rooms.values()].reduce((n, room) => n + room.audioSessions.size, 0);
@@ -902,7 +997,7 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const lang = cleanLang(url.searchParams.get("lang")) || "en";
     const speaker = cleanSpeaker(url.searchParams.get("speaker"));
     const phoneId = url.searchParams.get("phone") ? cleanPhoneId(url.searchParams.get("phone")) : (speaker || "default");
-    deepgramSession(r, socket, source, lang, keytermsFrom(url), speaker, phoneId);
+    deepgramSession(r, socket, source, lang, keytermsFrom(url), speaker, phoneId, sessionDgKey, sessionMaxMs);
     return response;
   }
 
@@ -1101,6 +1196,8 @@ function deepgramSession(
   keyterms: string[] = [],
   speaker = "",
   phoneId = "default",
+  apiKey = deepgramKey(),
+  maxSessionMs = DEEPGRAM_SESSION_MAX_MS,
 ) {
   const params = new URLSearchParams({
     model: deepgramModel(),
@@ -1121,7 +1218,7 @@ function deepgramSession(
   }
   let up: WebSocket;
   try {
-    up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", deepgramKey()]);
+    up = new WebSocket(`${deepgramUrl()}?${params}`, ["token", apiKey]);
   } catch {
     client.close(1011, "upstream unavailable");
     return;
@@ -1165,7 +1262,7 @@ function deepgramSession(
   };
   const closeSession = () => finish(1001, "room ended");
   room.audioSessions.add(closeSession);
-  const sessionTimeout = setTimeout(() => finish(1000, "session time limit"), DEEPGRAM_SESSION_MAX_MS);
+  const sessionTimeout = setTimeout(() => finish(1000, "session time limit"), maxSessionMs);
   const connectTimeout = setTimeout(() => {
     if (up.readyState !== WebSocket.OPEN) {
       tell({ error: "Speech relay timed out connecting upstream." });
@@ -1308,18 +1405,18 @@ async function materialiseDemo(id: string, sig: string | null) {
 }
 
 // Read a request body up to MAX_BODY bytes; null when it is larger.
-async function readBody(req: Request): Promise<string | null> {
+async function readBody(req: Request, maxBytes = MAX_BODY): Promise<string | null> {
   const cl = req.headers.get("content-length");
   if (cl !== null) {
     const declared = Number(cl);
-    if (!Number.isFinite(declared) || declared < 0 || declared > MAX_BODY) return null;
+    if (!Number.isFinite(declared) || declared < 0 || declared > maxBytes) return null;
   }
   if (!req.body) return "";
   const parts: Uint8Array[] = [];
   let size = 0;
   for await (const chunk of req.body) {
     size += chunk.byteLength;
-    if (size > MAX_BODY) {
+    if (size > maxBytes) {
       await req.body.cancel().catch(() => {});
       return null;
     }
@@ -1370,8 +1467,10 @@ async function file(name: string, isHead = false, type = "text/html; charset=utf
   if (opts.sandboxSvg) {
     headers["content-security-policy"] = "default-src 'none'; sandbox";
   } else if (type.startsWith("text/html")) {
-    headers["content-security-policy"] = `default-src 'self'; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; ` +
-      `img-src 'self' data: blob:; connect-src 'self' ws: wss:; font-src 'self'; worker-src 'self' blob:; ` +
+    const beaconHost = opts.publicPage ? " https://hits.madebypablo.app" : "";
+    headers["content-security-policy"] =
+      `default-src 'self'; script-src 'self' 'unsafe-inline' blob:${beaconHost}; style-src 'self' 'unsafe-inline'; ` +
+      `img-src 'self' data: blob:; connect-src 'self' ws: wss:${beaconHost}; font-src 'self'; worker-src 'self' blob:; ` +
       `base-uri 'none'; form-action 'self'; frame-ancestors ${opts.embeddable ? "*" : "'none'"}`;
     if (!opts.embeddable) headers["x-frame-options"] = "DENY";
     headers["permissions-policy"] = opts.allowMic
@@ -1389,7 +1488,7 @@ export function sweep(now: number = Date.now()): void {
   }
   for (const [lid, l] of [...lobbies]) if (l.exp <= now) dropLobby(lid);
   // Rate-limit buckets hold client addresses; they belong to a window, not to the process.
-  for (const buckets of [roomCreateBuckets, joinBuckets, demoMintBuckets, lobbyMintBuckets]) {
+  for (const buckets of [roomCreateBuckets, joinBuckets, demoMintBuckets, lobbyMintBuckets, passCheckoutBuckets, passPollBuckets]) {
     for (const [k, b] of buckets) if (b.resetAt <= now) buckets.delete(k);
   }
 }
