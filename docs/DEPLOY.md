@@ -45,8 +45,9 @@ fly deploy
 | `GROQ_MODEL` | `whisper-large-v3-turbo` | Groq Whisper model ID for Cloud Turbo |
 | `DEEPGRAM_API_KEY` | unset | Turns on the Deepgram Live WebSocket engine |
 | `STAGETYPE_DEEPGRAM_PASS` | unset | Pass code gating `WS /api/room/:id/audio` (strongly recommended on public relays) |
-| `DEEPGRAM_MODEL` | `nova-3` | Deepgram model for the relay-side engine |
-| `DEEPGRAM_URL` | Deepgram's live endpoint | Override for a proxy or a test double |
+| `DEEPGRAM_MODEL` | `nova-3` | Deepgram model for the relay-side engine and batch failover |
+| `DEEPGRAM_URL` | Deepgram's live endpoint | Override for a proxy or a test double (`wss://api.deepgram.com/v1/listen`) |
+| `DEEPGRAM_BATCH_URL` | Deepgram's HTTP endpoint | Automatic batch failover endpoint when `GROQ_API_KEY` blinks (`https://api.deepgram.com/v1/listen`) |
 | `STAGETYPE_PASS_SECRET` | unset | HMAC secret (`>=16` chars) deriving `ST-XXXX-XXXX` Event Passes |
 | `STAGETYPE_DATA_DIR` | in-memory | Persistent folder (e.g. `/var/lib/stagetype`) storing checkouts and passes |
 | `SQUARE_ENVIRONMENT` | `sandbox` | `production` or `sandbox` |

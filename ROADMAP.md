@@ -13,7 +13,7 @@ Hardened, visually unified across all 6 pages, copy-polished, accessible, and li
 **Deliberately lean by design:** rooms run fast in memory (400 lines + 40 images), transcripts live on each listener's own phone, and the stage stays calm and focused on the speaker's words.
 
 **The next three, in order:**
-1. **Shipped 26 Nov 2026: 4-Engine Speech Stack & Pocket Event Passes (A$5 Meetup 3h / A$12 Day 24h / A$24 Weekend 72h with $1/pass to Palestine)** — `Browser` ($0), `On-device` Moonshine/Whisper WebGPU ($0, offline/private), `Cloud Turbo` Dual-Track Groq Whisper-v3-Turbo (~A$0.05/hr), and `Deepgram Live` w/ 9s VAD silence hibernate + `groq:`/`dg:` BYOK.
+1. **Shipped 26 Nov 2026: Zero-Knob Wizard-of-Oz Speech Cascade & Pocket Event Passes (A$5 Meetup 3h / A$12 Day 24h / A$24 Weekend 72h with $1/pass to Palestine)** — zero engine dropdowns on console or phone lapel mic; backstage automatically runs Studio Dual-Track (Groq Whisper-v3-Turbo ~A$0.06/hr with instant failover to Deepgram Nova-3 batch + 9s VAD silence hibernate on WebSocket) when an Event Pass is active, falls back seamlessly to Browser Speech ($0), and switches automatically to On-Device Moonshine/Whisper WebGPU ($0) offline or in Brave.
 2. **Live translation (10 to 15 languages on the relay).** Each final line translates once per active audience language and fans out via SSE, opening multilingual rooms for conferences, classrooms, and congregations.
 3. **Speaker diarisation + Mac host app ($29 one-time, macOS 26 `SpeechTranscriber`)** once web room pull is proven.
 

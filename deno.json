@@ -5,7 +5,7 @@
   "exports": "./server.ts",
   "tasks": {
     "dev": "deno run -A --watch server.ts",
-    "start": "deno run --allow-net --allow-read=.,/var/lib/stagetype --allow-write=/var/lib/stagetype --allow-env=PORT,HOST,TRUST_PROXY,FLY_APP_NAME,STAGETYPE_SECRET,DEEPGRAM_API_KEY,DEEPGRAM_MODEL,DEEPGRAM_URL,GROQ_API_KEY,GROQ_API_URL,GROQ_MODEL,STAGETYPE_DEEPGRAM_PASS,STAGETYPE_VERSION,MAX_ASSET_RAM_MB,STAGETYPE_PASS_SECRET,PASSPORT_LICENSE_SECRET,STAGETYPE_DATA_DIR,SQUARE_ENVIRONMENT,SQUARE_BASE_URL,SQUARE_API_VERSION,SQUARE_ACCESS_TOKEN,SQUARE_LOCATION_ID,SQUARE_WEBHOOK_SIGNATURE_KEY,SQUARE_WEBHOOK_NOTIFICATION_URL,PUBLIC_APP_URL --allow-sys=networkInterfaces server.ts",
+    "start": "deno run --allow-net --allow-read=.,/var/lib/stagetype --allow-write=/var/lib/stagetype --allow-env=PORT,HOST,TRUST_PROXY,FLY_APP_NAME,STAGETYPE_SECRET,DEEPGRAM_API_KEY,DEEPGRAM_MODEL,DEEPGRAM_URL,DEEPGRAM_BATCH_URL,GROQ_API_KEY,GROQ_API_URL,GROQ_MODEL,STAGETYPE_DEEPGRAM_PASS,STAGETYPE_VERSION,MAX_ASSET_RAM_MB,STAGETYPE_PASS_SECRET,PASSPORT_LICENSE_SECRET,STAGETYPE_DATA_DIR,SQUARE_ENVIRONMENT,SQUARE_BASE_URL,SQUARE_API_VERSION,SQUARE_ACCESS_TOKEN,SQUARE_LOCATION_ID,SQUARE_WEBHOOK_SIGNATURE_KEY,SQUARE_WEBHOOK_NOTIFICATION_URL,PUBLIC_APP_URL --allow-sys=networkInterfaces server.ts",
     "listen-local": "deno run --allow-net --allow-env --allow-run scripts/listen-local.ts",
     "test": "deno test -A --sanitize-ops --sanitize-resources server_test.ts",
     "e2e": "deno run -A e2e/browser_test.js",

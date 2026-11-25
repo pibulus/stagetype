@@ -11,6 +11,7 @@ import { mockDeepgram } from "./mock_deepgram.ts";
 const upstream = mockDeepgram(0);
 Deno.env.set("DEEPGRAM_API_KEY", "test-key");
 Deno.env.set("DEEPGRAM_URL", `ws://localhost:${upstream.addr.port}/listen`);
+Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "studio-test-pass");
 const { handler } = await import("../server.ts");
 const relay = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen() {} }, handler);
 const base = `http://localhost:${relay.addr.port}`;
@@ -233,7 +234,7 @@ await p.screenshot({ path: `${SHOTS}/presenter-prefs.png` });
 await p.click("#vibePill");
 ok((await p.evaluate(() => document.documentElement.dataset.vibe)) === "stage", "vibe pill cycles page atmosphere");
 await p.click("#vibePill"); await p.click("#vibePill"); await p.click("#vibePill");
-ok((await p.$$eval(".stage-select", (n) => n.length)) === 3, "custom Neo-Toybrut .stage-select popovers wrap selects");
+ok((await p.$$eval(".stage-select", (n) => n.length)) === 2, "custom Neo-Toybrut .stage-select popovers wrap selects (#lang and #faceSelect)");
 // keyboard navigation on .stage-select: ArrowDown opens and selects next option, Escape closes and restores focus
 await p.focus(".face-wrap .stage-select-btn");
 const faceBefore = await p.inputValue("#faceSelect");
@@ -588,18 +589,15 @@ ok(
 );
 await mm.close();
 
-// ---- Deepgram through the relay (mock upstream): choose the engine, speak, words land everywhere
-await p.evaluate(() => { localStorage.removeItem("st-engine"); });
+// ---- Studio speech through the relay (Wizard of Oz: zero engine dropdown, auto-engages when pass/studio key is present!)
+await p.evaluate(() => sessionStorage.setItem("st-dg-pass", "studio-test-pass"));
 await p.reload();
-await p.waitForFunction(() => document.querySelector("#engine") && !document.querySelector("#engine").disabled);
-await p.waitForFunction(() => !document.querySelector('#engine option[value="deepgram"]').disabled);
-ok(true, "console learned the relay offers Deepgram");
-await p.selectOption("#engine", "deepgram");
+await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Laptop mic · Studio");
+ok(!await p.$("#engine"), "engine dropdown removed (Wizard of Oz automatic cascade)");
 await p.click("#startBtn");
 await p.waitForSelector("#stopBtn:not([hidden])");
-await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Laptop mic · Deepgram");
-ok(true, "console streams to the relay with the Deepgram engine");
-ok(await p.$eval("#engine", (s) => s.disabled), "engine locked while live");
+await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Laptop mic · Studio");
+ok(true, "console streams automatically to the relay in Studio mode");
 const roomD = (await p.textContent("#urlDisplay")).split("/").pop();
 const ad = await ctx.newPage(); track(ad, "audience-deepgram");
 await ad.goto(`${base}/live/${roomD}`);
@@ -614,8 +612,6 @@ await p.click("#pauseBtn");
 await p.waitForFunction(() => document.querySelector("#micSource").textContent === "Laptop mic paused");
 ok(true, "pause stops the audio link");
 await p.click("#stopBtn");
-ok(!(await p.$eval("#engine", (s) => s.disabled)), "engine unlocked after end");
-await p.selectOption("#engine", "browser");
 await p.screenshot({ path: `${SHOTS}/presenter-trim.png` });
 
 // ---- Demo: signed noise until the phone scans, then typing lands on it

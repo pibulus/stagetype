@@ -1119,19 +1119,30 @@ Deno.test({
   fn: async () => {
     let lastPrompt = "";
     let nextTranscript = "Welcome to Brunswick tonight.";
+    let groqShouldFail = false;
+    let lastDgQuery = "";
     const groqMock = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen: () => {} }, async (req) => {
+      if (groqShouldFail) return new Response("upstream busy", { status: 503 });
       const form = await req.formData();
       lastPrompt = String(form.get("prompt") ?? "");
       return Response.json({ text: nextTranscript });
     });
+    const dgBatchMock = Deno.serve({ port: 0, hostname: "127.0.0.1", onListen: () => {} }, (req) => {
+      lastDgQuery = new URL(req.url).search;
+      return Response.json({
+        results: { channels: [{ alternatives: [{ transcript: "Recovered via Deepgram Nova-3." }] }] },
+      });
+    });
 
     Deno.env.set("GROQ_API_KEY", "gsk_test_relay_key_1234567890");
     Deno.env.set("GROQ_API_URL", `http://127.0.0.1:${groqMock.addr.port}/v1/audio/transcriptions`);
+    Deno.env.set("DEEPGRAM_API_KEY", "dg_test_failover_key_1234567890");
+    Deno.env.set("DEEPGRAM_BATCH_URL", `http://127.0.0.1:${dgBatchMock.addr.port}/v1/listen`);
     Deno.env.set("STAGETYPE_DEEPGRAM_PASS", "turbo-pass");
 
     try {
       const eng = await (await handler(new Request(`${base}/api/engines`))).json();
-      assertEquals(eng, { browser: true, deepgram: false, turbo: true, passRequired: true });
+      assertEquals(eng, { browser: true, deepgram: true, turbo: true, passRequired: true });
 
       const { id, token } = await mkRoom();
       const s = await openStream(id);
@@ -1188,6 +1199,26 @@ Deno.test({
       assertEquals(hallRes.status, 200);
       assertEquals((await hallRes.json()).text, "");
 
+      // Automatic failover: when Groq returns 503, relay falls over to Deepgram Nova-3 batch with keyterms intact
+      groqShouldFail = true;
+      const failoverRes = await handler(
+        new Request(`${base}/api/room/${id}/transcribe?source=mic&lang=es-MX&keyterm=StageType`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "audio/wav",
+            "x-stagetype-pass": passB64,
+          },
+          body: wav,
+        }),
+      );
+      assertEquals(failoverRes.status, 200);
+      assertEquals((await failoverRes.json()).text, "Recovered via Deepgram Nova-3.");
+      assert(lastDgQuery.includes("language=multi") && lastDgQuery.includes("keyterm=StageType"));
+      let failoverEvt = await s.read();
+      if (!failoverEvt.includes("event: final")) failoverEvt += await s.read();
+      assert(failoverEvt.includes("event: final") && failoverEvt.includes("Recovered via Deepgram Nova-3."));
+
       // Static worker script is served cleanly
       const workerRes = await handler(new Request(`${base}/stt_worker.js`));
       assertEquals(workerRes.status, 200);
@@ -1197,8 +1228,11 @@ Deno.test({
     } finally {
       Deno.env.delete("GROQ_API_KEY");
       Deno.env.delete("GROQ_API_URL");
+      Deno.env.delete("DEEPGRAM_API_KEY");
+      Deno.env.delete("DEEPGRAM_BATCH_URL");
       Deno.env.delete("STAGETYPE_DEEPGRAM_PASS");
       await groqMock.shutdown();
+      await dgBatchMock.shutdown();
     }
   },
 });

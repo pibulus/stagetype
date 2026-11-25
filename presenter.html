@@ -324,8 +324,6 @@
     body[data-live="1"] .setup-group { display: none; }
     .field { display: flex; align-items: center; min-width: 0; }
     .field-lang { width: 158px; }
-    .field-engine { width: 124px; }
-    .field-pass { width: 124px; }
     .pass-btn {
       height: 32px;
       padding: 0 10px;
@@ -1519,7 +1517,6 @@
       .vibe-pill #vibeLabel { display: none; }
       .vibe-pill { padding: 0 9px; }
       .field-lang { width: 154px; }
-      .field-engine { width: 98px; }
     }
     @media (max-width: 948px) and (min-width: 641px) {
       .transport { gap: 6px; padding: 6px 10px; }
@@ -1565,11 +1562,11 @@
       .setup-group {
         flex: 1 1 auto;
         min-width: 0;
-        display: grid;
-        grid-template-columns: 1.42fr 0.85fr;
+        display: flex;
+        align-items: center;
         gap: 5px;
       }
-      .field-lang, .field-engine, .field-pass { width: 100%; }
+      .field-lang { flex: 1 1 auto; width: 100%; }
       .stage-select-btn { font-size: 11.5px; padding: 0 7px; }
       #startBtn { padding: 0 11px; font-size: 12px; }
       .vibe-pill #vibeLabel { display: none; }
@@ -1655,20 +1652,7 @@
               <span class="sr-only" id="langLabel">Language</span>
               <select id="lang" aria-labelledby="langLabel"></select>
             </div>
-            <div class="field field-engine">
-              <span class="sr-only" id="engineLabel">Engine</span>
-              <select id="engine" aria-labelledby="engineLabel">
-                <option value="browser">Browser</option>
-                <option value="ondevice">On-device</option>
-                <option value="turbo">Cloud Turbo</option>
-                <option value="deepgram">Deepgram</option>
-              </select>
-            </div>
-            <div class="field field-pass" id="passField" hidden>
-              <label class="sr-only" for="speechPass">Speech pass</label>
-              <input id="speechPass" type="password" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Pass or dg:key">
-            </div>
-            <button type="button" id="buyPassBtn" class="pass-btn" hidden title="Get a one-time Deepgram Event Pass">Get pass</button>
+            <button type="button" id="buyPassBtn" class="pass-btn" hidden title="Unlock Studio speech with an Event Pass">Event pass</button>
           </div>
 
           <span class="pill-badge" id="liveBadge" role="status">
@@ -1894,22 +1878,27 @@
       <div class="pass-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
-            <p style="margin:0 0 3px;font:800 11px var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:#635349">Cloud Turbo &amp; Deepgram Relay</p>
+            <p style="margin:0 0 3px;font:800 11px var(--mono);text-transform:uppercase;letter-spacing:0.12em;color:#635349">Studio Room Pass</p>
             <h2 id="passModalTitle" style="margin:0;font-size:1.3rem;letter-spacing:-0.02em">Event Passes</h2>
           </div>
           <button type="button" id="closePassBtn">Close</button>
         </div>
 
         <p id="passModalLead" class="pass-foot" style="font-size:13px;color:#1e1714">
-          Browser and On-device (Moonshine / Whisper WebGPU) run free forever. Event Passes unlock Cloud Turbo (Whisper Large v3 Turbo) and Deepgram Nova-3 across the laptop console and paired phone lapel mics. The hour clock starts on first live cloud caption.
+          StageType captions free right out of the box, online or offline. Event Passes unlock studio-grade multilingual recognition across the room console and paired phone lapel mics. The hour clock starts on the first live caption.
         </p>
+
+        <div class="field" style="width:100%">
+          <label class="sr-only" for="speechPass">Event pass code</label>
+          <input id="speechPass" type="text" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Have a pass? Enter ST-····-····">
+        </div>
 
         <div id="passPaidBox" hidden style="display:flex;flex-direction:column;gap:10px">
           <div class="pass-readout">
             <code id="mintedPassCode">ST-····-····</code>
             <button type="button" id="copyPassBtn" style="height:30px;padding:0 10px;font-size:12px;background:#fffdf9;color:#1e1714;border-color:#1e1714;box-shadow:0 2px 0 #1e1714">Copy pass</button>
           </div>
-          <p id="passPaidNote" class="pass-foot">Loaded into the Speech pass field. Hit Start captions whenever the room is ready.</p>
+          <p id="passPaidNote" class="pass-foot">Pass active. Close this sheet and hit Start captions whenever the room is ready.</p>
         </div>
 
         <div class="pass-tiers" id="passTiers">
@@ -1939,7 +1928,7 @@
         <p id="passStatusMsg" class="pass-foot" hidden style="font-weight:700;color:#1e1714"></p>
 
         <p class="pass-foot">
-          One-time pass, zero auto-renewal · $1 from every pass supports Palestine relief · Own an API key? Paste <code>groq:YOUR_KEY</code> or <code>dg:YOUR_KEY</code> in the pass box for direct passthrough.
+          One-time pass, zero auto-renewal · $1 from every pass supports Palestine relief.
         </p>
       </div>
     </div>
@@ -2154,8 +2143,10 @@
       $("#exportMenu").open = false;
     };
 
-    const engine = () => $("#engine").value;
     let dg = null;
+    let activeSpeechMode = "browser"; // backstage auto-selected: "turbo" | "deepgram" | "browser" | "ondevice"
+    let relayDeepgram = false;
+    let relayTurbo = false;
     function notice(msg, autoDismissMs = 6500) {
       clearTimeout(noticeTimer);
       const wrap = $("#notice");
@@ -2178,7 +2169,12 @@
         } else if (paused) {
           $("#monitorPrompt").textContent = "Mic paused — press Space or Resume to continue";
         } else {
-          const src = engine() === "deepgram" ? "Laptop mic (Deepgram)" : "Laptop mic";
+          const mode = localLive ? activeSpeechMode : resolveAutoEngine();
+          const src = (mode === "turbo" || mode === "deepgram")
+            ? "Laptop mic · Studio"
+            : mode === "ondevice"
+            ? "Laptop mic · Offline"
+            : "Laptop mic";
           $("#monitorPrompt").textContent = `Listening on ${src} — speak or type below`;
         }
       }
@@ -2227,7 +2223,7 @@
     const CHEV_SVG = `<svg width="10" height="6" viewBox="0 0 12 8" aria-hidden="true"><path d="M1.5 1.5 6 6 10.5 1.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const stageSelectSyncers = new Map();
     function initStageSelects() {
-      for (const sel of $$("#lang, #engine, #faceSelect")) {
+      for (const sel of $$("#lang, #faceSelect")) {
         if (sel.parentElement?.classList.contains("stage-select")) continue;
         const labelId = sel.getAttribute("aria-labelledby");
         const fieldLabel = labelId ? document.getElementById(labelId)?.textContent?.trim() : "";
@@ -2719,15 +2715,24 @@
     const joinHostText = () => `${lanBase.replace(/^https?:\/\//, "")}/join`;
     let dgPassRequired = false;
     let dgPassesAvailable = false;
-    const isCloudEngine = (e = engine()) => e === "deepgram" || e === "turbo";
     const currentPass = () => $("#speechPass").value.trim();
+    const resolveAutoEngine = () => {
+      if (navigator.onLine === false) return "ondevice";
+      const pass = currentPass();
+      const studioReady = (relayTurbo || relayDeepgram) && (!dgPassRequired || Boolean(pass)) ||
+        pass.startsWith("groq:") || pass.startsWith("dg:");
+      if (studioReady) {
+        if (pass.startsWith("dg:") || (!relayTurbo && relayDeepgram)) return "deepgram";
+        return "turbo";
+      }
+      return Rec ? "browser" : "ondevice";
+    };
     const syncPassField = () => {
-      const show = dgPassRequired && isCloudEngine();
-      $("#passField").hidden = !show;
-      $("#buyPassBtn").hidden = !(show && dgPassesAvailable);
-      if (show && dgPassesAvailable) {
-        const v = currentPass();
-        $("#buyPassBtn").textContent = /^ST-[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(v) ? "Pass ✓" : "Get pass";
+      const hasCloud = relayTurbo || relayDeepgram;
+      const showBtn = hasCloud && (dgPassRequired || dgPassesAvailable);
+      $("#buyPassBtn").hidden = !showBtn;
+      if (showBtn) {
+        $("#buyPassBtn").textContent = currentPass() ? "Pass active" : "Event pass";
       }
     };
     try {
@@ -2742,11 +2747,12 @@
         else if (!val) store.del("st-event-pass");
       } catch {}
       syncPassField();
+      updateMicLabel(true);
     });
     const micUrl = () => {
       const p = activePass();
       if (!p) return "";
-      const q = new URLSearchParams({ lang: $("#lang").value, engine: engine() });
+      const q = new URLSearchParams({ lang: $("#lang").value });
       for (const term of keyterms()) q.append("keyterm", term);
       const pass = currentPass();
       const hash = pass ? new URLSearchParams({ token: p.token, pass }).toString() : p.token;
@@ -2977,13 +2983,25 @@
 
     const FATAL_REC = new Set(["not-allowed", "service-not-allowed", "audio-capture", "language-not-supported", "network"]);
 
-    async function startDeepgram() {
-      if (dgPassRequired && !currentPass()) {
-        notice("Enter the relay Speech pass in the top bar before starting Deepgram.", 9000);
-        setPaused(true, false);
-        $("#speechPass").focus();
-        return;
+    async function fallbackFromCloudToFree(reason) {
+      dg = null;
+      if (!localLive || paused || !room) return;
+      if (Rec && navigator.onLine !== false) {
+        activeSpeechMode = "browser";
+        updateMicLabel(true);
+        startBrowserSpeech();
+      } else {
+        activeSpeechMode = "ondevice";
+        updateMicLabel(true);
+        startOnDevice();
       }
+      if (reason && /expired|pass required|invalid/i.test(reason)) {
+        notice(`Event pass inactive (${reason}) — continuing with built-in speech.`, 6500);
+      }
+    }
+
+    async function startDeepgram() {
+      activeSpeechMode = "deepgram";
       try {
         const started = await StageTypeDeepgram.start({
           roomId: room.id,
@@ -2992,28 +3010,18 @@
           lang: $("#lang").value,
           keyterms: keyterms(),
           pass: currentPass(),
-          onError: (msg) => {
-            dg = null;
-            notice(`Deepgram: ${msg}`, 9000);
-            setPaused(true, false);
-          },
+          onError: (msg) => fallbackFromCloudToFree(msg),
         });
         if (!localLive || paused || !room) { started.stop(); return; }
         dg = started;
         updateMicLabel(true);
       } catch (err) {
-        notice(`Couldn't start the Deepgram link: ${err.message}.`, 9000);
-        setPaused(true, false);
+        fallbackFromCloudToFree(err.message);
       }
     }
 
     async function startTurbo() {
-      if (dgPassRequired && !currentPass()) {
-        notice("Enter an Event Pass (or groq:YOUR_KEY) in the top bar before starting Cloud Turbo.", 9000);
-        setPaused(true, false);
-        $("#speechPass").focus();
-        return;
-      }
+      activeSpeechMode = "turbo";
       try {
         const started = await StageTypeDeepgram.startTurbo({
           roomId: room.id,
@@ -3027,22 +3035,18 @@
             renderTicker();
             if (interim) pushInterim();
           },
-          onError: (msg) => {
-            dg = null;
-            notice(`Cloud Turbo: ${msg}`, 9000);
-            setPaused(true, false);
-          },
+          onError: (msg) => fallbackFromCloudToFree(msg),
         });
         if (!localLive || paused || !room) { started.stop(); return; }
         dg = started;
         updateMicLabel(true);
       } catch (err) {
-        notice(`Couldn't start Cloud Turbo: ${err.message}.`, 9000);
-        setPaused(true, false);
+        fallbackFromCloudToFree(err.message);
       }
     }
 
     async function startOnDevice() {
+      activeSpeechMode = "ondevice";
       const activeTerms = keyterms();
       try {
         const started = await StageTypeDeepgram.startOnDevice({
@@ -3074,7 +3078,7 @@
           },
           onError: (msg) => {
             dg = null;
-            notice(`On-device speech: ${msg}`, 9000);
+            notice(`Microphone speech stopped: ${msg}. Pair the phone lapel mic or type below.`, 9000);
             setPaused(true, false);
           },
         });
@@ -3082,23 +3086,14 @@
         dg = started;
         updateMicLabel(true);
       } catch (err) {
-        notice(`Couldn't start on-device speech: ${err.message}.`, 9000);
+        notice(`Couldn't start local speech (${err.message}). Allow microphone access or pair the phone lapel mic.`, 9000);
         setPaused(true, false);
       }
     }
 
     let recRestartTimer = null;
-    function startLocalRec() {
-      clearTimeout(recRestartTimer);
-      if (engine() === "deepgram") { startDeepgram(); return; }
-      if (engine() === "turbo") { startTurbo(); return; }
-      if (engine() === "ondevice") { startOnDevice(); return; }
-      if (!Rec) {
-        notice("This browser has no built-in speech recognition. Switch Engine to On-device (runs locally in any browser) or pair the phone lapel mic.", 9000);
-        $("#micSource").textContent = "Phone mic only";
-        syncMonitorOverlay();
-        return;
-      }
+    function startBrowserSpeech() {
+      activeSpeechMode = "browser";
       rec = new Rec();
       rec.continuous = true;
       rec.interimResults = true;
@@ -3135,18 +3130,17 @@
         else clearTimeout(interimTimer);
       };
 
-      rec.onerror = async (e) => {
+      rec.onerror = (e) => {
         if (e.error === "no-speech" || e.error === "aborted") return;
-        if (e.error === "network") {
-          setPaused(true, false);
-          const isBrave = await (navigator.brave?.isBrave?.() ?? false);
-          notice(
-            isBrave
-              ? "Brave blocks speech recognition by default. Turn on 'Use Google services for speech recognition' in brave://settings/system, use Chrome/Safari/Edge, or pair the phone lapel mic."
-              : "Speech recognition stopped: network error. Browser speech uses cloud recognition servers. Check connection, use Chrome/Safari, or pair the phone lapel mic.",
-            10000,
-          );
-        } else if (FATAL_REC.has(e.error)) {
+        // Wizard of Oz: if browser speech is blocked offline or in Brave, switch seamlessly to on-device speech!
+        if (e.error === "network" || e.error === "service-not-allowed") {
+          clearTimeout(recRestartTimer);
+          try { rec?.stop(); } catch {}
+          rec = null;
+          if (localLive && !paused) startOnDevice();
+          return;
+        }
+        if (FATAL_REC.has(e.error)) {
           setPaused(true, false);
           notice(
             e.error === "not-allowed"
@@ -3154,22 +3148,31 @@
               : `Speech recognition stopped: ${e.error}. Pair the phone lapel mic instead.`,
             10000,
           );
-        } else {
-          console.warn("Speech recognition error:", e.error);
         }
       };
 
       rec.onend = () => {
         clearTimeout(recRestartTimer);
-        if (localLive && !paused) recRestartTimer = setTimeout(() => localLive && !paused && startLocalRec(), 150);
+        if (localLive && !paused && activeSpeechMode === "browser") {
+          recRestartTimer = setTimeout(() => localLive && !paused && startBrowserSpeech(), 150);
+        }
       };
 
       try {
         rec.start();
-      } catch (err) {
-        notice(`Couldn't start speech recognition: ${err.message}. Pair the phone lapel mic instead.`, 9000);
-        setPaused(true, false);
+        updateMicLabel(true);
+      } catch {
+        startOnDevice();
       }
+    }
+
+    function startLocalRec() {
+      clearTimeout(recRestartTimer);
+      const pick = resolveAutoEngine();
+      if (pick === "deepgram") { startDeepgram(); return; }
+      if (pick === "turbo") { startTurbo(); return; }
+      if (pick === "ondevice") { startOnDevice(); return; }
+      startBrowserSpeech();
     }
 
     function onPhone(live, lost) {
@@ -3208,13 +3211,11 @@
         label.textContent = "Laptop mic paused";
         return;
       }
-      const eng = engine();
-      label.textContent = eng === "deepgram"
-        ? "Laptop mic · Deepgram"
-        : eng === "turbo"
-        ? "Laptop mic · Turbo"
-        : eng === "ondevice"
-        ? "Laptop mic · On-device"
+      const mode = localLive ? activeSpeechMode : resolveAutoEngine();
+      label.textContent = (mode === "turbo" || mode === "deepgram")
+        ? "Laptop mic · Studio"
+        : mode === "ondevice"
+        ? "Laptop mic · Offline"
         : "Laptop mic";
     }
 
@@ -3413,7 +3414,6 @@
       $("#pauseBtn").querySelector(".btn-label").textContent = "Pause";
       $("#floatBtn").disabled = false;
       $("#floatBtn").title = "documentPictureInPicture" in window ? "Float ticker over slides (Opt + F)" : "Pop out ticker over slides (Opt + F)";
-      $("#engine").disabled = true;
       syncStageSelects();
       $("#urlDisplay").hidden = false;
 
@@ -3486,7 +3486,6 @@
       $("#floatBtn").disabled = true;
       $("#shareImageBtn").disabled = true;
       clearTray();
-      $("#engine").disabled = false;
       $("#lang").disabled = false;
       syncStageSelects();
       $("#title").disabled = false;
@@ -3599,24 +3598,14 @@
     };
     $("#floatBtn").onclick = floatTickerWindow;
 
-    if (navigator.brave && typeof navigator.brave.isBrave === "function") {
-      navigator.brave.isBrave().then((b) => {
-        if (b && engine() === "browser") {
-          $("#engineHint").innerHTML =
-            'Brave: enable speech recognition at <code style="font-size:0.75rem">brave://settings/system</code>, or pair the phone lapel mic.';
-          $("#engineHint").hidden = false;
-        }
-      });
-    }
-
-    $("#engine").value = store.get("st-engine") || "browser";
-    $("#engine").onchange = () => {
-      store.set("st-engine", engine());
-      syncPassField();
+    addEventListener("online", () => {
       updateMicLabel(true);
-      syncStageSelects();
       syncMonitorOverlay();
-    };
+    });
+    addEventListener("offline", () => {
+      updateMicLabel(true);
+      syncMonitorOverlay();
+    });
     let passOpener = null;
     const openPassModal = () => {
       passOpener = document.activeElement;
@@ -3633,7 +3622,7 @@
               const rem = hrs >= 2 ? `${Math.round(hrs)}h` : `${Math.max(1, Math.round((st.remainingMs || 0) / 60_000))}m`;
               $("#passPaidNote").textContent = st.activated
                 ? `${st.label} active · ${rem} remaining.`
-                : `${st.label} ready · ${st.hours}h clock starts on first live Deepgram caption.`;
+                : `${st.label} ready · ${st.hours}h clock starts on first live Studio caption.`;
             } else if (st.expired) {
               $("#passPaidNote").textContent = "This Event Pass has expired. Grab a fresh pass below.";
             }
@@ -3709,12 +3698,9 @@
       cleanUrl.searchParams.delete("pass_checkout");
       history.replaceState(null, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
       if (!saved || saved.id !== checkoutId || !saved.claim) {
-        notice("Checkout session expired in this tab. Check your Square receipt if payment completed.", 9000);
+        notice("Checkout session expired in this tab. Check the emailed receipt if payment completed.", 9000);
         return;
       }
-      const nextEng = !$('#engine option[value="turbo"]').disabled ? "turbo" : "deepgram";
-      $("#engine").value = nextEng;
-      store.set("st-engine", nextEng);
       $("#passPaidBox").hidden = true;
       $("#passStatusMsg").textContent = "Confirming Square payment…";
       $("#passStatusMsg").hidden = false;
@@ -3731,10 +3717,11 @@
             store.set("st-event-pass", d.code);
             try { sessionStorage.removeItem("st-pass-claim"); } catch {}
             $("#mintedPassCode").textContent = d.code;
-            $("#passPaidNote").textContent = `${d.label || "Event Pass"} unlocked · ${d.hours || ""}h clock starts on first live Deepgram caption.`;
+            $("#passPaidNote").textContent = `${d.label || "Event Pass"} unlocked · ${d.hours || ""}h clock starts on first live Studio caption.`;
             $("#passPaidBox").hidden = false;
             $("#passStatusMsg").hidden = true;
             syncPassField();
+            updateMicLabel(true);
             syncStageSelects();
             return;
           }
@@ -3746,22 +3733,13 @@
     }
 
     fetch("/api/engines").then((r) => r.json()).then((e) => {
-      const dgOpt = $('#engine option[value="deepgram"]');
-      const turboOpt = $('#engine option[value="turbo"]');
-      const hasCloud = Boolean(e.deepgram || e.turbo);
-      dgOpt.disabled = !e.deepgram;
-      turboOpt.disabled = !e.turbo;
+      relayDeepgram = Boolean(e.deepgram);
+      relayTurbo = Boolean(e.turbo);
+      const hasCloud = relayDeepgram || relayTurbo;
       dgPassRequired = Boolean(hasCloud && e.passRequired);
       dgPassesAvailable = Boolean(hasCloud && e.passesAvailable);
-      if (!e.deepgram) {
-        dgOpt.textContent = "Deepgram (key needed)";
-        if (engine() === "deepgram") { $("#engine").value = e.turbo ? "turbo" : "browser"; store.set("st-engine", $("#engine").value); }
-      }
-      if (!e.turbo) {
-        turboOpt.textContent = "Cloud Turbo (key needed)";
-        if (engine() === "turbo") { $("#engine").value = e.deepgram ? "deepgram" : "browser"; store.set("st-engine", $("#engine").value); }
-      }
       syncPassField();
+      updateMicLabel(true);
       syncStageSelects();
       const pendingCheckout = new URLSearchParams(location.search).get("pass_checkout");
       if (pendingCheckout && /^[a-f0-9]{16,40}$/.test(pendingCheckout)) {

@@ -122,6 +122,7 @@ const ROOM_CREATE_WINDOW_MS = 60_000;
 const ROOM_CREATE_LIMIT = 10;
 const MAX_RATE_BUCKETS = 10_000;
 const DEEPGRAM_DEFAULT_URL = "wss://api.deepgram.com/v1/listen";
+const DEEPGRAM_BATCH_DEFAULT_URL = "https://api.deepgram.com/v1/listen";
 const GROQ_DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const MAX_WAV_BYTES = 1_200_000; // ~37s of 16 kHz mono PCM16 WAV
 const WHISPER_HALLUCINATION_RE =
@@ -129,6 +130,7 @@ const WHISPER_HALLUCINATION_RE =
 const deepgramKey = () => env("DEEPGRAM_API_KEY");
 const deepgramPass = () => env("STAGETYPE_DEEPGRAM_PASS");
 const deepgramUrl = () => env("DEEPGRAM_URL", DEEPGRAM_DEFAULT_URL);
+const deepgramBatchUrl = () => env("DEEPGRAM_BATCH_URL", DEEPGRAM_BATCH_DEFAULT_URL);
 const deepgramModel = () => env("DEEPGRAM_MODEL", "nova-3");
 const groqKey = () => env("GROQ_API_KEY");
 const groqUrl = () => env("GROQ_API_URL", GROQ_DEFAULT_URL);
@@ -892,11 +894,16 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
 
     const rawPassHdr = req.headers.get("x-stagetype-pass") ?? "";
     const provided = rawPassHdr ? (decodePassB64(rawPassHdr) || rawPassHdr.trim()) : "";
-    let apiKey = groqKey();
+    let gKey = groqKey();
+    let dgFallbackKey = deepgramKey();
     if (provided.startsWith("groq:") && provided.slice(5).trim().length >= 16) {
-      apiKey = provided.slice(5).trim();
+      gKey = provided.slice(5).trim();
+      dgFallbackKey = "";
+    } else if (provided.startsWith("dg:") && provided.slice(3).trim().length >= 16) {
+      gKey = "";
+      dgFallbackKey = provided.slice(3).trim();
     } else {
-      if (!apiKey) return json({ error: "no turbo engine on this relay" }, 503);
+      if (!gKey && !dgFallbackKey) return json({ error: "no cloud speech engine on this relay" }, 503);
       const requiredPass = deepgramPass();
       const passGate = Boolean(requiredPass || passes.isPassCheckoutConfigured());
       if (passGate) {
@@ -931,29 +938,75 @@ export async function handler(req: Request, info?: Deno.ServeHandlerInfo): Promi
     const phoneId = url.searchParams.get("phone") ? cleanPhoneId(url.searchParams.get("phone")) : (speaker || "default");
     const terms = keytermsFrom(url);
 
-    const form = new FormData();
-    form.append("file", new Blob([wavBytes as unknown as BlobPart], { type: "audio/wav" }), "speech.wav");
-    form.append("model", groqModel());
-    form.append("response_format", "json");
-    form.append("temperature", "0");
-    if (isoLang && isoLang.length === 2) form.append("language", isoLang);
-    if (terms.length) form.append("prompt", terms.join(", "));
+    let rawText = "";
+    let succeeded = false;
+    let authRejected = false;
 
-    let upRes: Response;
-    try {
-      upRes = await fetch(groqUrl(), {
-        method: "POST",
-        headers: { authorization: `Bearer ${apiKey}` },
-        body: form,
+    // Primary Cloud Engine: Groq whisper-large-v3-turbo (~320ms, US$0.04/hr)
+    if (gKey) {
+      const form = new FormData();
+      form.append("file", new Blob([wavBytes as unknown as BlobPart], { type: "audio/wav" }), "speech.wav");
+      form.append("model", groqModel());
+      form.append("response_format", "json");
+      form.append("temperature", "0");
+      if (isoLang && isoLang.length === 2) form.append("language", isoLang);
+      if (terms.length) form.append("prompt", terms.join(", "));
+      try {
+        const upRes = await fetch(groqUrl(), {
+          method: "POST",
+          headers: { authorization: `Bearer ${gKey}` },
+          body: form,
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (upRes.ok) {
+          const data = await upRes.json().catch(() => ({})) as { text?: unknown };
+          rawText = typeof data.text === "string" ? data.text.trim() : "";
+          succeeded = true;
+        } else if (upRes.status === 401 && !dgFallbackKey) {
+          authRejected = true;
+        }
+      } catch {
+        // Fall through automatically to Deepgram Nova-3 backup if configured
+      }
+    }
+
+    // Automatic Redundancy Failover: Deepgram Nova-3 pre-recorded if primary blinked
+    if (!succeeded && dgFallbackKey) {
+      const dgParams = new URLSearchParams({
+        model: deepgramModel(),
+        language: isoLang === "en" || isoLang === "es" ? "multi" : (isoLang || "multi"),
+        smart_format: "true",
+        punctuate: "true",
       });
-    } catch {
-      return json({ error: "turbo speech upstream unreachable" }, 502);
+      if (terms.length) {
+        const field = deepgramModel().startsWith("nova-3") ? "keyterm" : "keywords";
+        for (const t of terms) dgParams.append(field, t);
+      }
+      try {
+        const dgRes = await fetch(`${deepgramBatchUrl()}?${dgParams}`, {
+          method: "POST",
+          headers: { authorization: `Token ${dgFallbackKey}`, "content-type": "audio/wav" },
+          body: wavBytes as unknown as BodyInit,
+          signal: AbortSignal.timeout(12_000),
+        });
+        if (dgRes.ok) {
+          const dgData = await dgRes.json().catch(() => ({})) as {
+            results?: { channels?: { alternatives?: { transcript?: string }[] }[] };
+          };
+          rawText = (dgData.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "").trim();
+          succeeded = true;
+        } else if (dgRes.status === 401) {
+          authRejected = true;
+        }
+      } catch {
+        // Both cloud upstreams unreachable
+      }
     }
-    if (!upRes.ok) {
-      return json({ error: `turbo upstream HTTP ${upRes.status}` }, upRes.status === 401 ? 403 : 502);
+
+    if (!succeeded) {
+      return json({ error: authRejected ? "invalid speech key" : "cloud speech temporarily unavailable" }, authRejected ? 403 : 502);
     }
-    const data = await upRes.json().catch(() => ({})) as { text?: unknown };
-    const rawText = typeof data.text === "string" ? data.text.trim() : "";
+
     const cleaned = WHISPER_HALLUCINATION_RE.test(rawText) ? "" : rawText;
     if (cleaned && !r.closed) {
       pushChunk(r, { text: cleaned, final: true, source, speaker, phoneId });
